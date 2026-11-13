@@ -38,3 +38,4 @@ export * from './patches/listOps.js';
 export * from './patches/store.js';
 export * from './events/names.js';
 export * from './events/describe.js';
+export * from './patches/apply.js';

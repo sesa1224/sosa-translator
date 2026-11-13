@@ -168,7 +168,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 꺼진 수정은 적용되지 않는다
 - 결과 어디에도 `__o` 가 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정을 빌드에 적용"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정을 빌드에 적용"`
 
 ### Task 4: 사용처 검색과 이벤트 읽기
 
