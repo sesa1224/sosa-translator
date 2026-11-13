@@ -423,7 +423,7 @@ export function findClaude(configured: string | null): string | null; // 설정�
 
 오류 규칙: 실행 파일이 없으면(`ENOENT`) `error` 이벤트 `'Claude CLI를 실행할 수 없습니다. 설정에서 경로를 확인하세요.'`. 턴 도중 프로세스가 끝나면 `turn-end` `ok: false`, `error` 는 stderr 마지막 줄. stderr 에 `/login` 이나 `not logged in`(대소문자 무시)이 있으면 `error` 는 `'로그인이 필요합니다. 터미널에서 claude 를 실행해 로그인하세요.'`. 어떤 경우에도 예외를 밖으로 던지지 않고, 다음 `send` 는 다시 동작한다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기** (`command: process.execPath, prefixArgs: [fakePath]`, `turn(chat, text)` 는 `turn-end` 까지 이벤트를 모으는 도우미)
+- [x] **Step 1: 실패하는 시험 쓰기** (`command: process.execPath, prefixArgs: [fakePath]`, `turn(chat, text)` 는 `turn-end` 까지 이벤트를 모으는 도우미)
 
 ```ts
 test('한 턴', async () => {
@@ -451,10 +451,10 @@ test('멈추기', async () => { chat.send('느리게'); chat.stop(); expect(chat
 
 (`'느리게'` 는 fake 가 2초 뒤에 답하는 글이다.)
 
-- [ ] **Step 2: `npx vitest run tests/main/chat.test.ts` → FAIL**
-- [ ] **Step 3: 구현** — `child_process.spawn`, `windowsHide: true`. `.cmd` 는 `shell: true` 가 필요하므로 `findClaude` 는 `.exe` 를 먼저 찾는다
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: ClaudeChat 프로세스 관리"`**
+- [x] **Step 2: `npx vitest run tests/main/chat.test.ts` → FAIL**
+- [x] **Step 3: 구현** — `child_process.spawn`, `windowsHide: true`. `.cmd` 는 `shell: true` 가 필요하므로 `findClaude` 는 `.exe` 를 먼저 찾는다
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: ClaudeChat 프로세스 관리"`**
 
 ### Task 8: 설정, IPC, preload
 
