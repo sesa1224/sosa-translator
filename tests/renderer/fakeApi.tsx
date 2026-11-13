@@ -5,6 +5,7 @@ import { useApp } from '../../src/renderer/state';
 import {
   DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type GameDirCheck, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
+import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, WindowMetrics } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
@@ -135,7 +136,22 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       listeners.get(channel)!.add(cb as any);
       return () => { listeners.get(channel)!.delete(cb as any); };
     },
+    preview: {
+      get: rec('preview.get', () => pv.state),
+      layout: rec('preview.layout', (id: string, text?: string) => pv.layout(id, text)),
+      setFont: rec('preview.setFont', (p: string | null) => { pv.state = { ...pv.state, settings: { ...pv.state.settings, fontPath: p } }; }),
+      setOverrides: rec('preview.setOverrides', () => undefined),
+      countOverflow: rec('preview.countOverflow', (p?: string | null) => pv.overflow(p)),
+      windowSkin: rec('preview.windowSkin', () => null),
+    },
+    fonts: {
+      list: rec('fonts.list', () => pv.fontList),
+      bytes: rec('fonts.bytes', () => new Uint8Array([0, 1, 0, 0])),
+      pickFile: rec('fonts.pickFile', () => pv.picked),
+    },
   };
+  const pv = defaultPreviewFake();
+  previewFakes.set(fake, pv);
   return fake;
 }
 
@@ -154,4 +170,29 @@ export async function openFakeWith(api: FakeApi, o: { select?: string; rightTab?
   if (o.select) await act(async () => { await useApp.selectRow(o.select!); });
   if (o.rightTab) act(() => { useApp.setRightTab(o.rightTab!); });
   return user;
+}
+
+// ---- plan 4: preview and fonts ----
+export const MZ_METRICS: WindowMetrics = { engine: 'MZ', boxWidth: 808, padding: 12, textPadding: 8, fontSize: 26, lineHeight: 36, maxLines: 4, faceIndent: 164, iconWidth: 36, sizeStep: 12 };
+/** What the fake's preview and fonts calls give back; tests change these. */
+export interface PreviewFake {
+  state: PreviewState;
+  layout: (id: string, text?: string) => Layout | null;
+  overflow: (path?: string | null) => OverflowCount;
+  fontList: FontList;
+  picked: FontInfo | null;
+}
+function defaultPreviewFake(): PreviewFake {
+  return {
+    state: { settings: { fontPath: null, fontName: null, overrides: {} }, metrics: MZ_METRICS, detected: MZ_METRICS, fontMissing: false, context: { actorNames: {}, variables: {}, currencyUnit: 'G', partyNames: {} } },
+    layout: () => null,
+    overflow: () => ({ overflowing: 0, checked: 0, missingGlyphs: 0 }),
+    fontList: { fonts: [], skippedCollections: 0 },
+    picked: null,
+  };
+}
+const previewFakes = new WeakMap<FakeApi, PreviewFake>();
+/** The preview state behind a fake api. */
+export function previewFake(api: FakeApi): PreviewFake {
+  return previewFakes.get(api)!;
 }

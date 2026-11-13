@@ -91,6 +91,7 @@ export interface PushEvents {
   'settings:changed': AppSettings;
   'glossary:changed': Glossary;
   'job:progress': JobProgress;
+  'preview:changed': PreviewState;
 }
 export type PushChannel = keyof PushEvents;
 
@@ -179,8 +180,43 @@ export interface Api {
   };
   app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
+  preview: PreviewApi;
+  fonts: FontsApi;
 }
 
 // ---- plan 4: preview and fonts ----
 /** A font file the app can use for the in-game preview (source: where it was found). */
 export interface FontInfo { path: string; family: string; displayName: string; style: string; hasHangul: boolean; source: 'system' | 'user' | 'game' | 'project' }
+export type { LaidLine, Layout, PreviewContext, PreviewSettings, Run, WindowMetrics } from '../core/preview/types.js';
+/** What preview.get() and the 'preview:changed' event give. detected = before the user's overrides. */
+export interface PreviewState {
+  settings: import('../core/preview/types.js').PreviewSettings;
+  metrics: import('../core/preview/types.js').WindowMetrics;
+  detected: import('../core/preview/types.js').WindowMetrics;
+  fontMissing: boolean;
+  context: import('../core/preview/types.js').PreviewContext;
+}
+export interface OverflowCount { overflowing: number; checked: number; missingGlyphs: number }
+export interface FontList { fonts: FontInfo[]; skippedCollections: number }
+/** Plan 4 request/response channels (kept apart from InvokeChannels so that list stays as it was). */
+export interface PreviewInvokeChannels {
+  'preview:get': () => PreviewState;
+  'preview:layout': (id: string, text?: string) => import('../core/preview/types.js').Layout | null;
+  'preview:setFont': (path: string | null) => void;
+  'preview:setOverrides': (o: Partial<import('../core/preview/types.js').WindowMetrics>) => void;
+  'preview:countOverflow': (path?: string | null) => OverflowCount;
+  'preview:windowSkin': () => Uint8Array | null;
+  'fonts:list': () => FontList;
+  'fonts:bytes': (path: string) => Uint8Array;
+  'fonts:pickFile': () => FontInfo | null;
+}
+export type PreviewInvokeChannel = keyof PreviewInvokeChannels;
+type AsyncP<F> = F extends (...a: infer A) => infer R ? (...a: A) => Promise<R> : never;
+export interface PreviewApi {
+  get: AsyncP<PreviewInvokeChannels['preview:get']>; layout: AsyncP<PreviewInvokeChannels['preview:layout']>;
+  setFont: AsyncP<PreviewInvokeChannels['preview:setFont']>; setOverrides: AsyncP<PreviewInvokeChannels['preview:setOverrides']>;
+  countOverflow: AsyncP<PreviewInvokeChannels['preview:countOverflow']>; windowSkin: AsyncP<PreviewInvokeChannels['preview:windowSkin']>;
+}
+export interface FontsApi {
+  list: AsyncP<PreviewInvokeChannels['fonts:list']>; bytes: AsyncP<PreviewInvokeChannels['fonts:bytes']>; pickFile: AsyncP<PreviewInvokeChannels['fonts:pickFile']>;
+}

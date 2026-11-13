@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { startBridge, writeMcpConfig, type Bridge } from './bridge.js';
 import { ClaudeChat, findClaude } from './claude/chat.js';
 import { registerIpc } from './ipc.js';
+import { systemFontDirs } from './fonts/catalog.js';
 import type { ProjectService } from './projectService.js';
 import type { PushChannel, PushEvents } from '../shared/api.js';
 
@@ -95,6 +96,15 @@ app.whenReady().then(async () => {
     claudePath: resolveClaude,
     jsonClaude,
     showItemInFolder: (file) => shell.showItemInFolder(file),
+    // MVMZ_FONT_DIRS (folders separated by ';') replaces the Windows font folders in tests.
+    fontDirs: () => (process.env.MVMZ_FONT_DIRS ? process.env.MVMZ_FONT_DIRS.split(path.delimiter).filter(Boolean) : systemFontDirs()),
+    pickFontFile: async () => {
+      if (process.env.MVMZ_PICK_FONT) return process.env.MVMZ_PICK_FONT;
+      const win = BrowserWindow.getFocusedWindow();
+      const opts = { title: '폰트 파일 고르기', properties: ['openFile' as const], filters: [{ name: '폰트', extensions: ['ttf', 'otf'] }] };
+      const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+      return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
+    },
   });
 
   createWindow();

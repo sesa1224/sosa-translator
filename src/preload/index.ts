@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { Api, InvokeChannel, PushChannel } from '../shared/api.js';
+import type { PreviewInvokeChannel } from '../shared/api.js';
 
 /** ipcRenderer.invoke with the "Error invoking remote method 'x': Error: " prefix removed. */
 async function call(channel: InvokeChannel, ...args: unknown[]): Promise<any> {
@@ -9,6 +10,11 @@ async function call(channel: InvokeChannel, ...args: unknown[]): Promise<any> {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(msg.replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, ''));
   }
+}
+
+/** call() for the plan 4 channels. */
+function callP(channel: PreviewInvokeChannel, ...args: unknown[]): Promise<any> {
+  return call(channel as unknown as InvokeChannel, ...args);
 }
 
 const api: Api = {
@@ -71,6 +77,19 @@ const api: Api = {
     const listener = (_e: unknown, payload: unknown) => cb(payload);
     ipcRenderer.on(channel, listener);
     return () => { ipcRenderer.removeListener(channel, listener); };
+  },
+  preview: {
+    get: () => callP('preview:get'),
+    layout: (id, text) => callP('preview:layout', id, text),
+    setFont: (path) => callP('preview:setFont', path),
+    setOverrides: (o) => callP('preview:setOverrides', o),
+    countOverflow: (path) => callP('preview:countOverflow', path),
+    windowSkin: () => callP('preview:windowSkin'),
+  },
+  fonts: {
+    list: () => callP('fonts:list'),
+    bytes: (path) => callP('fonts:bytes', path),
+    pickFile: () => callP('fonts:pickFile'),
   },
 };
 

@@ -201,7 +201,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - `fonts.bytes` 가 목록에 없는 경로를 거절한다
 - `preview.windowSkin` 이 암호화된 시험용 게임(`makeMiniGame({ encrypted: true })` 에 `Window.png_` 를 `encryptAsset` 으로 만들어 넣는다)에서 PNG 머리 바이트로 시작하는 값을 준다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 미리보기 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 미리보기 연결"`
 
 ### Task 6: 게임 화면 미리보기
 
