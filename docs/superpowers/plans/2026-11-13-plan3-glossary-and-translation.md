@@ -363,7 +363,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
 
 `buildTranslatePrompt`: system = `glossary.styleGuide` + 형식 규칙을 글로 푼 것(제어문자 유지, 줄 수 규칙, 줄 폭 한도가 있으면 그 값) + 출력 규칙("항목마다 i 와 번역 t 를 돌려준다. 번역할 수 없는 항목은 t 를 null 로 하고 declined 에 이유를 적는다. 용어집에 없는 고유명사를 새로 옮겼으면 newTerms 에 적는다. 화자 이름은 번역하지 않는다, 본문만 옮긴다"). user = JSON `{ terms: [{ source, target }], characters: [{ name, target, speech, firstPerson?, addressing? }], context: [...], items: [{ i, kind, speaker, text }] }`. `terms` 는 묶음의 본문들에 `termsIn` 으로 나온 것만, `characters` 는 묶음에 나온 화자의 카드만.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('파일과 크기로 나눈다', () => {
@@ -389,10 +389,10 @@ test('프롬프트에는 그 묶음의 용어와 인물만', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/batches.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 번역 묶음과 프롬프트"`**
+- [x] **Step 2: `npx vitest run tests/main/batches.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 번역 묶음과 프롬프트"`**
 
 ### Task 7: 번역 작업 실행기
 
