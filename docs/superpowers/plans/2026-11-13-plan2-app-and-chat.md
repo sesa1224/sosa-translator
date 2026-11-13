@@ -611,7 +611,7 @@ test('채팅으로 말하기는 항목을 붙인다', async () => {
 
 동작: 메시지 목록(사용자 말풍선에 첨부 이미지 썸네일, Claude의 답은 `Noto Serif KR`, `text-delta` 가 오는 대로 이어 그리고 `text` 가 오면 그 글로 확정). 도구 호출은 작은 한 줄: `search_units` → `검색 · "<query>"`, `get_unit` → `읽음 · <위치>`, `set_translation` → `수정 · <위치>`, `set_status` → `상태 변경 · <위치>`, `undo_last` → `되돌림`, `project_status` → `상태 확인`. `set_translation` 줄은 버튼이고 누르면 그 항목을 표에서 선택한다. 실패한 도구 줄은 `--err` 색. 입력 칸은 `Enter` 로 보내고 `Shift+Enter` 는 줄바꿈. 답을 기다리는 동안 보내기 버튼은 "멈추기"로 바뀐다. 첨부: 이미지 버튼(파일 고르기), 붙여넣기(`paste` 의 이미지), 끌어다 놓기. PNG·JPEG·WebP 만, 한 장 최대 5MB, 한 번에 최대 4장. 넘으면 보내지 않고 칸 아래에 이유를 적는다. 붙은 항목은 칩으로 보이고 ×로 뗀다. 모델 고르기(`settings.models`), "새 대화", "방금 변경 되돌리기"(`project.undo()` 가 아니라 채팅 출처만 되돌리도록 `chat` 쪽 IPC `chat.undo()` 를 작업 8의 표에 추가해 쓴다). `turn-end` 의 `ok: false` 와 `error` 이벤트는 목록에 `--err` 색 한 줄로 보인다. 아래에 "이번 대화 n 토큰".
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('보내고 답이 이어서 그려진다', async () => {
@@ -642,10 +642,10 @@ test('오류는 한 줄로', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/renderer/chat.test.tsx` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 채팅 탭"`**
+- [x] **Step 2: `npx vitest run tests/renderer/chat.test.tsx` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 채팅 탭"`**
 
 ### Task 12: 설정 화면, 전체 연기 시험, 실제 CLI 확인
 

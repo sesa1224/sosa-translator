@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { Api } from '../shared/api';
+import { ChatPanel } from './components/ChatPanel';
 import { ItemPanel } from './components/ItemPanel';
 import { ProjectPicker } from './components/ProjectPicker';
 import { Sidebar } from './components/Sidebar';
@@ -25,23 +26,12 @@ function RightPanel() {
         </div>
       </div>
       <div id="panel-right" role="tabpanel" aria-labelledby={rightTab === 'item' ? 'tab-item' : 'tab-chat'} className="right-body">
-        {rightTab === 'item' ? <ItemPanel /> : <AttachedChip />}
+        {rightTab === 'item' ? <ItemPanel /> : <ChatPanel />}
       </div>
     </aside>
   );
 }
 
-function AttachedChip() {
-  const { attachedId, rowsById } = useApp();
-  const row = attachedId ? rowsById[attachedId] : undefined;
-  if (!row) return null;
-  return (
-    <div className="attached">
-      <span className="tag">{`붙은 항목 · ${row.location}`}</span>
-      <button type="button" className="x" aria-label="붙은 항목 떼기" onClick={() => useApp.attach(null)}>×</button>
-    </div>
-  );
-}
 
 function Workspace() {
   const { view } = useApp();
