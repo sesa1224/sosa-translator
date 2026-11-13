@@ -1,5 +1,5 @@
 export const MCP_SERVER_NAME = 'mvmz';
-export const CHAT_TOOLS = ['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last'];
+export const CHAT_TOOLS = ['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last', 'glossary_search', 'glossary_set_term'];
 export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;
 
 /** Arguments for a headless, stream-json Claude CLI session limited to the app's MCP tools. */

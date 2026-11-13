@@ -56,6 +56,24 @@ export interface ProjectMeta {
   name: string; engine: 'MV' | 'MZ'; gameDir: string; contentPrefix: string; sourceLang: 'ja'; targetLang: 'ko';
   versions: { id: string; importedAt: string }[]; current: string;
 }
+// Copies of src/core/glossary/types.ts (checked in src/main/ipc.ts).
+export type TermCategory = 'name' | 'place' | 'term' | 'sfx' | 'other';
+export interface TermCandidate { target: string; reason: string }
+export interface Term {
+  id: string; source: string; target: string; category: TermCategory;
+  status: 'confirmed' | 'provisional'; candidates: TermCandidate[]; note?: string;
+}
+export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string }
+export interface ProjectRules {
+  controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
+  maxLineWidthChars: number | null; speakerPattern: string | null;
+}
+export interface Glossary { terms: Term[]; characters: CharacterCard[]; styleGuide: string; rules: ProjectRules; confirmedAt: string | null }
+export interface SpeakerDetection { pattern: string; presetId: string; coverage: number }
+export interface ReviewScopeArg { scope: 'all' | 'unreviewed' | 'file'; file?: string }
+export interface ReviewPlan { items: number; estimatedInputTokens: number; model: string }
+export interface ChooseResult { changed: string[]; uncertain: string[] }
+
 export interface BuildResult { number: number; zipPath: string; files: { path: string; sha1: string }[]; skippedErrors: number }
 
 /** Events the main process pushes to every window. */
@@ -63,6 +81,8 @@ export interface PushEvents {
   'project:changed': ProjectChanged;
   'chat:event': ChatEvent;
   'settings:changed': AppSettings;
+  'glossary:changed': Glossary;
+  'job:progress': JobProgress;
 }
 export type PushChannel = keyof PushEvents;
 
@@ -82,6 +102,26 @@ export interface InvokeChannels {
   'unit:setTranslation': (id: string, target: string) => Issue[];
   'unit:setStatus': (id: string, status: TranslationStatus) => void;
   'unit:clear': (id: string) => void;
+  'unit:acceptReview': (id: string) => Issue[];
+  'unit:rejectReview': (id: string) => void;
+  'glossary:get': () => Glossary;
+  'glossary:upsertTerm': (t: Omit<Term, 'id'>) => Term;
+  'glossary:removeTerm': (id: string) => void;
+  'glossary:choose': (id: string, target: string) => ChooseResult;
+  'glossary:setCharacters': (cards: CharacterCard[]) => void;
+  'glossary:setStyleGuide': (text: string) => void;
+  'glossary:setRules': (rules: Partial<ProjectRules>) => void;
+  'glossary:confirm': () => void;
+  'glossary:detectSpeakerPattern': () => SpeakerDetection | null;
+  'glossary:defaultStyleGuide': () => string;
+  'job:draft': () => void;
+  'job:translate': (ids?: string[]) => void;
+  'job:reviewPlan': (scope: ReviewScopeArg) => ReviewPlan;
+  'job:review': (scope: ReviewScopeArg) => void;
+  'job:pause': () => void;
+  'job:resume': () => void;
+  'job:stop': () => void;
+  'job:current': () => JobProgress | null;
   'chat:send': (text: string, images: ChatImage[], attachedUnitId?: string) => void;
   'chat:stop': () => void;
   'chat:reset': () => void;
@@ -105,10 +145,24 @@ export interface Api {
   unit: {
     get: Async<InvokeChannels['unit:get']>; setTranslation: Async<InvokeChannels['unit:setTranslation']>;
     setStatus: Async<InvokeChannels['unit:setStatus']>; clear: Async<InvokeChannels['unit:clear']>;
+    acceptReview: Async<InvokeChannels['unit:acceptReview']>; rejectReview: Async<InvokeChannels['unit:rejectReview']>;
   };
   chat: {
     send: Async<InvokeChannels['chat:send']>; stop: Async<InvokeChannels['chat:stop']>; reset: Async<InvokeChannels['chat:reset']>;
     setModel: Async<InvokeChannels['chat:setModel']>; undo: Async<InvokeChannels['chat:undo']>;
+  };
+  glossary: {
+    get: Async<InvokeChannels['glossary:get']>; upsertTerm: Async<InvokeChannels['glossary:upsertTerm']>;
+    removeTerm: Async<InvokeChannels['glossary:removeTerm']>; choose: Async<InvokeChannels['glossary:choose']>;
+    setCharacters: Async<InvokeChannels['glossary:setCharacters']>; setStyleGuide: Async<InvokeChannels['glossary:setStyleGuide']>;
+    setRules: Async<InvokeChannels['glossary:setRules']>; confirm: Async<InvokeChannels['glossary:confirm']>;
+    detectSpeakerPattern: Async<InvokeChannels['glossary:detectSpeakerPattern']>; defaultStyleGuide: Async<InvokeChannels['glossary:defaultStyleGuide']>;
+  };
+  job: {
+    draft: Async<InvokeChannels['job:draft']>; translate: Async<InvokeChannels['job:translate']>;
+    reviewPlan: Async<InvokeChannels['job:reviewPlan']>; review: Async<InvokeChannels['job:review']>;
+    pause: Async<InvokeChannels['job:pause']>; resume: Async<InvokeChannels['job:resume']>; stop: Async<InvokeChannels['job:stop']>;
+    current: Async<InvokeChannels['job:current']>;
   };
   app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;

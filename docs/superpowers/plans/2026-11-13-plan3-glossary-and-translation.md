@@ -528,7 +528,7 @@ test('프롬프트', () => { const p = buildReviewPrompt(batch, g); expect(p.sys
 - Produces(채팅 도구, 2개 추가 → 모두 8개): `glossary_search`(`query: string` → 용어와 인물 카드), `glossary_set_term`(`source`, `target`, `category?` → `upsertTerm` 을 `confirmed` 로. 기존 용어의 target 이 바뀌면 `chooseCandidate` 와 같은 갱신). 채팅 시스템 프롬프트에 "용어를 정하거나 바꿀 때는 glossary_set_term 을 쓴다"와 현재 말투 지침 전체를 넣는다
 - 모델: 초안은 `settings.stageModels.glossary`, 번역은 `.translate`, 검수는 `.review`
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('후보를 고르면 번역문이 따라 바뀐다', async () => {
@@ -552,10 +552,10 @@ test('채팅 도구로 용어를 정한다', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS, 전체 `npx vitest run` 통과**
-- [ ] **Step 5: `git commit -m "feat: 용어집 조작과 작업 연결"`**
+- [x] **Step 2: `npx vitest run tests/main` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS, 전체 `npx vitest run` 통과**
+- [x] **Step 5: `git commit -m "feat: 용어집 조작과 작업 연결"`**
 
 ### Task 10: 용어집 화면
 

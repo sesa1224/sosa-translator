@@ -17,7 +17,8 @@ import {
 } from '../core/index.js';
 import { loadGlossary, saveGlossary, termId } from '../core/glossary/store.js';
 import { termsIn } from '../core/glossary/match.js';
-import type { Glossary, Term } from '../core/glossary/types.js';
+import { planRename } from '../core/glossary/rename.js';
+import type { CharacterCard, Glossary, ProjectRules, Term } from '../core/glossary/types.js';
 import type { ChangeEvent, Origin } from '../shared/api.js';
 
 const UNDO_LIMIT = 200;
@@ -118,6 +119,70 @@ export class ProjectService extends EventEmitter {
     }
     if (added.length > 0) await this.setGlossary({ ...this.gloss, terms: [...this.gloss.terms, ...added] });
     return added;
+  }
+
+  /** Adds a term, or replaces the one with the same source. The translations are not touched. */
+  async upsertTerm(t: Omit<Term, 'id'>): Promise<Term> {
+    const source = t.source.trim();
+    if (!source) throw new Error('용어 원문을 입력하세요');
+    const term: Term = { ...t, id: termId(source), source, target: t.target.trim(), candidates: t.candidates.map((c) => ({ ...c })) };
+    const terms = this.gloss.terms.filter((x) => x.id !== term.id);
+    const at = this.gloss.terms.findIndex((x) => x.id === term.id);
+    terms.splice(at < 0 ? terms.length : at, 0, term);
+    await this.setGlossary({ ...this.gloss, terms });
+    return structuredClone(term);
+  }
+
+  async removeTerm(id: string): Promise<void> {
+    if (!this.gloss.terms.some((t) => t.id === id)) return;
+    await this.setGlossary({ ...this.gloss, terms: this.gloss.terms.filter((t) => t.id !== id) });
+  }
+
+  /**
+   * Settles a term on target (status 'confirmed'). When the target changes, every translation using the
+   * old one is rewritten with particles fixed: certain rewrites keep their status, uncertain ones go to
+   * 'needs-review' and are listed in uncertain.
+   */
+  async chooseCandidate(id: string, target: string): Promise<{ changed: string[]; uncertain: string[] }> {
+    const term = this.gloss.terms.find((t) => t.id === id);
+    if (!term) throw new Error(`없는 용어입니다: ${id}`);
+    const next = target.trim();
+    if (!next) throw new Error('번역을 입력하세요');
+    const plan = planRename(term, next, this.unitList, (uid) => this.store.get(uid));
+    await this.setGlossary({ ...this.gloss, terms: this.gloss.terms.map((t) => (t.id === id ? { ...t, target: next, status: 'confirmed' } : t)) });
+    if (plan.length === 0) return { changed: [], uncertain: [] };
+    return this.mutate('user', () => {
+      const changed: string[] = [];
+      const uncertain: string[] = [];
+      for (const p of plan) {
+        const unit = this.require(p.id);
+        const before = this.store.get(p.id);
+        const hasError = this.check(unit, p.newTarget).some((i) => i.severity === 'error');
+        const status: TranslationStatus = hasError ? 'error' : !p.certain ? 'needs-review' : before.status === 'error' ? 'needs-review' : before.status;
+        this.remember(p.id, 'user');
+        this.store.set(p.id, p.newTarget, status);
+        changed.push(p.id);
+        if (!p.certain) uncertain.push(p.id);
+      }
+      return { ids: changed, result: { changed, uncertain } };
+    });
+  }
+
+  setCharacters(cards: CharacterCard[]): Promise<void> {
+    return this.setGlossary({ ...this.gloss, characters: cards.map((c) => ({ ...c, id: c.id || termId(c.source) })) });
+  }
+
+  setStyleGuide(text: string): Promise<void> {
+    return this.setGlossary({ ...this.gloss, styleGuide: text });
+  }
+
+  setRules(rules: Partial<ProjectRules>): Promise<void> {
+    return this.setGlossary({ ...this.gloss, rules: { ...this.gloss.rules, ...rules } });
+  }
+
+  /** Marks the glossary as confirmed now (needed before the full translation). */
+  confirmGlossary(): Promise<void> {
+    return this.setGlossary({ ...this.gloss, confirmedAt: new Date().toISOString() });
   }
 
   /** Marks a unit the model would not translate. */

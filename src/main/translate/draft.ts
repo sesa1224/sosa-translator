@@ -1,6 +1,8 @@
 import { termId } from '../../core/glossary/store.js';
 import type { CharacterCard, Glossary, Term, TermCategory } from '../../core/glossary/types.js';
-import type { Material } from './material.js';
+import { detectSpeakerPattern } from '../../core/text/speaker.js';
+import { BatchJob, type JobOptions } from './job.js';
+import { collectMaterial, type Material } from './material.js';
 
 export interface DraftResult {
   terms: { source: string; category: TermCategory; candidates: { target: string; reason: string }[] }[];
@@ -140,4 +142,42 @@ export function mergeDraft(g: Glossary, draft: DraftResult, pattern: string | nu
     styleGuide: withGameStyle(g.styleGuide, draft.styleNotes),
     rules: { ...g.rules, speakerPattern: g.rules.speakerPattern ?? pattern },
   };
+}
+
+/** One call that writes the glossary draft and merges it into the project's glossary. */
+export class DraftJob extends BatchJob<'draft'> {
+  constructor(o: JobOptions) {
+    super(o, 'draft');
+  }
+
+  protected plan(): { batches: 'draft'[]; total: number } {
+    return { batches: ['draft'], total: 1 };
+  }
+
+  protected async runBatch(_b: 'draft', signal: AbortSignal): Promise<'next' | 'limit' | 'failed' | 'stopped'> {
+    const svc = this.o.svc;
+    const g = svc.glossary();
+    const detected = g.rules.speakerPattern === null ? detectSpeakerPattern(svc.units())?.pattern ?? null : null;
+    const prompt = buildDraftPrompt(collectMaterial(svc.units(), g.rules.speakerPattern ?? detected), g.styleGuide);
+    let retried = false;
+    for (;;) {
+      this.update({ label: '용어집 초안' });
+      const r = await this.call({ system: prompt.system, user: prompt.user, schema: DRAFT_SCHEMA, validate: isDraftResult, signal });
+      if (r.ok) {
+        await svc.setGlossary(mergeDraft(svc.glossary(), r.data, detected));
+        this.update({ done: 1 });
+        return 'next';
+      }
+      const what = this.failure(r, retried);
+      if (what === 'retry' && !retried) {
+        retried = true;
+        continue;
+      }
+      if (what === 'split' || what === 'retry') {
+        this.p.message = r.message || '용어집 초안을 받지 못했습니다';
+        return 'failed';
+      }
+      return what;
+    }
+  }
 }

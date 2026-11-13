@@ -36,7 +36,7 @@ test('되돌리기는 채팅 변경만', async () => {
 
 // Extra coverage beyond the plan's assertions.
 test('도구 목록, 상태, 상태 바꾸기, 쓰기 출처는 chat', async () => {
-  expect(TOOL_DEFS.map((t) => t.name)).toEqual(['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last']);
+  expect(TOOL_DEFS.map((t) => t.name)).toEqual(['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last', 'glossary_search', 'glossary_set_term']);
   expect(TOOL_DEFS.find((t) => t.name === 'search_units')!.description).toContain('원문, 번역, 화자에서 글자 그대로 찾는다');
   const st = (await callTool(svc, 'project_status', {})) as any;
   expect(st.data).toMatchObject({ name: '약초원', engine: 'MZ', stats: { total: svc.units().length } });

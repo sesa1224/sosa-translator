@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { App } from '../../src/renderer/App';
 import { useApp } from '../../src/renderer/state';
 import {
-  DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
+  DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 
@@ -39,9 +39,17 @@ export function manyRows(n: number): Row[] {
   return Array.from({ length: n }, (_, i) => row({ id: `many-${i}`, source: `台詞${i}`, location: `맵1 · 이벤트${i}` }));
 }
 
-export type FakeApi = Api & { calls: unknown[][]; emit(channel: PushChannel, payload: unknown): void; opened: boolean; rows: Row[] };
+export const defaultFakeGlossary = (): Glossary => ({
+  terms: [], characters: [], styleGuide: '## 기본 태도\n- 자연스럽게', confirmedAt: null,
+  rules: { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null },
+});
 
-export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings> } = {}): FakeApi {
+export type FakeApi = Api & {
+  calls: unknown[][]; emit(channel: PushChannel, payload: unknown): void; opened: boolean; rows: Row[];
+  glossaryValue: Glossary; chooseResult: ChooseResult; speakerDetection: SpeakerDetection | null; reviewPlanValue: ReviewPlan;
+};
+
+export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
   let current: AppSettings = { ...settings, ...o.settings };
   const listeners = new Map<string, Set<(p: any) => void>>();
   const calls: unknown[][] = [];
@@ -61,6 +69,10 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     calls,
     opened: o.opened ?? false,
     rows: o.rows ?? baseRows,
+    glossaryValue: { ...defaultFakeGlossary(), ...o.glossary },
+    chooseResult: { changed: [], uncertain: [] },
+    speakerDetection: null,
+    reviewPlanValue: { items: 0, estimatedInputTokens: 0, model: 'claude-fable-5-2' },
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
     },
@@ -80,6 +92,30 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       setTranslation: rec('unit.setTranslation', () => []),
       setStatus: rec('unit.setStatus', () => undefined),
       clear: rec('unit.clear', () => undefined),
+      acceptReview: rec('unit.acceptReview', () => []),
+      rejectReview: rec('unit.rejectReview', () => undefined),
+    },
+    glossary: {
+      get: rec('glossary.get', () => fake.glossaryValue),
+      upsertTerm: rec('glossary.upsertTerm', (t) => ({ id: 'new', ...t })),
+      removeTerm: rec('glossary.removeTerm', () => undefined),
+      choose: rec('glossary.choose', () => fake.chooseResult),
+      setCharacters: rec('glossary.setCharacters', () => undefined),
+      setStyleGuide: rec('glossary.setStyleGuide', () => undefined),
+      setRules: rec('glossary.setRules', () => undefined),
+      confirm: rec('glossary.confirm', () => undefined),
+      detectSpeakerPattern: rec('glossary.detectSpeakerPattern', () => fake.speakerDetection),
+      defaultStyleGuide: rec('glossary.defaultStyleGuide', () => '기본 지침'),
+    },
+    job: {
+      draft: rec('job.draft', () => undefined),
+      translate: rec('job.translate', () => undefined),
+      reviewPlan: rec('job.reviewPlan', () => fake.reviewPlanValue),
+      review: rec('job.review', () => undefined),
+      pause: rec('job.pause', () => undefined),
+      resume: rec('job.resume', () => undefined),
+      stop: rec('job.stop', () => undefined),
+      current: rec('job.current', () => null),
     },
     chat: {
       send: rec('chat.send', () => undefined),

@@ -12,7 +12,9 @@ const SEARCH_DEFAULT = 20;
 const SEARCH_MAX = 50;
 const CONTEXT_KINDS = new Set(['dialogue', 'scroll']);
 
-const statusFilter = z.enum(['all', 'untranslated', 'needs-review', 'approved', 'error', 'needs-decision']);
+const statusFilter = z.enum(['all', 'untranslated', 'needs-review', 'approved', 'error', 'declined', 'needs-decision', 'provisional']);
+const termCategory = z.enum(['name', 'place', 'term', 'sfx', 'other']);
+const GLOSSARY_SEARCH_MAX = 30;
 
 export const TOOL_DEFS: ToolDef[] = [
   {
@@ -48,6 +50,20 @@ export const TOOL_DEFS: ToolDef[] = [
     name: 'undo_last',
     description: '채팅에서 한 가장 최근 변경 하나를 되돌릴 때 쓴다.',
     inputSchema: z.object({}),
+  },
+  {
+    name: 'glossary_search',
+    description: '용어집의 용어와 인물 카드를 찾을 때 쓴다. 원문과 번역에서 글자 그대로 찾는다(대소문자 무시). 빈 검색어는 전체.',
+    inputSchema: z.object({ query: z.string().describe('찾을 글자') }),
+  },
+  {
+    name: 'glossary_set_term',
+    description: '용어의 번역을 정하거나 바꿀 때 쓴다. 확정 상태로 저장되고, 번역이 바뀌면 그 용어가 들어간 번역문도 조사까지 맞춰 바뀐다.',
+    inputSchema: z.object({
+      source: z.string().describe('원문 용어'),
+      target: z.string().describe('번역'),
+      category: termCategory.optional().describe('name 이름, place 지명, term 용어, sfx 효과음, other 기타 (새 용어의 기본값 term)'),
+    }),
   },
 ];
 
@@ -101,6 +117,27 @@ const HANDLERS: Record<string, Handler> = {
   },
   async undo_last(svc) {
     return { ids: await svc.undo('chat') };
+  },
+  async glossary_search(svc, input: { query: string }) {
+    const q = input.query.toLowerCase();
+    const g = svc.glossary();
+    const has = (...s: (string | undefined)[]) => q === '' || s.some((x) => x !== undefined && x.toLowerCase().includes(q));
+    const terms = g.terms.filter((t) => has(t.source, t.target)).slice(0, GLOSSARY_SEARCH_MAX)
+      .map((t) => ({ source: t.source, target: t.target, category: t.category, status: t.status, candidates: t.candidates }));
+    const characters = g.characters.filter((c) => has(c.source, c.target)).slice(0, GLOSSARY_SEARCH_MAX)
+      .map(({ id: _id, ...c }) => c);
+    return { terms, characters };
+  },
+  async glossary_set_term(svc, input: { source: string; target: string; category?: z.infer<typeof termCategory> }) {
+    const source = input.source.trim();
+    const existing = svc.glossary().terms.find((t) => t.source === source);
+    if (!existing) {
+      const t = await svc.upsertTerm({ source, target: input.target, category: input.category ?? 'term', status: 'confirmed', candidates: [] });
+      return { term: t, changed: [], uncertain: [] };
+    }
+    if (input.category && input.category !== existing.category) await svc.upsertTerm({ ...existing, category: input.category });
+    const r = await svc.chooseCandidate(existing.id, input.target);
+    return { term: svc.glossary().terms.find((t) => t.id === existing.id), ...r };
   },
 };
 

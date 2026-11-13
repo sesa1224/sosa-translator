@@ -5,8 +5,17 @@ import { openProject, originalDir, readJsonFile, type TextUnit, type Translation
 import type * as core from '../core/index.js';
 import type * as shared from '../shared/api.js';
 import type {
-  AppSettings, ChatEvent, ChatImage, InvokeChannel, ProjectChanged, ProjectListItem, PushChannel, PushEvents, Row, Snapshot, UnitDetail,
+  AppSettings, ChatEvent, ChatImage, InvokeChannel, JobProgress, ProjectChanged, ProjectListItem, PushChannel, PushEvents, ReviewPlan,
+  ReviewScopeArg, Row, Snapshot, UnitDetail,
 } from '../shared/api.js';
+import type * as glossaryTypes from '../core/glossary/types.js';
+import { DEFAULT_STYLE_GUIDE } from '../core/glossary/store.js';
+import { detectSpeakerPattern } from '../core/text/speaker.js';
+import { runClaudeJson } from './claude/json.js';
+import { DraftJob } from './translate/draft.js';
+import type { JobLike, JobOptions } from './translate/job.js';
+import { TranslateJob } from './translate/job.js';
+import { planReview, ReviewJob } from './translate/review.js';
 import { computeScopes, computeStats, locationLabel, toRow } from '../shared/rows.js';
 import { buildSystemPrompt } from './claude/prompt.js';
 import { ProjectService } from './projectService.js';
@@ -14,7 +23,14 @@ import { loadSettings, saveSettings } from './settings.js';
 
 // Compile-time check that the renderer-side copies in shared/api.ts match the core types.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-export const sharedTypesMatch: [Same<core.ProjectMeta, shared.ProjectMeta>, Same<core.BuildResult, shared.BuildResult>] = [true, true];
+export const sharedTypesMatch: [
+  Same<core.ProjectMeta, shared.ProjectMeta>, Same<core.BuildResult, shared.BuildResult>,
+  Same<glossaryTypes.Glossary, shared.Glossary>, Same<glossaryTypes.Term, shared.Term>,
+] = [true, true, true, true];
+
+export const JOB_BUSY = '다른 작업이 진행 중입니다';
+export const CONFIRM_FIRST = '용어집을 먼저 확정하세요';
+const ACTIVE_STATES = new Set(['running', 'paused', 'paused-limit']);
 
 export const CANNOT_RUN_CLAUDE = 'Claude CLI를 실행할 수 없습니다. 설정에서 경로를 확인하세요.';
 
@@ -42,6 +58,10 @@ export interface IpcDeps {
   /** The CLI that would be used for this configured path (null = search PATH). */
   claudePath(configured: string | null): string | null;
   showItemInFolder(file: string): void;
+  /** One-shot JSON calls for drafts, translation and review (runClaudeJson unless a test gives a fake). */
+  runJson?: typeof runClaudeJson;
+  /** The CLI for one-shot JSON calls (default: claudePath(configured) with no prefix arguments). */
+  jsonClaude?(configured: string | null): { command: string; prefixArgs?: string[] } | null;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -65,6 +85,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   let rows = new Map<string, Row>();
   let chat: ChatLike | null = null;
   let gameTitle: string | null = null;
+  let job: JobLike | null = null;
 
   const settings = () => loadSettings(deps.settingsDir, deps.documentsDir);
   const svc = (): ProjectService => {
@@ -84,6 +105,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   async function closeProject(): Promise<void> {
     disposeChat();
+    job?.stop();
+    job = null;
     const s = deps.holder.svc;
     deps.holder.svc = null;
     rows = new Map();
@@ -94,7 +117,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   async function adopt(s: ProjectService): Promise<void> {
     await closeProject();
     deps.holder.svc = s;
-    rows = new Map(s.units().map((u: TextUnit) => [u.id, toRow(u, s.entry(u.id))]));
+    rows = new Map(s.units().map((u: TextUnit) => [u.id, toRow(u, s.entry(u.id), s.usesProvisional(u.id))]));
     gameTitle = await readGameTitle(s.projectDir);
     s.on('changed', (e) => {
       if (deps.holder.svc !== s) return;
@@ -102,7 +125,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       for (const id of e.ids) {
         const u = s.unit(id);
         if (!u) continue;
-        const r = toRow(u, s.entry(id));
+        const r = toRow(u, s.entry(id), s.usesProvisional(id));
         rows.set(id, r);
         changed.push(r);
       }
@@ -110,13 +133,32 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       const payload: ProjectChanged = { rows: changed, stats: computeStats(all), scopes: computeScopes(all), origin: e.origin };
       deps.broadcast('project:changed', payload);
     });
+    s.on('glossary-changed', (g) => {
+      if (deps.holder.svc !== s) return;
+      deps.broadcast('glossary:changed', g);
+      // Rows whose "uses a provisional term" mark changed.
+      const changed: Row[] = [];
+      for (const [id, r] of rows) {
+        const u = s.unit(id);
+        if (!u) continue;
+        const next = toRow(u, s.entry(id), s.usesProvisional(id));
+        if (next.usesProvisional !== r.usesProvisional) {
+          rows.set(id, next);
+          changed.push(next);
+        }
+      }
+      if (changed.length > 0) {
+        const all = allRows();
+        deps.broadcast('project:changed', { rows: changed, stats: computeStats(all), scopes: computeScopes(all), origin: 'user' });
+      }
+    });
   }
 
   async function ensureChat(): Promise<ChatLike | null> {
     if (chat) return chat;
     const s = svc();
     const st = await settings();
-    chat = deps.createChat({ cwd: s.projectDir, systemPrompt: buildSystemPrompt(s.meta, computeStats(allRows())), model: st.chatModel, claudePath: st.claudePath });
+    chat = deps.createChat({ cwd: s.projectDir, systemPrompt: buildSystemPrompt(s.meta, computeStats(allRows()), s.glossary().styleGuide), model: st.chatModel, claudePath: st.claudePath });
     chat?.on('event', (ev) => deps.broadcast('chat:event', ev));
     return chat;
   }
@@ -198,6 +240,71 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     await updateSettings({ chatModel: id });
   });
   handle('chat:undo', () => svc().undo('chat'));
+
+  // ---- glossary ----
+  handle('glossary:get', () => svc().glossary());
+  handle('glossary:upsertTerm', (t: Omit<glossaryTypes.Term, 'id'>) => svc().upsertTerm(t));
+  handle('glossary:removeTerm', (id: string) => svc().removeTerm(id));
+  handle('glossary:choose', (id: string, target: string) => svc().chooseCandidate(id, target));
+  handle('glossary:setCharacters', (cards: glossaryTypes.CharacterCard[]) => svc().setCharacters(cards));
+  handle('glossary:setStyleGuide', (text: string) => svc().setStyleGuide(String(text ?? '')));
+  handle('glossary:setRules', (r: Partial<glossaryTypes.ProjectRules>) => svc().setRules(r));
+  handle('glossary:confirm', () => svc().confirmGlossary());
+  handle('glossary:detectSpeakerPattern', () => detectSpeakerPattern(svc().units()));
+  handle('glossary:defaultStyleGuide', () => DEFAULT_STYLE_GUIDE);
+  handle('unit:acceptReview', (id: string) => svc().acceptReview(id));
+  handle('unit:rejectReview', (id: string) => svc().rejectReview(id));
+
+  // ---- jobs (one at a time) ----
+  function busy(): boolean {
+    return job !== null && ACTIVE_STATES.has(job.progress.state);
+  }
+
+  async function jobOptions(stage: 'glossary' | 'translate' | 'review'): Promise<JobOptions> {
+    const s = svc();
+    const st = await settings();
+    let claude: { command: string; prefixArgs?: string[] } | null;
+    if (deps.jsonClaude) claude = deps.jsonClaude(st.claudePath);
+    else {
+      const command = deps.claudePath(st.claudePath);
+      claude = command ? { command } : null;
+    }
+    if (!claude) throw new Error(CANNOT_RUN_CLAUDE);
+    return { svc: s, call: deps.runJson ?? runClaudeJson, claude, model: st.stageModels[stage], cwd: s.projectDir };
+  }
+
+  /** Makes j the current job and starts it. Returns start()'s promise (resolves when it ends or pauses). */
+  function launch(j: JobLike & { on(e: 'progress', l: (p: JobProgress) => void): unknown }): Promise<void> {
+    if (busy()) throw new Error(JOB_BUSY);
+    job = j;
+    j.on('progress', (p) => { if (job === j) deps.broadcast('job:progress', p); });
+    return j.start();
+  }
+
+  handle('job:current', () => job?.progress ?? null);
+  handle('job:draft', async () => {
+    if (busy()) throw new Error(JOB_BUSY);
+    await launch(new DraftJob(await jobOptions('glossary')));
+  });
+  handle('job:translate', async (ids?: string[]) => {
+    if (busy()) throw new Error(JOB_BUSY);
+    if (svc().glossary().confirmedAt === null) throw new Error(CONFIRM_FIRST);
+    const o = await jobOptions('translate');
+    void launch(new TranslateJob({ ...o, ids: Array.isArray(ids) && ids.length > 0 ? ids : undefined }));
+  });
+  handle('job:reviewPlan', async (scope: ReviewScopeArg): Promise<ReviewPlan> => {
+    const s = svc();
+    const r = planReview(s.units(), (id) => s.entry(id), s.glossary(), scope ?? { scope: 'all' });
+    return { items: r.items, estimatedInputTokens: r.estimatedInputTokens, model: (await settings()).stageModels.review };
+  });
+  handle('job:review', async (scope: ReviewScopeArg) => {
+    if (busy()) throw new Error(JOB_BUSY);
+    const o = await jobOptions('review');
+    void launch(new ReviewJob({ ...o, scope: scope ?? { scope: 'all' } }));
+  });
+  handle('job:pause', () => { job?.pause(); });
+  handle('job:resume', () => { job?.resume(); });
+  handle('job:stop', () => { job?.stop(); });
 
   handle('app:claudePath', async () => deps.claudePath((await settings()).claudePath));
   handle('app:showItemInFolder', (file: string) => { deps.showItemInFolder(file); });
