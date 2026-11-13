@@ -39,7 +39,7 @@ export interface DraftPlan { chunks: number; chars: number; estimatedInputTokens
 export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 
-export type JobKind = 'draft' | 'translate' | 'review' | 'decide';
+export type JobKind = 'draft' | 'translate' | 'review' | 'decide' | 'notes' | 'images';
 export type JobState = 'idle' | 'running' | 'paused' | 'paused-limit' | 'done' | 'failed' | 'stopped';
 export interface JobProgress { kind: JobKind; state: JobState; done: number; total: number; label: string; usage: ChatUsage; declined: number; errors: number; message?: string }
 export const DEFAULT_MODELS: ModelOption[] = [

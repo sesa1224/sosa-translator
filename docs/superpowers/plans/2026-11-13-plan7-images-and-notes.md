@@ -251,7 +251,7 @@ export interface BuildDiff {
 - `NotesJob`(가짜 호출)이 받은 글을 `notes.txt` 에 쓰고, zip 을 다시 묶은 뒤에도 zip 검증(파일별 sha1)이 맞다
 - MV `www` 의 설치 방법 글에 `www` 가 나온다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 패치노트 기록"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 패치노트 기록"`
 
 ### Task 8: IPC 연결
 

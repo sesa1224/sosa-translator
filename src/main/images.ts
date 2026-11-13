@@ -384,10 +384,12 @@ export class ImageService extends EventEmitter {
    * Files for the patch: every buildable picture, rendered (or from the cache), re-encrypted when the
    * game's file was encrypted, under <contentPrefix><sourceFile>. Pictures that fail to render are skipped.
    */
-  async buildFiles(contentPrefix: string): Promise<{ files: Map<string, Uint8Array>; skipped: { file: string; reason: string }[] }> {
+  async buildFiles(contentPrefix: string): Promise<{ files: Map<string, Uint8Array>; skipped: { file: string; reason: string }[]; pictures: Record<string, string> }> {
     const files = new Map<string, Uint8Array>();
     const skipped: { file: string; reason: string }[] = [];
-    if (!this.catalog) return { files, skipped };
+    // picture file → sha1 of the PNG that went in (the build notes compare these between builds)
+    const pictures: Record<string, string> = {};
+    if (!this.catalog) return { files, skipped, pictures };
     await this.list();
     for (const [file, recipe] of Object.entries(this.data.recipes)) {
       const entry = this.entries.get(file);
@@ -395,6 +397,7 @@ export class ImageService extends EventEmitter {
       try {
         let png = await this.rendered(file);
         if (!png) throw new Error('그림을 찍지 못했습니다');
+        pictures[file] = sha1(png);
         if (entry.encrypted) {
           if (!this.o.game?.encryptionKey) throw new Error('암호화 키가 없습니다');
           png = encryptAsset(png, this.o.game.encryptionKey);
@@ -404,18 +407,18 @@ export class ImageService extends EventEmitter {
         skipped.push({ file, reason: e instanceof Error ? e.message : String(e) });
       }
     }
-    return { files, skipped };
+    return { files, skipped, pictures };
   }
 }
 
-/** Pictures skipped by the last build of each service (the build-notes and the screen can tell the user). */
-export const lastImageSkips = new WeakMap<ImageService, { file: string; reason: string }[]>();
+/** What the image contributor put into the last build of each service (the build notes reuse it instead of rendering twice). */
+export const lastImageBuild = new WeakMap<ImageService, { number: number; projectDir: string; files: Map<string, Uint8Array>; skipped: { file: string; reason: string }[]; pictures: Record<string, string> }>();
 
 /** Puts the finished pictures into every patch build of svc. */
 export function registerImageContributor(svc: ProjectService, images: ImageService): void {
   svc.buildContributors.push(async (ctx) => {
     const r = await images.buildFiles(ctx.contentPrefix);
-    lastImageSkips.set(images, r.skipped);
+    lastImageBuild.set(images, { ...r, number: ctx.number, projectDir: ctx.projectDir });
     return r.files;
   });
 }

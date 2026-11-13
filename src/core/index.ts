@@ -37,3 +37,5 @@ export * from './images/catalog.js';
 export * from './images/store.js';
 export * from './images/layoutText.js';
 export * from './images/sheet.js';
+export * from './notes/snapshot.js';
+export * from './notes/diff.js';
