@@ -42,6 +42,8 @@ export interface TranslationEntry {
   review?: ReviewNote;       // reviewer's open remark
   reviewedAt?: string;       // last time a review looked at it
   external?: true;           // came in from an outside translator's package
+  previous?: { source: string; target: string | null; version: string };   // a changed sentence's source and translation in an older version
+  carried?: true;            // the older translation was filled in (only punctuation or the speaker changed); waits for a look
 }
 
 export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width' | 'line-width-px' | 'skeleton'; severity: 'error' | 'warning'; message: string }

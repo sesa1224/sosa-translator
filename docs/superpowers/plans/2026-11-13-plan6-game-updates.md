@@ -104,7 +104,7 @@ export interface UpdateSummary {
 - 받은 `entries` 객체가 바뀌지 않는다
 - `changedWords('月光草を3本', '月光草を5本')` → 새 쪽 조각 중 `5` 만 `changed`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 번역 이어받기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 번역 이어받기"`
 
 ### Task 3: 수정 옮기기
 
