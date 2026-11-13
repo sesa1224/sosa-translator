@@ -37,6 +37,12 @@ export class TranslationStore {
     return { ...this.table };
   }
 
+  /** Puts an entry back exactly as given (used by undo). An empty untranslated entry removes the record. */
+  restore(id: string, entry: TranslationEntry): void {
+    if (entry.target === null && entry.status === 'untranslated' && entry.updatedAt === '') delete this.table[id];
+    else this.table[id] = { ...entry };
+  }
+
   async save(): Promise<void> {
     await writeJsonFile(path.join(this.projectDir, TRANSLATIONS_FILE), this.table);
   }

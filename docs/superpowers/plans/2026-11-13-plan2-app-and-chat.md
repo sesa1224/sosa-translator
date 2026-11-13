@@ -175,7 +175,7 @@ export class ProjectService extends EventEmitter {   // 'changed' → ChangeEven
 
 모르는 id 는 `Error('없는 항목입니다: <id>')`. 모든 변경은 내부 큐로 한 번에 하나씩 실행하고, 실행 후 `translations.json` 을 저장하고 `'changed'` 를 낸다. 되돌리기 기록은 메모리에 최대 200개(변경 전 `TranslationEntry` 를 보관).
 
-- [ ] **Step 1: 실패하는 시험 쓰기** (`makeMiniGame` 사용, `idOf(source)` 는 시험 도우미)
+- [x] **Step 1: 실패하는 시험 쓰기** (`makeMiniGame` 사용, `idOf(source)` 는 시험 도우미)
 
 ```ts
 test('만들고 다시 열면 같은 항목', async () => {
@@ -204,10 +204,10 @@ test('동시에 온 쓰기는 순서대로 적용되고 파일이 온전하다',
 test('없는 id', async () => { await expect(svc.setTranslation('nope', 'x', 'user')).rejects.toThrow('없는 항목입니다: nope'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/projectService.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: ProjectService"`**
+- [x] **Step 2: `npx vitest run tests/main/projectService.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: ProjectService"`**
 
 ### Task 3: 행, 필터, 검색, 통계
 
