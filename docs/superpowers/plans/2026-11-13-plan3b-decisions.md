@@ -160,7 +160,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - `replaceNoteValue` 로 index 1 만 바꾸면 나머지 글이 그대로다. 값에 `$1` 이 있어도 그대로 들어간다
 - note 가 빈 글이거나 문자열이 아니면 빈 배열
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 메모란 태그 추출"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 메모란 태그 추출"`
 
 ### Task 5: 플러그인 JS 파일의 문자열 추출
 

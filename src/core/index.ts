@@ -25,3 +25,4 @@ export * from './decisions/skeleton.js';
 export * from './decisions/store.js';
 export * from './decisions/auto.js';
 export * from './extract/pluginMeta.js';
+export * from './extract/notes.js';
