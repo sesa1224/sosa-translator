@@ -27,11 +27,15 @@ function auto(args, stdin) {
     };
   } else if (keys.includes('style')) {
     out = { characters: [{ name: 'アーテル', traits: '차분함', speech: '반말', moans: '짧게 참는 소리' }], terms: [], sfx: [], style: '' };
+  } else if (keys.includes('decisions')) {
+    // Decide: picture arguments stay, everything else is display text (MV commands keep their name).
+    out = { decisions: user.groups.map((g) => ({ key: g.key, translate: !/pic/i.test(g.key), mode: g.key.startsWith('mv:') ? 'args' : 'whole', from: 1, dropLast: 0, reason: '시험용 판단' })) };
   } else if (keys.includes('problems')) {
     const hit = user.items.find((x) => x.source === '月光草');
     out = { problems: hit ? [{ i: hit.i, problem: '용어가 어색함', suggestion: '월광초(검수)' }] : [] };
   } else {
-    out = { items: user.items.map((x) => ({ i: x.i, t: '번역' + (x.text.match(CODE) ?? []).join('') })) };
+    // Items with keep get the kept pieces back around the translation.
+    out = { items: user.items.map((x) => ({ i: x.i, t: x.keep ? x.keep.join('번역') : '번역' + (x.text.match(CODE) ?? []).join('') })) };
   }
   return { body: { type: 'result', subtype: 'success', is_error: false, result: '', structured_output: out, usage } };
 }

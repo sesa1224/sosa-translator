@@ -11,7 +11,14 @@ const KIND_LABEL: Record<string, string> = {
   'plugin-command': '플러그인 커맨드', 'plugin-param': '플러그인 설정', script: '스크립트', comment: '주석', note: '메모란', 'plugin-js': '플러그인 JS',
 };
 
-function filterOf(g: DecisionGroup): Exclude<Filter, 'all'> {
+/** Which chip a group belongs to. A plugin JS group without its own decision follows its strings' decisions. */
+function filterOf(g: DecisionGroup, rows: Row[] = []): Exclude<Filter, 'all'> {
+  if (!g.decision && rows.length > 0) {
+    const ds = rows.map((r) => r.decision ?? 'none');
+    if (ds.some((d) => d === 'none')) return 'open';
+    if (ds.some((d) => d === 'suggested-translate' || d === 'suggested-skip')) return 'suggested';
+    return ds.some((d) => d === 'translate') ? 'translate' : 'skip';
+  }
   if (!g.decision) return 'open';
   if (g.decision.status === 'suggested') return 'suggested';
   return g.decision.translate ? 'translate' : 'skip';
@@ -182,11 +189,11 @@ export function DecisionView() {
     return m;
   }, [app.rowOrder, app.rowsById]);
   const counts = { open: 0, suggested: 0, translate: 0, skip: 0 };
-  for (const g of groups) counts[filterOf(g)]++;
+  for (const g of groups) counts[filterOf(g, rowsByKey.get(g.key))]++;
   let jsSuggested = 0;
   for (const list of rowsByKey.values()) for (const r of list) if (r.decision === 'suggested-translate' || r.decision === 'suggested-skip') jsSuggested++;
-  const suggestions = counts.suggested + jsSuggested;
-  const shown = filter === 'all' ? groups : groups.filter((g) => filterOf(g) === filter);
+  const suggestions = groups.filter((g) => g.decision?.status === 'suggested').length + jsSuggested;
+  const shown = filter === 'all' ? groups : groups.filter((g) => filterOf(g, rowsByKey.get(g.key)) === filter);
   const busy = jobActive(app);
   const run = async (f: () => Promise<void>) => {
     setError(null);

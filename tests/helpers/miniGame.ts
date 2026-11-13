@@ -51,10 +51,26 @@ export function miniMap(engine: Engine = 'MZ') {
     { code: 0, indent: 0, parameters: [] } ] }] }] };
 }
 
-/** Writes a tiny MV/MZ game into dir (test only). */
+export const INDEX_HTML_TEXT = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>霧の薬草園</title>\n</head>\n<body></body>\n</html>\n';
+
+/** Header-commented plugin file of the decisions extras (plan 3b): one display string, one file argument. */
+export const MENU_PLUGIN_JS =
+  '/*:\n * @target MZ\n * @plugindesc メニュー\n *\n * @command SET_DESTINATION\n * @text 目標設定\n *\n * @arg destination\n * @type multiline_string\n * @text 行動目標\n *\n' +
+  ' * @command SHOW_PIC\n *\n * @arg picture\n * @type file\n * @dir img/pictures\n */\n' +
+  '(() => {\n  const label = "記録を見る";\n  const key = "story";\n  PluginManager.registerCommand("Menu", "SET_DESTINATION", (a) => { $gameSystem._dest = a.destination; });\n})();\n';
+
+/** Map001 commands of the decisions extras: two MZ plugin commands (display text, picture file). */
+export function decisionCommands(): unknown[] {
+  return [
+    { code: 357, indent: 0, parameters: ['Menu', 'SET_DESTINATION', '目標設定', { destination: '北の森へ行く' }] },
+    { code: 357, indent: 0, parameters: ['Menu', 'SHOW_PIC', '絵', { picture: '立ち絵' }] },
+  ];
+}
+
+/** Writes a tiny MV/MZ game into dir (test only). decisions: adds the plan 3b extras (note tag, MZ commands, plugin JS file). */
 export async function makeMiniGame(
   dir: string,
-  opts: { engine?: Engine; www?: boolean; encrypted?: boolean } = {},
+  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean } = {},
 ): Promise<void> {
   const engine = opts.engine ?? 'MZ';
   const root = opts.www ? path.join(dir, 'www') : dir;
@@ -79,4 +95,22 @@ export async function makeMiniGame(
   }
   await writeFile(path.join(js, 'plugins.js'), PLUGINS_JS_TEXT, 'utf8');
   await writeFile(path.join(js, engine === 'MZ' ? 'rmmz_core.js' : 'rpg_core.js'), '', 'utf8');
+
+  // Files every game has; they add no text units.
+  await writeFile(path.join(root, 'index.html'), INDEX_HTML_TEXT, 'utf8');
+  await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name: 'kiri-no-yakusouen', main: 'index.html', window: { title: '霧の薬草園', width: 816, height: 624 } }, null, 2), 'utf8');
+  await mkdir(path.join(root, 'img', 'pictures'), { recursive: true });
+  for (const f of ['立ち絵.png', '背景.png', 'title.png']) await writeFile(path.join(root, 'img', 'pictures', f), '');
+
+  if (opts.decisions) {
+    const items = miniItems();
+    (items[1] as { note: string }).note = '<SG説明:夜に光る草>\n<price:100>';
+    await writeFile(path.join(data, 'Items.json'), JSON.stringify(items), 'utf8');
+    const map = miniMap(engine);
+    const list = map.events[1]!.pages[0].list as unknown[];
+    list.splice(list.length - 1, 0, ...decisionCommands());
+    await writeFile(path.join(data, 'Map001.json'), JSON.stringify(map), 'utf8');
+    await mkdir(path.join(js, 'plugins'), { recursive: true });
+    await writeFile(path.join(js, 'plugins', 'Menu.js'), MENU_PLUGIN_JS, 'utf8');
+  }
 }

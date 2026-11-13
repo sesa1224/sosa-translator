@@ -27,6 +27,16 @@ export function JobBar() {
     </>
   );
 
+  if (job.state === 'done' && job.kind === 'decide') {
+    return (
+      <div className="banner ok job" role="status">
+        <span>{`판단 필요 추천을 받았어요 · ${num(job.done)}개 · 오류 ${num(job.errors)}`}</span>
+        <button type="button" className="btn small-btn" onClick={() => useApp.openDecisions()}>판단 필요 화면으로</button>
+        <div className="grow" />
+        {close}
+      </div>
+    );
+  }
   if (job.state === 'done') {
     const undecided = glossary ? glossary.terms.filter((t) => t.status === 'provisional').length : 0;
     const text = job.kind === 'translate'

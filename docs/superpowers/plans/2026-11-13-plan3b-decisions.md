@@ -319,11 +319,11 @@ export interface ExchangePackage {
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`, `tests/helpers/miniGame.ts`(메모란 태그, MZ 플러그인 커맨드, 주석이 달린 플러그인 JS 파일 하나, `index.html`, 최상위 `package.json`, `img/pictures` 의 빈 파일 몇 개를 더한다. 기존 시험이 기대는 값은 바꾸지 않는다), `README.md` · Create `tests/main/realDecide.test.ts`
 
-- [ ] **연기 시험 추가**(가짜 JSON CLI): 가져오기 → 판단 필요 화면 → "Claude에게 추천 받기" → "추천 전부 받아들이기" → 용어집 확정 → 번역 맡기기 → 판단 필요였던 줄에 번역이 들어가고 그대로 둘 부분이 유지됨 → 게임 제목 고치기 → 패치 빌드 → zip 에 `index.html` 과 고친 플러그인 JS 가 있고, JS 의 바뀌지 않은 부분이 원본과 같음
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만. 아니면 건너뛰고 보고에 적는다): 시험용 게임의 묶음들(표시 글자인 커맨드 하나, 파일 이름을 받는 커맨드 하나, 글자와 코드가 섞인 스크립트 하나)로 `DecideJob` 을 한 번 돌려, 결정과 이유를 보고에 그대로 붙인다. 표시 글자 묶음이 번역함으로, 파일 이름 묶음이 번역 안 함으로 나오는지 확인한다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`README.md` 에 판단 필요 흐름과 새 파일(`decisions.json`)을 적고 `git commit -m "feat: 판단 필요 전체 흐름 시험"`**
+- [x] **연기 시험 추가**(가짜 JSON CLI): 가져오기 → 판단 필요 화면 → "Claude에게 추천 받기" → "추천 전부 받아들이기" → 용어집 확정 → 번역 맡기기 → 판단 필요였던 줄에 번역이 들어가고 그대로 둘 부분이 유지됨 → 게임 제목 고치기 → 패치 빌드 → zip 에 `index.html` 과 고친 플러그인 JS 가 있고, JS 의 바뀌지 않은 부분이 원본과 같음
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만. 아니면 건너뛰고 보고에 적는다): 시험용 게임의 묶음들(표시 글자인 커맨드 하나, 파일 이름을 받는 커맨드 하나, 글자와 코드가 섞인 스크립트 하나)로 `DecideJob` 을 한 번 돌려, 결정과 이유를 보고에 그대로 붙인다. 표시 글자 묶음이 번역함으로, 파일 이름 묶음이 번역 안 함으로 나오는지 확인한다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`README.md` 에 판단 필요 흐름과 새 파일(`decisions.json`)을 적고 `git commit -m "feat: 판단 필요 전체 흐름 시험"`**
 
 ---
 

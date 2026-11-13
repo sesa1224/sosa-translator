@@ -38,10 +38,14 @@ npm test           # vitest
     data/*.json
     js/plugins.js
     js/plugins/*.js
+    files.json            img/, audio/, movies/ 아래 파일 경로 목록 (파일 이름 힌트용)
+    index.html            게임의 index.html (제목 번역용)
+    package.top.json      게임 최상위 package.json (창 제목 번역용. name 은 바꾸지 않음)
   units.json              추출한 번역 단위 (같은 종류+화자+원문은 하나로 합침, 위치 목록 refs)
   translations.json       번역표: 단위 id → { target, status, updatedAt, declinedReason?, review?, reviewedAt? }
   draft-notes.json        용어집 초안의 대본 읽기 메모 (조각 해시별)
   glossary.json           용어집: { terms, characters, styleGuide, rules, confirmedAt } (처음 고칠 때 생김)
+  decisions.json          판단 필요 결정: 판단 키(또는 unit:<id>) → { translate, keep, status, by, reason? } (처음 정할 때 생김)
   builds/
     001/
       patch/              패치에 들어간 파일 (게임 최상위 기준 경로, MV 배포판이면 www/...)
@@ -55,7 +59,7 @@ npm test           # vitest
 
 - `untranslated` 번역 없음
 - `needs-review` 번역 있음, 검토 전 (기본값)
-- `approved` 승인됨. 판단 필요 항목(플러그인 설정, 플러그인 커맨드, 스크립트, 주석)은 승인돼야 패치에 들어갑니다
+- `approved` 승인됨. 판단 필요 항목은 "번역함"으로 확정된 결정이 있어야 패치에 들어갑니다(결정이 없으면 예전처럼 승인된 것만)
 - `error` 형식 검사 오류. 패치에서 빠집니다
 - `declined` 모델이 번역을 거절함. 이유(`declinedReason`)가 함께 남습니다
 
@@ -103,7 +107,7 @@ src/shared/                 IPC 타입(api.ts), 행 만들기·필터·통계(ro
 src/renderer/               React 화면 (상태는 state.ts, 화면 조각은 components/)
 ```
 
-Claude CLI 는 `-p --input-format stream-json --output-format stream-json` 으로 한 프로세스를 띄워 여러 턴을 주고받습니다. 내장 도구는 모두 끄고(`--tools ""`), `--mcp-config` 로 `mvmz` 서버만 붙이며, 허용 도구도 그 여덟 개로 제한합니다. 모델을 바꾸거나 멈춘 뒤에는 `--resume <session_id>` 로 같은 대화를 이어갑니다.
+Claude CLI 는 `-p --input-format stream-json --output-format stream-json` 으로 한 프로세스를 띄워 여러 턴을 주고받습니다. 내장 도구는 모두 끄고(`--tools ""`), `--mcp-config` 로 `mvmz` 서버만 붙이며, 허용 도구도 그 열 개로 제한합니다. 모델을 바꾸거나 멈춘 뒤에는 `--resume <session_id>` 로 같은 대화를 이어갑니다.
 
 ### 번역 흐름
 
@@ -111,6 +115,32 @@ Claude CLI 는 `-p --input-format stream-json --output-format stream-json` 으�
 2. **확정**: 용어집 화면에서 고치고 "용어집 확정". 결정 안 한 용어가 남아 있어도 확정할 수 있습니다.
 3. **전체 번역** (모델 "전체 번역"): 판단 필요가 아닌 미번역 항목을 파일별로 최대 40개, 본문 6,000자씩 묶어 묶음마다 CLI 를 한 번씩 실행합니다. 묶음에는 말투 지침 전체, 형식 규칙, 그 묶음에 나오는 용어와 인물 카드, 바로 앞 대사 3줄이 붙습니다. 화자 줄은 떼고 본문만 보내며, 이름은 용어집으로 옮겨 다시 붙입니다. 형식 오류가 난 항목만 한 번 더 보내고, 거절된 항목은 "거절됨"으로 남깁니다. 묶음 전체가 거절되거나 답 형식이 틀리면 반으로 나눠 다시 보냅니다. 사용량 한도에 걸리면 "한도 때문에 멈춤"이 되고 "이어하기"로 그 묶음부터 다시 합니다. 끝난 묶음은 번역표에 남아 있으므로 앱을 다시 켜도 남은 것만 묶습니다.
 4. **검수** (모델 "검수"): 범위(전체, 지난 검수 이후 바뀐 것만, 지금 보는 범위)를 고르면 항목 수와 예상 입력 토큰을 보여줍니다. 문제가 있는 줄에만 이유와 고친 안이 붙어 "검토 필요"로 올라오고, 항목 탭에서 "고친 안 받기" 또는 "그대로 두기"를 고릅니다.
+
+### 판단 필요 항목
+
+플러그인 커맨드(356/357), 스크립트(355/655), 주석(108/408), 플러그인 설정, 메모란(`<태그:값>`, `<태그>…</태그>`), 켜진 플러그인의 JS 파일 안 문자열에는 화면에 보이는 글자와 코드가 읽는 값이 섞여 있습니다. 이것들은 "판단 키"로 묶어 한 번만 정합니다.
+
+| 종류 | 판단 키 |
+|---|---|
+| MV 플러그인 커맨드 | `mv:<첫 조각>` |
+| MZ 플러그인 커맨드 인자 | `mz:<플러그인>:<커맨드>:<인자>` |
+| 플러그인 설정값 | `param:<플러그인>:<경로>` (배열 번호는 `[*]`) |
+| 스크립트, 주석 | `shape:<모양>` (일본어 구간은 `◆`, 숫자는 `#`) |
+| 메모란 태그 | `note:<파일 종류>:<태그>` |
+| 플러그인 JS 문자열 | `js:<파일 이름>` 묶음, 또는 문자열마다 `unit:<id>` |
+
+결정은 번역함/안 함과 "그대로 둘 부분"(`whole` 값 전체가 글자, `args` MV 커맨드의 앞 `from`개·뒤 `dropLast`개 조각은 그대로, `spans` 일본어 구간만 번역)입니다. `unit:<id>` 결정이 묶음 결정보다 우선합니다.
+
+1. **판단 필요 화면**에서 "Claude에게 추천 받기"(모델 "판단 필요 추천"): 먼저 플러그인 주석(`@type file` 같은 것)과 그림·소리 파일 이름으로 확실한 것을 호출 없이 정하고, 남은 묶음을 30개씩(JS 문자열은 앞뒤 60자 문맥과 함께 40개씩) 보냅니다. 결과는 "추천"으로 남습니다.
+2. "추천 전부 받아들이기" 또는 카드마다 "번역함"(방식 고르기)/"번역 안 함"으로 확정합니다. 확정된 결정만 번역 대상이 됩니다. 결정이 없는 항목은 번역도 패치도 하지 않습니다.
+3. 전체 번역은 그대로 둘 조각을 `keep` 으로 함께 보내고, "뼈대 검사"가 그 조각이 한 글자도 바뀌지 않았는지 확인합니다. 어긋나면 한 번 다시 보내고, 또 어긋나면 `error` 로 두어 패치에서 뺍니다.
+4. 빌드할 때 메모란은 그 태그의 값만, 플러그인 JS 는 따옴표 안쪽만 바꿉니다(파일의 나머지는 바이트 단위로 같음). 추출 뒤에 JS 파일이 바뀌어 기록한 자리가 맞지 않으면 그 파일은 넣지 않고 경고합니다.
+
+결정을 "번역 안 함"으로 되돌려도 번역문은 번역표에 남고 패치에서만 빠집니다. 채팅에서는 `list_decisions`, `set_decision` 도구로 정합니다.
+
+**게임 제목**: 위 막대의 연필 버튼으로 번역 제목을 정하면(`System.json` 의 `gameTitle`, 승인됨) 패치에 `index.html` 의 `<title>` 과, 최상위 `package.json` 의 `window.title`(비어 있지 않을 때만)이 들어갑니다.
+
+**외부 번역**: 텍스트 화면의 "내보내기"는 지금 필터에 걸린 항목을 꾸러미(`mvmz-exchange-1`: 말투 지침과 형식 규칙, 나오는 용어, 인물, 항목마다 본문·화자·그대로 둘 조각·앞뒤 대사)로 저장합니다. 돌려받은 `[{ "id", "target" }]` 를 "가져오기"하면 넣을 수 있는 수, 검사 오류, 이미 번역이 달라 충돌하는 수(기본은 건너뛰기), 없는 id, 모양이 틀린 항목을 보여준 뒤 넣습니다. 들어간 번역은 "외부 번역"으로 표시됩니다.
 
 묶음 호출 인자: `claude -p --model <id> --output-format json --tools "" --strict-mcp-config --setting-sources project --disable-slash-commands --system-prompt <지침> --json-schema <스키마>`, 묶음 내용은 표준 입력. 답의 `structured_output` 을 씁니다.
 
@@ -128,10 +158,13 @@ Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
 | `undo_last` | 없음 | `{ ids }` — 채팅에서 한 가장 최근 변경 하나만 되돌린다 |
 | `glossary_search` | `query` | `{ terms, characters }` — 용어와 인물 카드에서 글자 그대로 찾는다 |
 | `glossary_set_term` | `source`, `target`, `category?` | `{ term, changed, uncertain }` — 확정 상태로 저장. 기존 용어의 번역이 바뀌면 번역문도 조사까지 맞춰 바꾼다 |
+| `list_decisions` | `query?` | `{ total, groups: [{ key, label, count, samples, hints, decision }] }` — 판단 필요 묶음 |
+| `set_decision` | `key`, `translate`, `mode?`, `from?`, `dropLast?`, `reason?` | `{ key, decision }` — 바로 확정(`by: claude`). 모르는 키는 실패 |
 
 실제 CLI 로 확인하는 시험(토큰을 씁니다, 모델 `claude-haiku-5-5`, 시험용 작은 게임만):
 - 채팅: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCli.test.ts` (먼저 `npm run build:app`)
 - 정해진 형식의 답: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCliJson.test.ts`
+- 판단 필요 추천: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realDecide.test.ts`
 - 초안 → 확정 → 번역 → 검수 한 바퀴: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realFlow.test.ts` (`MVMZ_REAL_FLOW_OUT=<파일>` 이면 번역문과 호출별 토큰을 JSON 으로 남김)
 
 연기 시험에서 묶음 호출은 `MVMZ_CLAUDE_JSON_COMMAND`, `MVMZ_CLAUDE_JSON_PREFIX_ARGS` 로 가짜 CLI(`tests/fixtures/fake-claude-json.mjs`)를 씁니다.
