@@ -11,7 +11,10 @@ export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; syste
     '--tools', '',
     '--allowedTools', CHAT_TOOLS.map((t) => MCP_TOOL_PREFIX + t).join(','),
     '--permission-mode', 'dontAsk',
-    '--append-system-prompt', o.systemPrompt,
+    // Keep the user's global plugins, hooks and skills out of this session, and replace the
+    // default coding-agent system prompt: together they cost ~5-7k tokens on every call.
+    '--setting-sources', 'project', '--disable-slash-commands',
+    '--system-prompt', o.systemPrompt,
   ];
   if (o.resumeSessionId) args.push('--resume', o.resumeSessionId);
   return args;

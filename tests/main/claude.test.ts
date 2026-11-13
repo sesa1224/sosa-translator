@@ -16,7 +16,7 @@ test('인자', () => {
   expect(a).toEqual(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--model', 'claude-opus-5-5', '--mcp-config', 'C:/x/mcp.json', '--strict-mcp-config', '--tools', '',
     '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last',
-    '--permission-mode', 'dontAsk', '--append-system-prompt', 'S']);
+    '--permission-mode', 'dontAsk', '--setting-sources', 'project', '--disable-slash-commands', '--system-prompt', 'S']);
   expect(buildClaudeArgs({ model: 'm', mcpConfigPath: 'p', systemPrompt: 'S', resumeSessionId: 'abc' }).slice(-2)).toEqual(['--resume', 'abc']);
 });
 test('잘린 줄을 이어 붙인다', () => {
