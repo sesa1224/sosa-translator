@@ -618,7 +618,7 @@ test('원본 사본은 바뀌지 않는다', async () => { expect(await hashDir(
 
 동작: 먼저 `checkAll` 을 돌려 error 항목을 표시하고 그 수를 `skippedErrors` 로 돌려준다. 빌드 번호는 `<projectDir>/builds/` 안의 가장 큰 번호 + 1(없으면 1), 폴더 이름은 3자리(`001`). 파일을 `builds/001/patch/<contentPrefix><file>` 에 쓰고, `builds/001/manifest.json`(`{ number, createdAt, version, files }`)을 쓰고, `builds/001/<프로젝트 이름>_patch_001.zip` 을 만든다. zip 안 경로는 `<contentPrefix><file>`. 만든 뒤 검증: zip 을 다시 읽어 manifest 의 모든 경로가 있고 sha1 이 같으며 `.json` 파일은 `JSON.parse` 가 되는지 확인한다. 하나라도 어긋나면 `Error('패치 검증 실패: <경로>')`. 바뀐 파일이 없으면 `Error('바뀐 파일이 없습니다')`.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('바뀐 파일만 묶는다', async () => {
@@ -638,10 +638,10 @@ test('오류 항목은 빼고 센다', async () => {
 test('바뀐 게 없으면 오류', async () => { await expect(buildPatch(emptyProj, emptyUnits, emptyStore)).rejects.toThrow('바뀐 파일이 없습니다'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/build/patch.test.ts` → FAIL**
-- [ ] **Step 3: 구현** — zip 은 `fflate` 의 `zipSync`/`unzipSync`
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 패치 zip 빌드와 검증"`**
+- [x] **Step 2: `npx vitest run tests/build/patch.test.ts` → FAIL**
+- [x] **Step 3: 구현** — zip 은 `fflate` 의 `zipSync`/`unzipSync`
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 패치 zip 빌드와 검증"`**
 
 ### Task 12: 명령줄과 처음부터 끝까지 시험
 
