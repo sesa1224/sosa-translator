@@ -250,11 +250,11 @@ export interface UpdateSummary {
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`, `README.md`, `CHANGELOG.md`, `CLAUDE.md`("아직 없는 것"에서 끝난 항목을 지운다)
 
-- [ ] **연기 시험**: v1 게임 가져오기 → 문장 두 개 손으로 번역 → 이벤트 화면에서 한 줄 끼워 넣기 → 패치 빌드 → "새 버전 가져오기"로 v2 폴더(`MVMZ_PICK_DIR2`) → 버전 이름 확인 → 가져오기 → 결과 화면의 숫자 확인 → "바뀐 문장 보기" → 그 줄에 이전 번역이 보임 → 수정 내역에서 그 수정이 `적용됨` → 패치 빌드 → zip 의 맵 파일에 수정과 이어받은 번역이 둘 다 있음 → "이 업데이트 되돌리기" → 표가 v1 의 문장으로 돌아옴
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **문서**: `README.md` 에 "게임 업데이트" 절(흐름, `backups/`, `updates/`, `original/<버전>/`), `CHANGELOG.md` 의 "준비 중" 아래에 "게임 업데이트" 묶음과 "Claude CLI 안내", 알려진 한계에서 해당 줄 지우기, `CLAUDE.md` 의 "아직 없는 것" 갱신
-- [ ] **`git commit -m "feat: 게임 업데이트 전체 흐름 시험"`**
+- [x] **연기 시험**: v1 게임 가져오기 → 문장 두 개 손으로 번역 → 이벤트 화면에서 한 줄 끼워 넣기 → 패치 빌드 → "새 버전 가져오기"로 v2 폴더(`MVMZ_PICK_DIR2`) → 버전 이름 확인 → 가져오기 → 결과 화면의 숫자 확인 → "바뀐 문장 보기" → 그 줄에 이전 번역이 보임 → 수정 내역에서 그 수정이 `적용됨` → 패치 빌드 → zip 의 맵 파일에 수정과 이어받은 번역이 둘 다 있음 → "이 업데이트 되돌리기" → 표가 v1 의 문장으로 돌아옴
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **문서**: `README.md` 에 "게임 업데이트" 절(흐름, `backups/`, `updates/`, `original/<버전>/`), `CHANGELOG.md` 의 "준비 중" 아래에 "게임 업데이트" 묶음과 "Claude CLI 안내", 알려진 한계에서 해당 줄 지우기, `CLAUDE.md` 의 "아직 없는 것" 갱신
+- [x] **`git commit -m "feat: 게임 업데이트 전체 흐름 시험"`**
 
 ---
 

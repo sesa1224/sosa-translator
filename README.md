@@ -34,7 +34,7 @@ npm test           # vitest
 ```
 <projectDir>/
   project.json            프로젝트 정보 (이름, 엔진, 게임 폴더, www/ 접두사, 버전 목록, 현재 버전)
-  original/v1/            가져온 원본 사본 (읽기 전용으로 취급)
+  original/v1/            가져온 원본 사본 (읽기 전용으로 취급). 게임 업데이트를 가져오면 original/v2/, v3/ … 가 더해지고 project.json 의 current 가 그 버전
     data/*.json
     js/plugins.js
     js/plugins/*.js
@@ -61,6 +61,9 @@ npm test           # vitest
   builds/NNN/snapshot.json  그 빌드에 들어간 번역(id → 해시)·그림·파일 요약. 다음 빌드와 비교용
   builds/NNN/diff.json      지난 빌드와 비교한 숫자와 목록
   builds/NNN/notes.txt      그 빌드의 패치노트 (고치거나 Claude가 다듬으면 이 글이 zip 의 패치노트.txt 에 들어감)
+  backups/before-<버전>/    게임 업데이트를 가져오기 직전의 project.json, units.json, translations.json 등 (되돌리기용)
+  updates/<버전>.json       그 업데이트에서 바뀐 것의 요약 (업데이트 결과 화면이 읽음)
+  testplay/                 게임 실행용 시험 사본 (.version 에 만든 버전). 버전이 바뀌면 옛 세이브는 testplay-saves-<옛 버전>/ 로
 ```
 
 모든 JSON 은 UTF-8, 들여쓰기 2칸입니다.
@@ -186,6 +189,9 @@ Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
 | `image_set_recipe` | `file`, `regions`, `done?` | `{ status, regions, overflow, glossaryNote? }` — 그림의 영역 전체를 바꿈. 목록에 없는 `fontPath` 는 무시 |
 | `image_set_status` | `file`, `status: todo \| done \| skip` | `{ status }` |
 | `image_list` | `status?`, `folder?`, `limit?`(기본 50, 최대 200) | `{ total, items }` — 글만, 그림 없음 |
+| `update_summary` | 없음 | 가장 최근 게임 업데이트의 요약과 `conflicts: [{ id, title, reason, file, listPath }]`. 업데이트가 없으면 실패 |
+
+이벤트 도구 `event_read` 는 `version?`(예: `v1`)을 받으면 그 옛 버전의 이벤트를 읽습니다(충돌난 수정을 다시 낼 때).
 
 실제 CLI 로 확인하는 시험(토큰을 씁니다, 모델 `claude-haiku-5-5`, 시험용 작은 게임만):
 - 채팅: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCli.test.ts` (먼저 `npm run build:app`)
@@ -258,3 +264,24 @@ Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
 빌드할 때마다 `builds/NNN/` 에 요약(`snapshot.json`)을 남기고 지난 빌드와 비교해(`diff.json`) 패치노트를 씁니다(`notes.txt`). zip 최상위에 `패치노트.txt`(이번 빌드의 글 다음에 지난 빌드들의 글을 최신순으로)와 `설치 방법.txt` 가 들어갑니다. 왼쪽 메뉴의 "빌드 기록"에서 노트를 고쳐 저장하거나 "Claude에게 다듬기 맡기기"(설정의 패치노트 정리 모델)를 누르면 그 빌드의 zip 안 글도 바뀝니다(manifest 의 sha1 도 맞춤). 다른 기능이 패치노트에 요약을 넣을 때는 `ProjectService.buildSummaries` 에 함수를 더합니다.
 
 실제 CLI 로 확인하는 시험: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realImageTool.test.ts` (도구 결과의 그림이 모델에게 보이는지). 연기 시험은 `MVMZ_TEST_HOOKS=1` 로 렌더 서비스를 시험에서 부를 수 있게 하고(`tests/e2e/render.e2e.test.ts`), `MVMZ_PICK_PNG` 로 직접 고친 그림 고르기 창 대신 정해진 파일을 씁니다.
+
+## 게임 업데이트
+
+게임의 새 버전이 나오면 위 막대의 "새 버전 가져오기"에서 새 폴더를 고르거나 끌어다 놓습니다.
+
+1. 확인: 엔진과 제목을 보여 주고 버전 이름을 제목이나 폴더 이름(`ver1.03`, `v1.2`, `1.0.3`)에서 채웁니다. 엔진이 다르거나 `data/*.json` 파일 이름이 절반도 겹치지 않으면 "다른 게임 같아요"라고 경고하고, "그래도 가져오기"를 체크하기 전에는 가져오지 않습니다. 지금 버전과 같은 폴더는 받지 않습니다.
+2. 가져오기: `backups/before-<버전>/` 에 지금 파일을 남기고, 새 원본을 `original/<버전>.tmp` 에 복사해 추출과 비교를 모두 끝낸 뒤에 한꺼번에 바꿉니다. 도중에 실패하면 프로젝트는 그대로입니다. 원본 게임 폴더(옛 버전, 새 버전 모두)는 읽기만 합니다.
+3. 문장: 번역표의 열쇠가 원문이라 원문이 그대로인 문장은 어느 맵으로 옮겨 가도 번역이 붙습니다. 같은 자리의 문장, 또는 같은 파일 안에서 75% 이상 비슷한 문장은 "바뀐 문장"으로 짝지어 새 항목에 이전 원문과 이전 번역(`previous`)을 붙입니다. 문장부호나 공백만 다르거나 화자 줄의 이름만 다르면 이전 번역을 미리 채워 "검토 필요"로 둡니다(`carried`). 비슷한 정도는 제어문자를 뺀 글자 2개 묶음의 Dice 계수이고, 문장 처음과 끝도 한 글자 묶음으로 셉니다. 사라진 문장의 번역은 번역표에 남습니다(문장이 되살아나면 번역도 되살아남).
+4. 수정: 이벤트 목록이 그대로면 그대로 얹고, 앞뒤에 줄이 더해졌으면 커맨드 내용으로 맞춰 번호를 옮깁니다. 수정이 가리키던 줄이 없어졌거나 끼워 넣을 자리의 앞뒤가 바뀌었으면 옮기지 않고 충돌로 남깁니다(비슷한 줄에 대충 붙이지 않음). 충돌난 수정은 결과 화면의 "Claude에게 맡기기"로 채팅에 넘길 수 있습니다.
+5. 그림: 작업 지시서가 있는 그림의 원본이 바뀌었으면 "원본이 바뀜"으로 표시됩니다(지시서는 그대로).
+
+결과는 `updates/<버전>.json` 에 남고, 왼쪽 메뉴의 "업데이트 결과"에서 다시 볼 수 있습니다. 텍스트 화면의 "바뀐 문장" 필터와 항목 탭의 "이전 버전의 문장" 상자(바뀐 부분 강조, "이전 번역 가져오기")로 고칩니다. 전체 번역은 바뀐 문장에 이전 번역을 참고로 실어 보냅니다.
+
+"이 업데이트 되돌리기"는 가장 최근에 가져온 버전만 되돌립니다. 가져오기 직전의 파일로 글자 하나까지 되돌리고 `original/<버전>/` 과 요약을 지웁니다(백업은 `backups/rolled-back-<버전>-<시각>/` 로 남김). v3 를 되돌려 v2 가 되면 v2 의 백업으로 한 번 더 되돌릴 수 있습니다.
+
+연기 시험은 `MVMZ_PICK_DIR2` 로 새 버전 폴더 고르기 창 대신 정해진 폴더를 씁니다.
+
+## Claude CLI 가 없을 때
+
+채팅과 자동 번역은 Claude CLI 와 본인의 Claude 구독이 있어야 합니다. 추출, 손 번역, 빌드는 CLI 없이도 됩니다. 앱은 `claude auth status` 로 로그인 상태를 확인해(5초 안에 답이 없으면 모름으로 침) 채팅 탭에 설치와 로그인 안내를 보이고, 아래 상태 줄에 "Claude CLI 없음", "로그인 필요", "Claude CLI 연결됨" 중 하나를 보입니다.
+

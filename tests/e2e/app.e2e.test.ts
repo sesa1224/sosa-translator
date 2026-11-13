@@ -278,3 +278,78 @@ test('이미지: 영역 만들기 → 문장 → 기본 폰트 → 끝남 → �
   await expect(w.getByText(/^빌드 1 · /)).toBeVisible();
   await app.close();
 });
+
+// ---- plan 6: a new version of the game ----
+test('게임 업데이트: 번역과 수정 → 빌드 → 새 버전 가져오기 → 결과 → 빌드 → 되돌리기', async () => {
+  const game8 = path.join(tmp, 'game8');
+  const game9 = path.join(tmp, 'game9');
+  await makeMiniGame(game8);
+  await makeMiniGame(game9, { variant: 'v2' });
+  const app = await launch({ MVMZ_PICK_DIR: game8, MVMZ_PICK_DIR2: game9 });
+  const w = await app.firstWindow();
+  const nav = w.getByRole('navigation', { name: '작업 메뉴' });
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('업데이트'); await w.getByRole('button', { name: '만들기' }).click();
+
+  // Two lines by hand.
+  await w.getByText('いいよ', { exact: true }).first().click(); await w.getByLabel('번역').fill('좋아'); await w.getByLabel('번역').press('Control+Enter');
+  await expect(w.getByRole('row', { name: /いいよ.*좋아/ })).toBeVisible();
+  await w.getByText('やった！', { exact: true }).click(); await w.getByLabel('번역').fill('해냈다!'); await w.getByLabel('번역').press('Control+Enter');
+  await expect(w.getByRole('row', { name: /やった！.*해냈다!/ })).toBeVisible();
+
+  // A line put in at the end of the map event.
+  await nav.getByRole('button', { name: /^이벤트/ }).click();
+  await w.getByRole('button', { name: /맵1 \[MAP001\] · 이벤트 1개/ }).click();
+  await w.getByRole('button', { name: /^이벤트 1 · 1페이지/ }).click();
+  await w.locator('[data-line="11"]').hover();
+  await w.locator('[data-line="11"]').getByRole('button', { name: '이 줄 아래에 끼워 넣기' }).click();
+  await w.getByLabel('끼워 넣을 것').selectOption('switch-on');
+  await w.getByLabel('스위치 번호').fill('45');
+  await w.getByLabel('수정 제목').fill('기록 스위치 켜기');
+  await w.getByRole('button', { name: '수정으로 기록' }).click();
+  await expect(w.getByText('+ 스위치 45 = 켬')).toBeVisible();
+  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
+
+  // The new version.
+  await w.getByRole('button', { name: '새 버전 가져오기' }).click();
+  const dialog = w.getByRole('dialog', { name: '새 버전 가져오기' });
+  await dialog.getByRole('button', { name: '폴더 고르기' }).click();
+  await expect(dialog.getByLabel('버전 이름')).toBeVisible();
+  expect(await dialog.getByLabel('버전 이름').inputValue()).toBe('1.1');
+  await dialog.getByRole('button', { name: '가져오기' }).click();
+  await expect(w.getByRole('heading', { name: 'v1 → 1.1' })).toBeVisible();
+  await expect(w.getByText('바뀐 문장 3개 · 이전 번역을 참고로 붙였어요')).toBeVisible();
+  await expect(w.getByText('새 문장 2개')).toBeVisible();
+  await expect(w.getByText('사라진 문장 1개 · 번역 0개는 보관했어요')).toBeVisible();
+  await expect(w.getByText('수정: 그대로 0 · 자리를 옮김 1 · 충돌 0')).toBeVisible();
+
+  await w.getByRole('button', { name: '바뀐 문장 보기' }).click();
+  await w.getByText('やった！！', { exact: true }).click();
+  const prevBox = w.getByRole('region', { name: '이전 버전의 문장' });
+  await expect(prevBox).toBeVisible();
+  await expect(prevBox.getByText('해냈다!', { exact: true })).toBeVisible();
+
+  await nav.getByRole('button', { name: /^수정 내역/ }).click();
+  await expect(w.getByText('적용됨')).toBeVisible();
+
+  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
+  const zip = unzipSync(new Uint8Array(await readFile(path.join(projectsDir, '업데이트/builds/002/업데이트_patch_002.zip'))));
+  const list = JSON.parse(strFromU8(zip['data/Map001.json'])).events[1].pages[0].list;
+  expect(list[0]).toEqual({ code: 230, indent: 0, parameters: [30] });
+  expect(list[13]).toEqual({ code: 121, indent: 0, parameters: [45, 45, 0] });
+  expect(list.some((c: { code: number; parameters: unknown[] }) => c.code === 401 && c.parameters[0] === '해냈다!')).toBe(true);
+  expect(list.some((c: { code: number; parameters: unknown[] }) => c.code === 102 && JSON.stringify(c.parameters[0]).includes('좋아'))).toBe(true);
+  expect(strFromU8(zip['패치노트.txt'])).toContain('게임 1.1 에 맞춤');
+
+  // Back to v1.
+  await nav.getByRole('button', { name: '업데이트 결과' }).click();
+  await w.getByRole('button', { name: '이 업데이트 되돌리기' }).click();
+  await w.getByRole('alertdialog').getByRole('button', { name: '되돌리기' }).click();
+  await expect(w.getByRole('heading', { name: '텍스트' })).toBeVisible();
+  await expect(w.getByText('やった！', { exact: true })).toBeVisible();
+  expect(await w.getByText('やった！！', { exact: true }).count()).toBe(0);
+  await expect(w.getByText('むかしむかし', { exact: true })).toBeVisible();
+  // The original game folders are untouched.
+  expect(JSON.parse(await readFile(path.join(game8, 'data/Map001.json'), 'utf8')).events[1].pages[0].list).toHaveLength(13);
+  expect(JSON.parse(await readFile(path.join(game9, 'data/Map001.json'), 'utf8')).events[1].pages[0].list).toHaveLength(14);
+  await app.close();
+});
