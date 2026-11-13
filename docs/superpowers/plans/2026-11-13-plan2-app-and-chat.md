@@ -485,7 +485,7 @@ test('멈추기', async () => { chat.send('느리게'); chat.stop(); expect(chat
 | `on('chat:event', cb)` | `ChatEvent` |
 | `on('settings:changed', cb)` | `AppSettings` |
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('설정 기본값과 깨진 파일', async () => {
@@ -506,10 +506,10 @@ test('붙은 항목이 채팅 글 앞에 들어간다', async () => {
 test('같은 이름의 프로젝트가 있으면 오류', async () => { await expect(invoke('project:create', game, '약초원')).rejects.toThrow('프로젝트 폴더가 비어있지 않습니다'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/settings.test.ts tests/main/ipc.test.ts` → FAIL**
-- [ ] **Step 3: 구현** — `index.ts` 에서 브리지 시작, MCP 설정 파일 쓰기, `ProjectService` 의 `'changed'` 와 `ClaudeChat` 의 `'event'` 를 창으로 전달
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 설정과 IPC"`**
+- [x] **Step 2: `npx vitest run tests/main/settings.test.ts tests/main/ipc.test.ts` → FAIL**
+- [x] **Step 3: 구현** — `index.ts` 에서 브리지 시작, MCP 설정 파일 쓰기, `ProjectService` 의 `'changed'` 와 `ClaudeChat` 의 `'event'` 를 창으로 전달
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 설정과 IPC"`**
 
 ### Task 9: 렌더러 뼈대 — 상태, 테마, 프로젝트 고르기, 배치
 

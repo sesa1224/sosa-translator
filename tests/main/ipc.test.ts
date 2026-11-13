@@ -1,0 +1,91 @@
+import path from 'node:path';
+import { EventEmitter } from 'node:events';
+import { afterAll, beforeAll, expect, test } from 'vitest';
+import { registerIpc, type ChatLike, type IpcDeps } from '../../src/main/ipc.js';
+import { saveSettings, loadSettings } from '../../src/main/settings.js';
+import type { ChatImage, Row } from '../../src/shared/api.js';
+import { cleanupTempDirs, makeTempDir } from '../helpers/fs.js';
+import { makeMiniGame } from '../helpers/miniGame.js';
+
+class FakeChat extends EventEmitter implements ChatLike {
+  sent: { text: string; images: ChatImage[] }[] = [];
+  busy = false; sessionId = null; model = '';
+  send(text: string, images: ChatImage[] = []) { this.sent.push({ text, images }); }
+  stop() {} reset() {} dispose() {}
+  setModel(m: string) { this.model = m; }
+}
+
+const handlers = new Map<string, (e: unknown, ...a: any[]) => any>();
+const broadcasts: { channel: string; payload: any }[] = [];
+let fakeChat: FakeChat;
+let game: string;
+let id: string;
+let deps: IpcDeps;
+
+const invoke = async (channel: string, ...args: any[]): Promise<any> => {
+  const h = handlers.get(channel);
+  if (!h) throw new Error(`no handler: ${channel}`);
+  return h({}, ...args);
+};
+const sent = (channel: string) => broadcasts.filter((b) => b.channel === channel).map((b) => b.payload);
+
+beforeAll(async () => {
+  game = await makeTempDir();
+  await makeMiniGame(game);
+  const settingsDir = await makeTempDir();
+  const projectsDir = await makeTempDir();
+  await saveSettings(settingsDir, { ...(await loadSettings(settingsDir)), projectsDir });
+  deps = {
+    ipcMain: { handle: (channel, fn) => { handlers.set(channel, fn); } },
+    pickDirectory: async () => game,
+    settingsDir,
+    holder: { svc: null },
+    broadcast: (channel, payload) => { broadcasts.push({ channel, payload }); },
+    createChat: () => { fakeChat = new FakeChat(); return fakeChat; },
+    claudePath: () => 'C:/fake/claude.exe',
+    showItemInFolder: () => {},
+  };
+  registerIpc(deps);
+});
+afterAll(async () => { await invoke('project:close'); await cleanupTempDirs(); });
+
+test('설정은 읽고 고치면 알린다', async () => {
+  expect((await invoke('settings:get')).theme).toBe('dark');
+  expect((await invoke('settings:set', { theme: 'light' })).theme).toBe('light');
+  expect(sent('settings:changed').at(-1)).toMatchObject({ theme: 'light' });
+});
+test('만들고, 고치면 변경 알림에 바뀐 행만 온다', async () => {
+  await invoke('project:create', game, '약초원'); const snap = await invoke('project:snapshot');
+  expect(snap.rows.length).toBeGreaterThan(5); id = snap.rows.find((r: Row) => r.source === '月光草').id;
+  await invoke('unit:setTranslation', id, '월광초');
+  expect(sent('project:changed').at(-1)).toMatchObject({ origin: 'user', rows: [{ id, target: '월광초' }], stats: { needsReview: 1 } });
+});
+test('붙은 항목이 채팅 글 앞에 들어간다', async () => {
+  await invoke('chat:send', '이 줄 좀 더 밝게', [], id);
+  expect(fakeChat.sent[0].text).toMatch(/^\[붙은 항목\] id=.+ 위치=Items · 1\n원문: 月光草\n번역: 월광초\n\n이 줄 좀 더 밝게$/);
+});
+test('같은 이름의 프로젝트가 있으면 오류', async () => { await expect(invoke('project:create', game, '약초원')).rejects.toThrow('프로젝트 폴더가 비어있지 않습니다'); });
+
+// Extra coverage beyond the plan's assertions.
+test('스냅숏의 게임 제목, 목록, 항목 읽기, 되돌리기, 채팅 되돌리기, 빌드', async () => {
+  const snap = await invoke('project:snapshot');
+  expect(snap.gameTitle).toBe('霧の薬草園'); expect(snap.meta.name).toBe('약초원');
+  expect(await invoke('project:list')).toEqual([expect.objectContaining({ name: '약초원', engine: 'MZ' })]);
+  const u = await invoke('unit:get', id);
+  expect(u).toMatchObject({ row: { id, target: '월광초' }, issues: [], refs: ['Items · 1'] });
+  await invoke('unit:setStatus', id, 'approved');
+  expect(sent('project:changed').at(-1).rows[0].status).toBe('approved');
+  expect(await invoke('chat:undo')).toEqual([]);
+  expect(await invoke('project:undo')).toEqual([id]);
+  const b = await invoke('project:build');
+  expect(b.files.map((f: any) => f.path)).toEqual(['data/Items.json']);
+  expect(await invoke('project:pickGameDir')).toBe(game);
+  await invoke('chat:setModel', 'claude-haiku-5-5');
+  expect(fakeChat.model).toBe('claude-haiku-5-5'); expect((await invoke('settings:get')).chatModel).toBe('claude-haiku-5-5');
+  fakeChat.emit('event', { type: 'text', text: '안녕' });
+  expect(sent('chat:event').at(-1)).toEqual({ type: 'text', text: '안녕' });
+  await invoke('project:close'); expect(deps.holder.svc).toBeNull();
+  await invoke('project:open', path.join((await invoke('settings:get')).projectsDir, '약초원'));
+  expect((await invoke('project:snapshot')).rows.find((r: Row) => r.id === id).target).toBe('월광초');
+  await expect(invoke('project:create', game, '  ')).rejects.toThrow('프로젝트 이름을 입력하세요');
+});
