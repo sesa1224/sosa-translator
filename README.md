@@ -186,3 +186,42 @@ Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
 - 스토리 보기: 텍스트 화면 위의 "표 | 스토리"로 바꿉니다. 왼쪽에서 고른 범위(파일)의 장면(이벤트 페이지, 커먼이벤트, 전투 이벤트 페이지)을 순서대로 보여 주고, 페이지 조건(스위치, 변수, 셀프 스위치, 아이템, 액터)을 글로 적습니다. 장면마다 "이 장면 다시 번역"과 "장면 승인"이 있습니다.
 
 연기 시험은 `MVMZ_FONT_DIRS`(`;` 로 구분한 폴더들)로 윈도우 글꼴 폴더 대신 시험용 폰트 폴더를, `MVMZ_PICK_FONT` 로 파일 고르기 창 대신 정해진 폰트 파일을 씁니다. 시험용 폰트는 시험 안에서 `opentype.js` 로 만들고 저장소에는 폰트 파일을 넣지 않습니다.
+
+## 이벤트와 수정
+
+왼쪽 메뉴의 "이벤트"에서 파일(맵, 커먼이벤트, 전투 이벤트)과 이벤트(맵은 페이지마다)를 고르면 커맨드를 한국어 한 줄씩 풀어 보여 줍니다(`src/core/events/describe.ts`). 대사(`101`+`401`), 스크롤 문장, 주석, 스크립트, MZ 플러그인 커맨드는 한 줄로 합치고, 줄 번호는 원본 목록의 번호입니다. 표에 없는 코드는 `코드 999 [원래 인자]` 로 보입니다. 줄의 스위치·변수·커먼이벤트 이름을 누르면 오른쪽에 사용처(켬/조건)가 뜨고, 누르면 그 이벤트로 갑니다.
+
+수정은 원본을 고치지 않고 `patches.json` 에 "원본 대비 바뀐 점"으로 쌓입니다. 빌드할 때 원본 커맨드마다 원래 번호 꼬리표를 붙이고, 수정(끼워 넣기, 지우기, 바꾸기)을 원본 번호로 적용한 뒤, 번역을 꼬리표로 찾아 넣습니다. 그래서 수정으로 번호가 밀려도 번역이 제자리에 들어가고, 번역이 걸린 커맨드를 지운 수정이면 그 번역만 건너뜁니다. 원본 목록이 기록했을 때와 다르면(내용 기준 해시, 공백·키 순서는 무시) 그 수정은 넣지 않고 "충돌"로 표시합니다. 수정이 하나도 없으면 빌드 결과는 예전과 같습니다.
+
+| 수정 종류 | 하는 일 |
+|---|---|
+| `event` | 이벤트 목록 하나에 대한 연산 `insert after`(-1 이면 맨 앞), `delete at`, `replace at` — 번호는 모두 원본 번호. 한 목록에 켜진 수정은 하나 |
+| `json` | 데이터 파일의 값 하나(`baseValue` 가 원본과 다르면 충돌) |
+| `plugin` | 새 플러그인 파일 `js/plugins/<이름>.js` 와 `js/plugins.js` 끝의 등록 |
+| `font` | 게임 폰트 넣기(프로젝트에 하나). MZ 는 `fonts/mvmz-game-font.ttf` 와 `System.json` 의 `advanced.mainFontFilename`, MV 는 폰트와 `fonts/gamefont.css` 의 `GameFont` 블록 |
+
+프로젝트 폴더에 더해지는 것:
+
+```
+<projectDir>/
+  patches.json            수정 목록: [{ id, title, note, enabled, originalBug, createdBy, createdAt, body }]
+  original/v1/fonts/gamefont.css   MV 게임의 폰트 설정 사본 (있을 때만)
+  testplay/               "게임 실행"용 시험 사본. 그림·소리·실행 파일은 원본과 하드 링크, 나머지는 복사
+    .patched.json         지난번에 패치로 덮어쓴 파일 목록 (다음에 원본으로 되돌릴 것)
+```
+
+- 폰트 넣기: 설정의 "폰트를 게임에 넣기"에서 켭니다. "쓰는 글자만 남겨 용량 줄이기"를 켜면 번역문, 수정으로 넣은 글, 숫자·영문·문장부호·전각 기호만 남깁니다(`subset-font`). 폰트에 원래 없는 글자는 건너뜁니다. 배포해도 되는 폰트인지는 직접 확인하세요. 위 "미리보기와 게임 폰트"의 "폰트를 게임에 넣는 기능은 아직 없습니다"는 이제 이 기능으로 대신합니다.
+- 게임 실행: 위 막대의 "게임 실행"은 가장 최근 빌드의 `patch/` 를 시험용 사본에 얹고 사본의 `Game.exe`(없으면 `nw.exe`)를 켭니다. 처음 한 번은 사본을 만드느라 오래 걸리고, 다음부터는 바뀐 파일만 다시 가져옵니다. 하드 링크로 이어진 파일에 패치를 쓸 때는 사본 쪽 파일을 먼저 지우고 쓰므로 원본은 바뀌지 않습니다. 사본의 `save/` 는 다시 준비해도 덮어쓰지 않습니다.
+- "제작자 전달용 목록": "원본 버그"로 표시한 수정만 모아 마크다운으로 보여 줍니다(제목, 위치, 무엇을 왜, 풀어쓴 연산).
+
+채팅 도구 다섯 개가 더해집니다(허용 도구는 위 열 개와 합쳐 열다섯 개):
+
+| 도구 | 입력 | 돌려주는 것 |
+|---|---|---|
+| `event_files` | 없음 | `{ files: [{ file, label, events }] }` |
+| `event_list` | `file` | `{ total, events: [{ label, listPath, pages?, condition, commandCount }] }` |
+| `event_read` | `file`, `listPath`, `raw?`, `from?`, `to?` | `{ label, condition, hash, commandCount, lines: [{ index, indent, text }], patch? }` — 원본 JSON 은 `raw: true` 일 때 `from`~`to`(최대 30줄)만 |
+| `usage_search` | `type`(switch, variable, commonEvent, item, picture), `id` | `{ total, items: [{ file, listPath, label, index, text, access }] }` — 페이지 조건은 `index: -1` |
+| `event_patch` | `title`, `file`, `listPath`, `baseHash`, `ops`, `note?`, `originalBug?` | `{ id, title, updated, state, reason? }` — 수정을 `createdBy: claude` 로 더한다. 같은 목록에 수정이 있으면 그 수정의 연산을 바꾼다 |
+
+실제 CLI 확인: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realEventPatch.test.ts` (먼저 `npm run build:app`, 모델 `claude-haiku-5-5`, 시험용 작은 게임만. `MVMZ_REAL_EVENT_OUT=<파일>` 이면 부른 도구와 토큰을 JSON 으로 남김). 연기 시험은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 게임을 실제로 띄우지 않고 실행한 것으로 칩니다.

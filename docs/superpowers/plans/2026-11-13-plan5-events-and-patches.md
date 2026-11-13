@@ -303,11 +303,11 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`(자기 `test(…)` 블록을 파일 끝에 통째로 더한다. 임시 게임 폴더 이름은 `game5`), `README.md`, `CHANGELOG.md`("준비 중" 아래에 "이벤트와 수정" 묶음을 더하고 알려진 한계의 해당 줄을 고친다) · Create `tests/main/realEventPatch.test.ts`
 
-- [ ] **연기 시험**: 가져오기 → 이벤트 화면에서 맵1 이벤트1 → 풀어쓴 줄 확인 → 한 줄 아래에 "스위치 45 켬" 끼워 넣기 → 수정 내역에 `적용됨` → 패치 빌드 → zip 의 `data/Map001.json` 에 그 커맨드가 있음 → (게임 실행은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 실제로 띄우지 않고 실행한 것으로 친다) 게임 실행 → "게임 실행 중" → 사본 폴더에 패치가 적용돼 있음
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`, 시험용 게임만): 시험용 게임에 "이벤트1이 끝나도 스위치 45를 켜지 않아 이벤트2(조건: 스위치 45)가 시작되지 않는" 상황을 만들고, 채팅 한 번으로 "이벤트1이 끝나도 이벤트2로 안 넘어가. 고쳐줘"를 보낸다. 확인: Claude가 `usage_search` 나 `event_read` 를 부르고 `event_patch` 로 스위치를 켜는 줄을 넣는지, 빌드 결과에 반영되는지. 부른 도구의 순서와 만든 수정, 쓴 토큰을 보고에 그대로 붙인다. 로그인이 아니면 건너뛰고 보고에 적는다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`git commit -m "feat: 이벤트와 수정 전체 흐름 시험"`**
+- [x] **연기 시험**: 가져오기 → 이벤트 화면에서 맵1 이벤트1 → 풀어쓴 줄 확인 → 한 줄 아래에 "스위치 45 켬" 끼워 넣기 → 수정 내역에 `적용됨` → 패치 빌드 → zip 의 `data/Map001.json` 에 그 커맨드가 있음 → (게임 실행은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 실제로 띄우지 않고 실행한 것으로 친다) 게임 실행 → "게임 실행 중" → 사본 폴더에 패치가 적용돼 있음
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`, 시험용 게임만): 시험용 게임에 "이벤트1이 끝나도 스위치 45를 켜지 않아 이벤트2(조건: 스위치 45)가 시작되지 않는" 상황을 만들고, 채팅 한 번으로 "이벤트1이 끝나도 이벤트2로 안 넘어가. 고쳐줘"를 보낸다. 확인: Claude가 `usage_search` 나 `event_read` 를 부르고 `event_patch` 로 스위치를 켜는 줄을 넣는지, 빌드 결과에 반영되는지. 부른 도구의 순서와 만든 수정, 쓴 토큰을 보고에 그대로 붙인다. 로그인이 아니면 건너뛰고 보고에 적는다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`git commit -m "feat: 이벤트와 수정 전체 흐름 시험"`**
 
 ---
 
