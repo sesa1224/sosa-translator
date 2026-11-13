@@ -63,6 +63,18 @@ export function keepPieces(source: string, keep: KeepRule): string[] | null {
   return pieces;
 }
 
+/** Where the translated parts of source are under the rule (in order), or null when nothing would be translated. */
+export function translateRanges(source: string, keep: KeepRule): { start: number; end: number }[] | null {
+  if (keep.mode === 'whole') return source === '' ? null : [{ start: 0, end: source.length }];
+  if (keep.mode === 'spans') {
+    const spans = japaneseSpans(source);
+    return spans.length === 0 ? null : spans;
+  }
+  const pieces = keepPieces(source, keep);
+  if (pieces === null) return null;
+  return [{ start: pieces[0].length, end: source.length - pieces[1].length }];
+}
+
 // ---- keys -------------------------------------------------------------------------------
 
 /** MV plugin command (356): 'mv:<first piece>'. */

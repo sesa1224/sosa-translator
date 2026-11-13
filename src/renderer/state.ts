@@ -3,6 +3,7 @@ import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
+import type { DecisionGroup, DecisionInput, ImportPlan } from '../shared/api';
 
 export type ChatMessage =
   | { kind: 'user'; text: string; images: ChatImage[]; attached: string | null }
@@ -30,7 +31,7 @@ export interface AppState {
   selectedId: string | null;
   detail: UnitDetail | null;
   query: RowQuery;
-  view: 'text' | 'settings' | 'glossary';
+  view: 'text' | 'settings' | 'glossary' | 'decisions';
   glossary: Glossary | null;
   /** The glossary was edited after it was confirmed (this session). */
   glossaryDirty: boolean;
@@ -46,6 +47,10 @@ export interface AppState {
   claudePath: string | null;
   lastSaved: Date | null;
   build: BuildState;
+  /** Needs-decision groups (loaded when the decisions screen opens, then pushed on change). */
+  decisionGroups: DecisionGroup[];
+  /** The card the decisions screen should scroll to (from an item's "묶음 보기"). */
+  decisionFocus: string | null;
 }
 
 const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
@@ -56,6 +61,7 @@ function initial(): AppState {
     query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, lastSaved: null, build: { kind: 'idle' },
+    decisionGroups: [], decisionFocus: null,
   };
 }
 
@@ -186,6 +192,7 @@ async function start(a: Api): Promise<void> {
     a.on('settings:changed', (s) => { applyTheme(s); set({ settings: s }); }),
     a.on('glossary:changed', onGlossaryChanged),
     a.on('job:progress', (p) => set({ job: p, jobDismissed: false })),
+    a.on('decisions:changed', (g) => set({ decisionGroups: g })),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -333,6 +340,27 @@ const actions = {
     set({ settings: s });
     if ('claudePath' in patch) set({ claudePath: await need().app.claudePath().catch(() => null) });
   },
+
+  // ---- decisions, game title, exchange (plan 3b) ----
+  async loadDecisionGroups(): Promise<void> {
+    set({ decisionGroups: await need().decisions.groups() });
+  },
+  /** Opens the decisions screen, scrolled to key's card when given. */
+  openDecisions(key: string | null = null): void {
+    set({ view: 'decisions', decisionFocus: key });
+  },
+  setDecision: (key: string, d: DecisionInput): Promise<void> => need().decisions.set(key, d),
+  confirmDecisions: (keys?: string[]): Promise<void> => (keys ? need().decisions.confirm(keys) : need().decisions.confirm()),
+  clearDecision: (key: string): Promise<void> => need().decisions.clear(key),
+  decide: (): Promise<void> => need().job.decide(),
+  /** Shows the text table with only the lines of one decision group. */
+  showDecisionRows(key: string): void {
+    set((s) => ({ view: 'text', idFilter: null, query: { ...s.query, status: 'all', decisionKey: key } }));
+  },
+  setGameTitle: (target: string): Promise<void> => need().project.setGameTitle(target),
+  exportRows: (ids: string[]): Promise<string | null> => need().exchange.export(ids),
+  planImport: (): Promise<ImportPlan | null> => need().exchange.planImport(),
+  applyImport: (overwrite: boolean): Promise<{ written: number }> => need().exchange.applyImport(overwrite),
 };
 
 function subscribe(l: () => void): () => void {

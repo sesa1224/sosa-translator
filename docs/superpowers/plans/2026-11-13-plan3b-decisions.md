@@ -292,7 +292,7 @@ export interface ExchangePackage {
 - "추천 전부 받아들이기"가 `decisions.confirm()` 을 부른다. "Claude에게 추천 받기"가 `job.decide` 를 부른다
 - 필터 칩이 묶음을 걸러낸다. 사이드바의 숫자가 `Stats.undecided` 다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 화면"`
 
 ### Task 11: 게임 제목 칸, 내보내기·가져오기 화면, 표의 표시
 
