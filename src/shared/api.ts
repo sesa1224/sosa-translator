@@ -180,3 +180,7 @@ export interface Api {
   app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
 }
+
+// ---- plan 4: preview and fonts ----
+/** A font file the app can use for the in-game preview (source: where it was found). */
+export interface FontInfo { path: string; family: string; displayName: string; style: string; hasHangul: boolean; source: 'system' | 'user' | 'game' | 'project' }

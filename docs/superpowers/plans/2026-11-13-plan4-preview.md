@@ -160,7 +160,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 두 번째 호출은 파일을 다시 읽지 않는다(읽기 함수를 감싼 횟수로 확인). 파일 하나의 수정 시각을 바꾸면 그것만 다시 읽는다
 - `source` 가 폴더에 따라 `system`/`game`/`project` 로 나온다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 읽기와 목록"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 읽기와 목록"`
 
 ### Task 4: 폭 검사와 넘침 세기
 
