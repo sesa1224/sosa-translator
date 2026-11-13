@@ -179,7 +179,7 @@ export interface UpdateSummary {
 - `carried` 항목을 승인하면 `carried` 가 없어지고 `previous` 는 남는다
 - 버전이 바뀐 뒤 `prepare` 하면 사본의 옛 세이브가 `testplay-saves-v1/` 에 있고 새 사본의 데이터가 새 게임 것이다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 업데이트 연결과 이전 번역 참고"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 업데이트 연결과 이전 번역 참고"`
 
 ### Task 6: IPC 와 채팅 도구
 

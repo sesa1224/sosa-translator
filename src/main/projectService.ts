@@ -69,7 +69,7 @@ export class ProjectService extends EventEmitter {
     readonly projectDir: string,
     readonly meta: ProjectMeta,
     private readonly unitList: TextUnit[],
-    private readonly store: TranslationStore,
+    private store: TranslationStore,
     private gloss: Glossary,
   ) {
     super();
@@ -751,6 +751,66 @@ export class ProjectService extends EventEmitter {
     }
     return lines.join('\n');
   }
+  // ---- plan 6: game updates ----
+  private busyCheck: () => boolean = () => false;
+
+  /** Tells the service how to see that a job is running (the IPC layer owns the jobs). */
+  setBusyCheck(fn: () => boolean): void {
+    this.busyCheck = fn;
+  }
+
+  /** The project's versions, oldest first (label and folder filled in for older projects). */
+  versions(): VersionInfo[] {
+    return versionsOf(this.meta);
+  }
+
+  /** The summary of the update that brought the current version, or null. */
+  updateSummary(): Promise<UpdateSummary | null> {
+    return readUpdateSummary(this.projectDir);
+  }
+
+  /** Takes a new version of the game, reads everything again and emits 'reloaded'. Refused while a job runs. */
+  importVersion(gameDir: string, label: string): Promise<UpdateSummary> {
+    if (this.busyCheck()) return Promise.reject(new Error(UPDATE_BUSY));
+    return this.enqueue(async () => {
+      const summary = await coreImportVersion(this.projectDir, gameDir, String(label ?? '').trim() || 'v?');
+      await this.reloadFromDisk();
+      this.emit('reloaded');
+      return summary;
+    });
+  }
+
+  /** Undoes the latest update, reads everything again and emits 'reloaded'. Refused while a job runs. */
+  rollbackVersion(): Promise<{ restored: string }> {
+    if (this.busyCheck()) return Promise.reject(new Error(UPDATE_BUSY));
+    return this.enqueue(async () => {
+      const r = await coreRollbackVersion(this.projectDir);
+      await this.reloadFromDisk();
+      this.emit('reloaded');
+      return r;
+    });
+  }
+
+  /** Reads the project files again after an update replaced them. Undo records point at the old units and are dropped. */
+  private async reloadFromDisk(): Promise<void> {
+    const meta = await openProject(this.projectDir);
+    const units = await loadUnits(this.projectDir);
+    const store = await TranslationStore.load(this.projectDir);
+    const gloss = await loadGlossary(this.projectDir);
+    // meta is a public readonly reference other parts hold on to: change it in place.
+    for (const k of Object.keys(this.meta)) if (!(k in meta)) delete (this.meta as unknown as Record<string, unknown>)[k];
+    Object.assign(this.meta, meta);
+    this.unitList.splice(0, this.unitList.length, ...units);
+    this.byId.clear();
+    for (const u of units) this.byId.set(u.id, u);
+    this.store = store;
+    this.gloss = gloss;
+    this.history.length = 0;
+    this.gameFileNames = new Set();
+    this.loadDecisionData();
+    this.patchCache = null;
+  }
+
   // ---- plan 7: build notes ----
   /** Other parts of the app summarise what they put into each patch (key → lines) for the patch notes. Append only. */
   readonly buildSummaries: (() => Promise<Record<string, string[]>>)[] = [];
@@ -779,4 +839,17 @@ export interface ProjectService {
   on(event: 'patches-changed', listener: (p: Patch[]) => void): this;
   off(event: 'patches-changed', listener: (p: Patch[]) => void): this;
   emit(event: 'patches-changed', p: Patch[]): boolean;
+}
+
+// ---- plan 6: game updates (appended) ----
+import { importVersion as coreImportVersion, readUpdateSummary, rollbackVersion as coreRollbackVersion, versionsOf } from '../core/update/importVersion.js';
+import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
+
+/** Same text as the IPC layer's busy error. */
+const UPDATE_BUSY = '다른 작업이 진행 중입니다';
+
+export interface ProjectService {
+  on(event: 'reloaded', listener: () => void): this;
+  off(event: 'reloaded', listener: () => void): this;
+  emit(event: 'reloaded'): boolean;
 }

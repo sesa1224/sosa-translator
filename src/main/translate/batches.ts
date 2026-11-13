@@ -8,7 +8,11 @@ import { confirmedDecisionFor, isTranslatable } from '../../core/decisions/store
 import type { Decisions } from '../../core/decisions/types.js';
 
 /** One unit as sent to the model. text is the body with the speaker line taken off. */
-export interface BatchItem { i: number; id: string; kind: UnitKind; speaker: string | null; speakerLine: string | null; text: string; keep?: string[] }
+export interface BatchItem {
+  i: number; id: string; kind: UnitKind; speaker: string | null; speakerLine: string | null; text: string; keep?: string[];
+  /** The older version's sentence and translation (speaker line taken off) when the source changed a little. */
+  previous?: { source: string; target: string | null };
+}
 export interface Batch { label: string; file: string; items: BatchItem[]; context: { speaker: string | null; source: string; target: string | null }[] }
 
 const DEFAULT_MAX_ITEMS = 40;
@@ -74,6 +78,11 @@ export function planBatches(
       const dec = u.needsDecision ? confirmedDecisionFor(u, o.decisions ?? {}) : null;
       const pieces = dec ? keepPieces(u.source, dec.keep) : null;
       if (pieces && pieces.some((x) => x !== '')) item.keep = pieces;
+      const prev = entryOf(u.id).previous;
+      if (prev) {
+        const old = unitParts({ ...u, source: prev.source }, pattern);
+        item.previous = { source: old.body, target: prev.target === null ? null : targetBody(prev.target, old.speakerLine) };
+      }
       cur.items.push(item);
       chars += p.body.length;
     });
@@ -181,6 +190,10 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
     '- 용어집에 없는 고유명사를 새로 옮겼으면 그 항목의 newTerms 에 source(원문)와 target(번역)을 적는다.',
     '- 화자 이름은 번역하지 않는다. text 의 본문만 옮긴다.',
     '- keep 이 있으면 그 글들은 한 글자도 바꾸지 않고 같은 순서로 남긴다. text 전체를 돌려주되 그 사이의 글자만 번역한다.',
+    // Only batches with a changed sentence get this line, so every other prompt stays exactly as it was.
+    ...(batch.items.some((i) => i.previous) ? [
+      '- previous 가 있으면 원문이 조금 바뀐 문장이다. 바뀐 부분만 반영하고 나머지는 이전 번역의 표현과 말투를 그대로 둔다. (이때 previous 의 source 는 게임 이전 버전의 원문, target 은 그때의 번역이다. problems 와 함께 오는 previous 는 위에 적은 직전 번역이다.)',
+    ] : []),
   ].join('\n');
 
   const speakers = speakersOf(batch);
@@ -194,7 +207,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
       return out;
     }),
     context: batch.context,
-    items: batch.items.map((i) => ({ i: i.i, kind: i.kind, speaker: i.speaker, text: i.text, ...(i.keep ? { keep: i.keep } : {}) })),
+    items: batch.items.map((i) => ({ i: i.i, kind: i.kind, speaker: i.speaker, text: i.text, ...(i.keep ? { keep: i.keep } : {}), ...(i.previous ? { previous: i.previous } : {}) })),
   };
   return { system, user: JSON.stringify(user) };
 }

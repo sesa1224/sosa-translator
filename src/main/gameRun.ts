@@ -1,11 +1,13 @@
 import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
-import { copyFile, link, mkdir, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
+import { copyFile, link, mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const TESTPLAY_DIR = 'testplay';
 const PATCHED_LIST = '.patched.json';
+/** The project version the copy was made from (plan 6). */
+export const VERSION_FILE = '.version';
 /** Folders of big files the game only reads: shared with the original through hard links. */
 const LINK_DIRS = new Set(['img', 'audio', 'movies', 'effects', 'locales', 'swiftshader']);
 const LINK_EXTS = new Set(['.exe', '.dll', '.pak', '.bin', '.dat']);
@@ -50,7 +52,8 @@ export class GameRunner extends EventEmitter {
   private readonly spawnFn: typeof nodeSpawn;
   private child: ChildProcess | null = null;
 
-  constructor(private readonly o: { projectDir: string; gameDir: string; spawn?: typeof nodeSpawn }) {
+  /** version: the project version of gameDir; when the copy was made from another one it is made again. */
+  constructor(private readonly o: { projectDir: string; gameDir: string; spawn?: typeof nodeSpawn; version?: string }) {
     super();
     this.dir = path.join(o.projectDir, TESTPLAY_DIR);
     this.spawnFn = o.spawn ?? nodeSpawn;
@@ -67,6 +70,7 @@ export class GameRunner extends EventEmitter {
 
   /** Brings the copy up to date with the game and lays patchDir's files over it. */
   async prepare(patchDir: string, onProgress?: (done: number, total: number) => void): Promise<{ copied: number; linked: number; patched: number }> {
+    if (this.o.version !== undefined) await this.startOverIfOtherVersion(this.o.version);
     const gameFiles = await walk(this.o.gameDir);
     const patchFiles = existsSync(patchDir) ? await walk(patchDir) : [];
     const inPatch = new Set(patchFiles);
@@ -129,6 +133,31 @@ export class GameRunner extends EventEmitter {
     await writeFile(path.join(this.dir, PATCHED_LIST), JSON.stringify(patchFiles));
     onProgress?.(total, total);
     return { copied, linked, patched: patchFiles.length };
+  }
+
+  /**
+   * A copy made from another version of the game is made again: its saves move to testplay-saves-<old id>/ in the
+   * project folder (they may not load in the new version) and the new copy starts with the new game's own saves.
+   */
+  private async startOverIfOtherVersion(version: string): Promise<void> {
+    const marker = path.join(this.dir, VERSION_FILE);
+    let was: string | null = null;
+    try {
+      was = (await readFile(marker, 'utf8')).trim() || null;
+    } catch {
+      was = null;   // a copy from before plan 6 is taken for the current version
+    }
+    if (was !== null && was !== version && existsSync(this.dir)) {
+      const save = ['www/save', 'save'].map((r) => path.join(this.dir, ...r.split('/'))).find((d) => existsSync(d));
+      if (save) {
+        let dst = path.join(this.o.projectDir, `testplay-saves-${was}`);
+        for (let n = 2; existsSync(dst); n++) dst = path.join(this.o.projectDir, `testplay-saves-${was}-${n}`);
+        await rename(save, dst);
+      }
+      await rm(this.dir, { recursive: true, force: true });
+    }
+    await mkdir(this.dir, { recursive: true });
+    await writeFile(marker, version);
   }
 
   /** Starts the copy's Game.exe (or nw.exe) in the copy's folder. */

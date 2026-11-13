@@ -11,7 +11,7 @@ export interface Row {
   declinedReason?: string;
   review?: ReviewNote;
 }
-export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped';
+export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed';
 export interface RowQuery { text?: string; status?: StatusFilter; file?: string }
 export interface Stats { total: number; untranslated: number; needsReview: number; approved: number; error: number; needsDecision: number; declined: number; provisional: number }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
@@ -379,3 +379,8 @@ export interface BuildsApi {
   polishNotes: AsyncI<ImagesInvokeChannels['builds:polishNotes']>; openFolder: AsyncI<ImagesInvokeChannels['builds:openFolder']>;
 }
 export interface Api { images: ImagesApi; builds: BuildsApi }
+// ---- Plan 6: game updates (added below; existing lines above are unchanged) ----
+/** previous: the sentence's source and translation in the older version (a changed sentence); carried: that translation was filled in. */
+export interface Row { previous?: { source: string; target: string | null }; carried?: boolean }
+/** changed: rows with a previous version's sentence; carried: those whose old translation was filled in. */
+export interface Stats { changed: number; carried: number }
