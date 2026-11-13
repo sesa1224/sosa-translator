@@ -359,7 +359,7 @@ test('127.0.0.1 에서만 듣는다', () => { expect(new URL(bridge.url).hostnam
 
 이 형식은 이 계획을 쓸 때 실제 출력으로 확인하지 못했다(CLI 로그인 전). 작업 12에서 실제 CLI 출력으로 맞춰 본다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('인자', () => {
@@ -391,10 +391,10 @@ test('입력 줄에 이미지가 들어간다', () => {
 test('시스템 프롬프트', () => { const s = buildSystemPrompt(meta, stats); expect(s).toContain('약초원'); expect(s).toContain('search_units'); expect(s).toContain('MZ'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/claude.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: Claude CLI 인자와 스트림 파서"`**
+- [x] **Step 2: `npx vitest run tests/main/claude.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: Claude CLI 인자와 스트림 파서"`**
 
 ### Task 7: ClaudeChat (프로세스 관리)
 

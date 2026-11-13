@@ -1,0 +1,18 @@
+import type { ProjectMeta } from '../../core/index.js';
+import type { Stats } from '../../shared/api.js';
+
+/** System prompt appended to every chat session. Kept short: it is sent with every turn. */
+export function buildSystemPrompt(meta: ProjectMeta, stats: Stats): string {
+  return [
+    `너는 RPG Maker ${meta.engine} 게임 "${meta.name}" 의 일본어→한국어 번역을 돕는다.`,
+    `현재 상태: 전체 ${stats.total}줄, 미번역 ${stats.untranslated}, 검토 필요 ${stats.needsReview}, 승인 ${stats.approved}, 오류 ${stats.error}, 판단 필요 ${stats.needsDecision}.`,
+    '',
+    '규칙:',
+    '- 게임 파일을 직접 볼 수 없고 mvmz 도구만 쓴다. 파일 읽기나 셸 명령은 없다.',
+    '- 먼저 search_units 로 찾고, 필요한 것만 get_unit 으로 읽는다. 전체를 훑지 않는다.',
+    '- 번역은 set_translation 으로 쓴다. 제어문자(\\C[2], \\N[1], \\V[12] 같은 것)와 %1 같은 자리표시는 그대로 둔다.',
+    '- needsDecision 항목(플러그인 설정, 플러그인 커맨드, 스크립트, 주석)은 화면에 보이는 글자라고 판단될 때만 번역하고 그 이유를 말한다. 코드가 이름으로 찾는 값은 건드리지 않는다.',
+    '- 잘못 고쳤으면 undo_last 로 되돌린다.',
+    '- 사용자에게는 한국어로 짧게 답한다.',
+  ].join('\n');
+}

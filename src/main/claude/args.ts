@@ -1,0 +1,18 @@
+export const MCP_SERVER_NAME = 'mvmz';
+export const CHAT_TOOLS = ['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last'];
+export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;
+
+/** Arguments for a headless, stream-json Claude CLI session limited to the app's MCP tools. */
+export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; systemPrompt: string; resumeSessionId?: string }): string[] {
+  const args = [
+    '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
+    '--model', o.model,
+    '--mcp-config', o.mcpConfigPath, '--strict-mcp-config',
+    '--tools', '',
+    '--allowedTools', CHAT_TOOLS.map((t) => MCP_TOOL_PREFIX + t).join(','),
+    '--permission-mode', 'dontAsk',
+    '--append-system-prompt', o.systemPrompt,
+  ];
+  if (o.resumeSessionId) args.push('--resume', o.resumeSessionId);
+  return args;
+}
