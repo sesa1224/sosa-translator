@@ -75,6 +75,7 @@ export class ProjectService extends EventEmitter {
     super();
     this.byId = new Map(unitList.map((u) => [u.id, u]));
     this.loadDecisionData();
+    registerFontContributor(this); // plan 5: font and plugin files of patches go into every build
   }
 
   // ---- decisions (plan 3b) ----
@@ -571,7 +572,203 @@ export class ProjectService extends EventEmitter {
       return result;
     });
   }
+
+  // ---- plan 5: patches (bug fixes and additions recorded as changes against the original) ----
+  private patchCache: Patch[] | null = null;
+
+  /** The patch list, read from patches.json the first time. */
+  private patchList(): Patch[] {
+    if (this.patchCache === null) {
+      try {
+        const file = nodePath.join(this.projectDir, PATCHES_FILE);
+        const raw = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8').replace(/^﻿/, '')) as unknown) : [];
+        this.patchCache = Array.isArray(raw) ? (raw as Patch[]) : [];
+      } catch {
+        this.patchCache = [];
+      }
+    }
+    return this.patchCache;
+  }
+
+  /** A copy of the project's patches. */
+  patches(): Patch[] {
+    return structuredClone(this.patchList());
+  }
+
+  /** Whether each patch is applied, off, or in conflict with the original copy now. */
+  patchStatuses(): Promise<PatchStatus[]> {
+    return corePatchStatuses(this.projectDir, this.patchList());
+  }
+
+  /** The original command list a patch body points at, or null. */
+  private async originalList(file: string, listPath: PathSeg[]): Promise<EventCommand[] | null> {
+    try {
+      const root = await readJsonFile(nodePath.join(originalDir(this.projectDir, this.meta), ...file.split('/')));
+      const list = getAtPath(root, listPath);
+      return Array.isArray(list) ? (list as EventCommand[]) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Checks a body against the original copy; fills an empty baseHash (event) or a missing baseValue (json). */
+  private async checkedBody(body: PatchBody): Promise<PatchBody> {
+    const b = structuredClone(body);
+    if (b.kind === 'event') {
+      const list = await this.originalList(b.file, b.listPath);
+      if (!list) throw new Error(REASON_NO_EVENT);
+      const hash = listHash(list);
+      if (!b.baseHash) b.baseHash = hash;
+      else if (b.baseHash !== hash) throw new Error(REASON_CHANGED);
+      const problem = validateOps(list, b.ops);
+      if (problem) throw new Error(problem);
+    } else if (b.kind === 'json') {
+      let root: unknown;
+      try {
+        root = await readJsonFile(nodePath.join(originalDir(this.projectDir, this.meta), ...b.file.split('/')));
+      } catch {
+        throw new Error(REASON_NO_FILE);
+      }
+      const now = getAtPath(root, b.path);
+      if (b.baseValue === undefined) b.baseValue = structuredClone(now);
+      else if (!sameContent(now, b.baseValue)) throw new Error(REASON_VALUE_CHANGED);
+    } else if (b.kind === 'plugin') {
+      if (!validPluginName(b.name)) throw new Error(REASON_BAD_PLUGIN_NAME);
+    }
+    return b;
+  }
+
+  /** Another enabled event patch on the same command list (one per list keeps the ops readable). */
+  private sameListPatch(body: PatchBody, exceptId?: string): Patch | undefined {
+    if (body.kind !== 'event') return undefined;
+    const key = JSON.stringify([body.file, body.listPath]);
+    return this.patchList().find((p) => p.id !== exceptId && p.enabled && p.body.kind === 'event' && JSON.stringify([p.body.file, p.body.listPath]) === key);
+  }
+
+  private async savePatchList(next: Patch[]): Promise<void> {
+    this.patchCache = next;
+    await savePatches(this.projectDir, next);
+    this.emit('patches-changed', this.patches());
+  }
+
+  /** Records a new patch after checking it against the original copy. */
+  addPatch(p: { title: string; note?: string; originalBug?: boolean; body: PatchBody }, by: 'user' | 'claude'): Promise<Patch> {
+    return this.enqueue(async () => {
+      const body = await this.checkedBody(p.body);
+      if (this.sameListPatch(body)) throw new Error('이 이벤트에는 이미 수정이 있습니다. 그 수정을 고치세요');
+      const title = String(p.title ?? '').trim() || '이름 없는 수정';
+      const patch: Patch = {
+        id: newPatchId(), title, note: p.note ?? '', enabled: true, originalBug: p.originalBug === true,
+        createdBy: by, createdAt: new Date().toISOString(), body,
+      };
+      await this.savePatchList([...this.patchList(), patch]);
+      return structuredClone(patch);
+    });
+  }
+
+  /** Changes a patch's title, note, switches or body (a new body is checked like a new patch). */
+  updatePatch(id: string, change: Partial<Pick<Patch, 'title' | 'note' | 'enabled' | 'originalBug'>> & { body?: PatchBody }): Promise<Patch> {
+    return this.enqueue(async () => {
+      const list = this.patchList();
+      const at = list.findIndex((p) => p.id === id);
+      if (at < 0) throw new Error(`없는 수정입니다: ${id}`);
+      const next: Patch = { ...structuredClone(list[at]) };
+      if (change.title !== undefined) next.title = String(change.title).trim() || next.title;
+      if (change.note !== undefined) next.note = String(change.note);
+      if (change.enabled !== undefined) next.enabled = change.enabled === true;
+      if (change.originalBug !== undefined) next.originalBug = change.originalBug === true;
+      if (change.body !== undefined) next.body = await this.checkedBody(change.body);
+      if (next.enabled && this.sameListPatch(next.body, id)) throw new Error('이 이벤트에는 이미 수정이 있습니다. 그 수정을 고치세요');
+      await this.savePatchList(list.map((p, i) => (i === at ? next : p)));
+      return structuredClone(next);
+    });
+  }
+
+  removePatch(id: string): Promise<void> {
+    return this.enqueue(async () => {
+      const list = this.patchList();
+      if (!list.some((p) => p.id === id)) return;
+      await this.savePatchList(list.filter((p) => p.id !== id));
+    });
+  }
+
+  /** Keeps at most one font patch: the given font (null removes it). */
+  setGameFontPatch(fontPath: string | null, subset: boolean): Promise<void> {
+    return this.enqueue(async () => {
+      const rest = this.patchList().filter((p) => p.body.kind !== 'font');
+      if (fontPath === null) {
+        if (rest.length !== this.patchList().length) await this.savePatchList(rest);
+        return;
+      }
+      const old = this.patchList().find((p) => p.body.kind === 'font');
+      const patch: Patch = {
+        id: old?.id ?? newPatchId(), title: `게임 폰트: ${nodePath.basename(fontPath)}`, note: old?.note ?? '', enabled: true,
+        originalBug: false, createdBy: 'user', createdAt: old?.createdAt ?? new Date().toISOString(), body: { kind: 'font', fontPath, subset: subset === true },
+      };
+      await this.savePatchList([...rest, patch]);
+    });
+  }
+
+  /** The patches marked as bugs of the original game, as Markdown for the game's creator. */
+  async creatorReport(): Promise<string> {
+    const names = await loadNames(this.projectDir);
+    const bugs = this.patchList().filter((p) => p.originalBug);
+    const lines = [`# ${this.meta.name} 원본 버그 수정 목록`, ''];
+    if (bugs.length === 0) lines.push('원본 버그로 표시된 수정이 없습니다.');
+    for (const [i, p] of bugs.entries()) {
+      lines.push(`## ${i + 1}. ${p.title}`, '');
+      const b = p.body;
+      if (b.kind === 'event') {
+        lines.push(`- 위치: ${listLabel(b.file, b.listPath)} (${b.file})`);
+        lines.push(`- 무엇을 왜: ${p.note.trim() || '(설명 없음)'}`, '- 바꾼 내용:');
+        const original = (await this.originalList(b.file, b.listPath)) ?? [];
+        const said = (c: EventCommand | undefined) => (c ? describeCommand(c, names) : '(없는 줄)');
+        for (const op of b.ops) {
+          if (op.op === 'insert') {
+            lines.push(`  - ${op.after < 0 ? '맨 앞에' : `${op.after}번 줄 뒤에`} 끼워 넣음`);
+            for (const c of op.commands) lines.push(`    + ${describeCommand(c, names)}`);
+          } else if (op.op === 'delete') {
+            lines.push(`  - ${op.at}번 줄 지움`, `    − ${said(original[op.at])}`);
+          } else {
+            lines.push(`  - ${op.at}번 줄 바꿈`, `    − ${said(original[op.at])}`);
+            for (const c of op.commands) lines.push(`    + ${describeCommand(c, names)}`);
+          }
+        }
+      } else if (b.kind === 'json') {
+        const where = b.path.map((s) => (typeof s === 'object' ? s.key : s)).join('.');
+        lines.push(`- 위치: ${b.file} · ${where}`, `- 무엇을 왜: ${p.note.trim() || '(설명 없음)'}`, `- 바꾼 내용: ${JSON.stringify(b.baseValue)} → ${JSON.stringify(b.value)}`);
+      } else if (b.kind === 'plugin') {
+        lines.push(`- 위치: js/plugins/${b.name}.js (새 플러그인)`, `- 무엇을 왜: ${p.note.trim() || b.description || '(설명 없음)'}`);
+      } else {
+        lines.push(`- 게임 폰트: ${nodePath.basename(b.fontPath)}`, `- 무엇을 왜: ${p.note.trim() || '(설명 없음)'}`);
+      }
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
 }
 
 /** Gives the pixel-width check for a unit (only dialogue is checked), or undefined to use the character count. */
 export type PxChecker = (unit: TextUnit) => PxCheck | undefined;
+
+// ---- plan 5: patches (imports and events; appended so the lines above stay as they were) ----
+import { getAtPath } from '../core/extract/plugins.js';
+import { readJsonFile } from '../core/util/json.js';
+import type { PathSeg } from '../core/types.js';
+import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patches/types.js';
+import { listHash, sameContent } from '../core/patches/hash.js';
+import { validateOps } from '../core/patches/listOps.js';
+import { newPatchId, PATCHES_FILE, savePatches } from '../core/patches/store.js';
+import {
+  patchStatuses as corePatchStatuses, REASON_BAD_PLUGIN_NAME, REASON_CHANGED, REASON_NO_EVENT, REASON_NO_FILE, REASON_VALUE_CHANGED, validPluginName,
+} from '../core/patches/apply.js';
+import { loadNames } from '../core/events/names.js';
+import { describeCommand } from '../core/events/describe.js';
+import { listLabel } from '../core/events/browse.js';
+import { registerFontContributor } from './fontEmbed.js';
+
+export interface ProjectService {
+  on(event: 'patches-changed', listener: (p: Patch[]) => void): this;
+  off(event: 'patches-changed', listener: (p: Patch[]) => void): this;
+  emit(event: 'patches-changed', p: Patch[]): boolean;
+}

@@ -256,7 +256,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 채팅 도구: `event_read` 가 풀어쓴 줄과 해시를 주고 `raw` 없이 원본 JSON 이 없다. `event_patch` 뒤 `patches()` 에 `createdBy: 'claude'` 인 수정이 있다. 같은 목록에 다시 `event_patch` 하면 수정이 늘지 않고 `ops` 가 바뀐다
 - `creatorReport` 가 `originalBug` 인 수정만 담고, 풀어쓴 연산 글(`+ 스위치 45 [기록1 완료] = 켬`)이 들어 있다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정과 이벤트 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정과 이벤트 연결"`
 
 ### Task 8: 이벤트 화면
 

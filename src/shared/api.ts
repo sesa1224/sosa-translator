@@ -275,3 +275,50 @@ export interface Api {
     applyImport: Async<InvokeChannels['exchange:applyImport']>;
   };
 }
+
+// ---- Plan 5: events and patches (added below; existing lines above are unchanged) ----
+export type { EventCommand, ListOp, Patch, PatchBody, PatchState, PatchStatus } from '../core/patches/types.js';
+type PatchT = import('../core/patches/types.js').Patch;
+type PatchBodyT = import('../core/patches/types.js').PatchBody;
+type PathSegT = import('../core/types.js').PathSeg;
+/** Copies of src/core/events types (checked in src/main/ipc.ts). count: commands the line stands for (a dialogue with its 401s). */
+export interface EventLine { index: number; indent: number; text: string; code: number; count: number }
+export interface EventFileInfo { file: string; label: string; events: number }
+export interface EventListInfo { key: string; label: string; listPath: PathSegT[]; pages?: number; condition: string | null; commandCount: number }
+export interface EventDetail { label: string; condition: string | null; hash: string; lines: EventLine[]; raw: import('../core/patches/types.js').EventCommand[] }
+export interface EventRef { file: string; listPath: PathSegT[]; label: string; index: number; text: string; access: 'read' | 'write' }
+export type UsageTarget = { type: 'switch' | 'variable' | 'commonEvent' | 'item' | 'picture'; id: number | string };
+export interface PatchList { patches: PatchT[]; statuses: import('../core/patches/types.js').PatchStatus[] }
+export interface NewPatch { title: string; note?: string; originalBug?: boolean; body: PatchBodyT }
+export type PatchChange = Partial<Pick<PatchT, 'title' | 'note' | 'enabled' | 'originalBug'>> & { body?: PatchBodyT };
+/** firstRun: the test-play copy is being made for the first time (slow). */
+export interface GameState { state: 'idle' | 'preparing' | 'running'; done?: number; total?: number; firstRun?: boolean }
+export interface PushEvents { 'patches:changed': PatchList; 'game:state': GameState }
+/** Plan 5 request/response channels (kept apart from InvokeChannels so that list stays as it was). */
+export interface EventInvokeChannels {
+  'events:files': () => EventFileInfo[];
+  'events:list': (file: string) => EventListInfo[];
+  'events:read': (file: string, listPath: PathSegT[]) => EventDetail;
+  'events:usage': (target: UsageTarget) => EventRef[];
+  'patches:list': () => PatchList;
+  'patches:add': (p: NewPatch) => PatchT;
+  'patches:update': (id: string, p: PatchChange) => PatchT;
+  'patches:remove': (id: string) => void;
+  'patches:setGameFont': (fontPath: string | null, subset: boolean) => void;
+  'patches:creatorReport': () => string;
+  'game:run': () => void;
+  'game:stop': () => void;
+}
+export type EventInvokeChannel = keyof EventInvokeChannels;
+type AsyncE<F> = F extends (...a: infer A) => infer R ? (...a: A) => Promise<R> : never;
+export interface EventsApi {
+  files: AsyncE<EventInvokeChannels['events:files']>; list: AsyncE<EventInvokeChannels['events:list']>;
+  read: AsyncE<EventInvokeChannels['events:read']>; usage: AsyncE<EventInvokeChannels['events:usage']>;
+}
+export interface PatchesApi {
+  list: AsyncE<EventInvokeChannels['patches:list']>; add: AsyncE<EventInvokeChannels['patches:add']>;
+  update: AsyncE<EventInvokeChannels['patches:update']>; remove: AsyncE<EventInvokeChannels['patches:remove']>;
+  setGameFont: AsyncE<EventInvokeChannels['patches:setGameFont']>; creatorReport: AsyncE<EventInvokeChannels['patches:creatorReport']>;
+}
+export interface GameApi { run: AsyncE<EventInvokeChannels['game:run']>; stop: AsyncE<EventInvokeChannels['game:stop']> }
+export interface Api { events: EventsApi; patches: PatchesApi; game: GameApi }

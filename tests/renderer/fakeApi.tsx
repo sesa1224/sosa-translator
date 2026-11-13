@@ -70,6 +70,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       : [];
     return { row: r, issues, refs: [r.location] };
   };
+  const ev = (): EventsFake => evState;
   const fake: FakeApi = {
     calls,
     opened: o.opened ?? false,
@@ -171,8 +172,29 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     story: {
       scenes: rec('story.scenes', (file: string) => pv.scenes[file] ?? []),
     },
+    // ---- plan 5: events, patches, game ----
+    events: {
+      files: rec('events.files', () => ev().files),
+      list: rec('events.list', (file: string) => ev().lists[file] ?? []),
+      read: rec('events.read', (file: string, listPath: unknown[]) => ev().read(file, listPath)),
+      usage: rec('events.usage', (target: UsageTarget) => ev().usage(target)),
+    },
+    patches: {
+      list: rec('patches.list', () => ({ patches: ev().patches, statuses: ev().statuses })),
+      add: rec('patches.add', (p: NewPatch) => ({ id: 'new-patch', note: '', enabled: true, originalBug: false, createdBy: 'user' as const, createdAt: '', ...p })),
+      update: rec('patches.update', (id: string, p: PatchChange) => ({ ...ev().patches.find((x) => x.id === id)!, ...p })),
+      remove: rec('patches.remove', () => undefined),
+      setGameFont: rec('patches.setGameFont', () => undefined),
+      creatorReport: rec('patches.creatorReport', () => ev().report),
+    },
+    game: {
+      run: rec('game.run', () => { if (ev().runError) throw new Error(ev().runError!); }),
+      stop: rec('game.stop', () => undefined),
+    },
   };
   const pv = defaultPreviewFake();
+  const evState = defaultEventsFake();
+  eventsFakes.set(fake, evState);
   previewFakes.set(fake, pv);
   return fake;
 }
@@ -220,4 +242,31 @@ const previewFakes = new WeakMap<FakeApi, PreviewFake>();
 /** The preview state behind a fake api. */
 export function previewFake(api: FakeApi): PreviewFake {
   return previewFakes.get(api)!;
+}
+
+// ---- plan 5: events, patches, game ----
+import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
+/** What the fake's events, patches and game calls give back; tests change these. */
+export interface EventsFake {
+  files: EventFileInfo[];
+  lists: Record<string, EventListInfo[]>;
+  read: (file: string, listPath: unknown[]) => EventDetail;
+  usage: (target: UsageTarget) => EventRef[];
+  patches: Patch[];
+  statuses: PatchStatus[];
+  report: string;
+  runError: string | null;
+}
+function defaultEventsFake(): EventsFake {
+  return {
+    files: [], lists: {},
+    read: () => ({ label: '', condition: null, hash: '', lines: [], raw: [] }),
+    usage: () => [],
+    patches: [], statuses: [], report: '', runError: null,
+  };
+}
+const eventsFakes = new WeakMap<FakeApi, EventsFake>();
+/** The events/patches state behind a fake api. */
+export function eventsFake(api: FakeApi): EventsFake {
+  return eventsFakes.get(api)!;
 }

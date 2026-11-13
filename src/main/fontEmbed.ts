@@ -124,7 +124,11 @@ export const lastFontEmbed = new WeakMap<ProjectService, { missing: number; byte
  * Adds the font of the project's font patch and the JS files of its plugin patches to every build.
  * Nothing is added while those patches are off or in conflict.
  */
+const registered = new WeakSet<ProjectService>();
+
 export function registerFontContributor(svc: ProjectService): void {
+  if (registered.has(svc)) return;
+  registered.add(svc);
   svc.buildContributors.push(async (ctx) => {
     const out = new Map<string, string | Uint8Array>();
     const patches = await appliedPatches(ctx.projectDir, await loadPatches(ctx.projectDir).catch(() => []));

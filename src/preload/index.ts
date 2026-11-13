@@ -107,6 +107,31 @@ const api: Api = {
   story: {
     scenes: (file) => callP('story:scenes', file),
   },
+  // ---- plan 5: events, patches, game ----
+  events: {
+    files: () => callE('events:files'),
+    list: (file) => callE('events:list', file),
+    read: (file, listPath) => callE('events:read', file, listPath),
+    usage: (target) => callE('events:usage', target),
+  },
+  patches: {
+    list: () => callE('patches:list'),
+    add: (p) => callE('patches:add', p),
+    update: (id, p) => callE('patches:update', id, p),
+    remove: (id) => callE('patches:remove', id),
+    setGameFont: (fontPath, subset) => callE('patches:setGameFont', fontPath, subset),
+    creatorReport: () => callE('patches:creatorReport'),
+  },
+  game: {
+    run: () => callE('game:run'),
+    stop: () => callE('game:stop'),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);
+
+/** call() for the plan 5 channels (a function declaration, so the api object above can use it). */
+function callE(channel: EventInvokeChannel, ...args: unknown[]): Promise<any> {
+  return call(channel as unknown as InvokeChannel, ...args);
+}
+import type { EventInvokeChannel } from '../shared/api.js';

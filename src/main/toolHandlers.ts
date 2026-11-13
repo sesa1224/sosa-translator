@@ -186,3 +186,100 @@ export async function callTool(svc: ProjectService, name: string, input: unknown
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// ---- plan 5: events and patches (appended; the tools above are unchanged) ----
+const RAW_MAX = 30;
+const USAGE_MAX = 50;
+const pathSeg = z.union([z.string(), z.number().int()]);
+const eventCommand = z.object({ code: z.number().int(), indent: z.number().int().min(0), parameters: z.array(z.any()) });
+const listOp = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('insert'), after: z.number().int().describe('원본 번호. -1 이면 맨 앞'), commands: z.array(eventCommand).min(1) }),
+  z.object({ op: z.literal('delete'), at: z.number().int().describe('원본 번호') }),
+  z.object({ op: z.literal('replace'), at: z.number().int().describe('원본 번호'), commands: z.array(eventCommand).min(1) }),
+]);
+
+TOOL_DEFS.push(
+  {
+    name: 'event_files',
+    description: '이벤트가 있는 파일(맵, 커먼이벤트, 전투 이벤트)의 목록을 볼 때 쓴다.',
+    inputSchema: z.object({}),
+  },
+  {
+    name: 'event_list',
+    description: '한 파일의 이벤트 목록(맵은 페이지마다 한 줄)과 조건, listPath 를 볼 때 쓴다.',
+    inputSchema: z.object({ file: z.string().describe('event_files 의 file (예: data/Map001.json)') }),
+  },
+  {
+    name: 'event_read',
+    description: '이벤트 하나를 풀어쓴 글로 읽을 때 쓴다. 줄마다 원본 번호(index)가 있고, 수정에 쓸 해시를 준다. raw true 와 from/to 로 그 범위의 원본 커맨드를 최대 30줄 받는다.',
+    inputSchema: z.object({
+      file: z.string(), listPath: z.array(pathSeg).describe('event_list 의 listPath'),
+      raw: z.boolean().optional().describe('원본 커맨드를 받으려면 true'),
+      from: z.number().int().min(0).optional().describe('raw: 첫 원본 번호 (기본 0)'),
+      to: z.number().int().min(0).optional().describe('raw: 끝 원본 번호 (포함)'),
+    }),
+  },
+  {
+    name: 'usage_search',
+    description: '스위치, 변수, 커먼이벤트, 아이템, 그림이 어디서 켜지고(write) 읽히는지(read) 찾을 때 쓴다. 페이지 조건은 index -1.',
+    inputSchema: z.object({
+      type: z.enum(['switch', 'variable', 'commonEvent', 'item', 'picture']),
+      id: z.union([z.number().int(), z.string()]).describe('번호, 그림은 파일 이름'),
+    }),
+  },
+  {
+    name: 'event_patch',
+    description: '이벤트를 고칠 때 쓴다. 원본 번호 기준의 연산(insert after, delete at, replace at)을 낸다. 같은 이벤트에 수정이 있으면 그 수정의 연산을 이것으로 바꾼다.',
+    inputSchema: z.object({
+      title: z.string().describe('수정 제목 (사용자에게 보인다)'),
+      file: z.string(), listPath: z.array(pathSeg), baseHash: z.string().describe('event_read 의 hash'),
+      ops: z.array(listOp).min(1),
+      note: z.string().optional().describe('무엇을 왜 고쳤는지'),
+      originalBug: z.boolean().optional().describe('게임 원본의 결함을 고친 것이면 true'),
+    }),
+  },
+);
+
+HANDLERS.event_files = async (svc) => ({ files: await eventFiles(svc.projectDir) });
+HANDLERS.event_list = async (svc, input: { file: string }) => {
+  const events = await listEvents(svc.projectDir, input.file);
+  return { total: events.length, events: events.map(({ key: _key, ...e }) => e) };
+};
+HANDLERS.event_read = async (svc, input: { file: string; listPath: PathSeg[]; raw?: boolean; from?: number; to?: number }) => {
+  const ev = await readEvent(svc.projectDir, input.file, input.listPath);
+  const key = JSON.stringify([input.file, input.listPath]);
+  const patch = svc.patches().find((p) => p.body.kind === 'event' && JSON.stringify([p.body.file, p.body.listPath]) === key);
+  const out: Record<string, unknown> = {
+    label: ev.label, condition: ev.condition, hash: ev.hash, commandCount: ev.raw.length,
+    lines: ev.lines.map((l) => ({ index: l.index, indent: l.indent, text: l.text })),
+  };
+  if (patch && patch.body.kind === 'event') out.patch = { title: patch.title, enabled: patch.enabled, ops: patch.body.ops };
+  if (input.raw) {
+    const from = input.from ?? 0;
+    const to = Math.min(input.to ?? from + RAW_MAX - 1, from + RAW_MAX - 1, ev.raw.length - 1);
+    const raw = [];
+    for (let i = from; i <= to; i++) raw.push({ index: i, ...ev.raw[i] });
+    out.raw = raw;
+  }
+  return out;
+};
+HANDLERS.usage_search = async (svc, input: { type: UsageTarget['type']; id: number | string }) => {
+  const found = await findUsage(svc.projectDir, { type: input.type, id: input.id });
+  return { total: found.length, items: found.slice(0, USAGE_MAX).map(({ file, listPath, label, index, text, access }) => ({ file, listPath, label, index, text, access })) };
+};
+HANDLERS.event_patch = async (svc, input: { title: string; file: string; listPath: PathSeg[]; baseHash: string; ops: ListOp[]; note?: string; originalBug?: boolean }) => {
+  const body: PatchBody = { kind: 'event', file: input.file, listPath: input.listPath, baseHash: input.baseHash, ops: input.ops };
+  const key = JSON.stringify([input.file, input.listPath]);
+  const same = svc.patches().filter((p) => p.body.kind === 'event' && JSON.stringify([p.body.file, p.body.listPath]) === key);
+  const existing = same.find((p) => p.enabled) ?? same[0];
+  const p = existing
+    ? await svc.updatePatch(existing.id, { body, enabled: true, ...(input.note !== undefined ? { note: input.note } : {}), ...(input.originalBug !== undefined ? { originalBug: input.originalBug } : {}) })
+    : await svc.addPatch({ title: input.title, note: input.note, originalBug: input.originalBug, body }, 'claude');
+  const status = (await svc.patchStatuses()).find((s) => s.id === p.id);
+  return { id: p.id, title: p.title, updated: !!existing, state: status?.state ?? 'applied', reason: status?.reason };
+};
+
+import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
+import { findUsage, type UsageTarget } from '../core/events/usage.js';
+import type { PathSeg } from '../core/types.js';
+import type { ListOp, PatchBody } from '../core/patches/types.js';
