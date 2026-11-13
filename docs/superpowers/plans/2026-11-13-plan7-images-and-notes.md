@@ -216,7 +216,7 @@ buildFiles(contentPrefix: string): Promise<{ files: Map<string, Uint8Array>; ski
 - `image_set_recipe` 에 `fontPath` 를 줘도 목록(계획 4의 폰트 목록 + 기본 폰트)에 없는 경로면 무시하고 null 로 저장한다
 - (실제 CLI, `MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`) 시험 안에서 만든 그림(단색 바탕에 큰 흰 네모 하나)을 `image_view` 로 받게 하고 "이 그림에 흰 네모가 몇 개 보여?"에 숫자로 답하게 해, 도구 결과의 그림이 실제로 모델에게 보이는지 확인한다. 보이지 않으면(모델이 그림이 없다고 답하거나 CLI 가 그림 블록을 떨어뜨리면) **여기서 멈추고 보고한다**. 이 계획의 채팅 쪽 전체가 여기에 기댄다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인(실제 CLI 확인 포함) → `git commit -m "feat: 채팅 도구로 그림 보기와 지시서 쓰기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인(실제 CLI 확인 포함) → `git commit -m "feat: 채팅 도구로 그림 보기와 지시서 쓰기"`
 
 ### Task 7: 패치노트 기록
 

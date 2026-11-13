@@ -4,10 +4,14 @@ import type { Row } from '../shared/api.js';
 import { computeStats, filterRows, toRow } from '../shared/rows.js';
 import type { ProjectService } from './projectService.js';
 import type { KeepRule } from '../core/decisions/types.js';
+import type { Region } from '../core/images/types.js';
+import { imageServiceOf } from './images.js';
 
 export interface ToolDef { name: string; description: string; inputSchema: z.ZodObject<any> }
 
-export type ToolResult = { ok: true; data: unknown } | { ok: false; error: string };
+export type ToolResult = { ok: true; data: unknown; images?: ToolImage[] } | { ok: false; error: string };
+/** A picture a tool sends back to the model (plan 7). */
+export interface ToolImage { mediaType: 'image/png'; base64: string }
 
 const SEARCH_DEFAULT = 20;
 const SEARCH_MAX = 50;
@@ -181,8 +185,137 @@ export async function callTool(svc: ProjectService, name: string, input: unknown
     return { ok: false, error: `입력이 올바르지 않습니다: ${detail}` };
   }
   try {
-    return { ok: true, data: await HANDLERS[name](svc, parsed.data) };
+    const out = await HANDLERS[name](svc, parsed.data);
+    if (out instanceof WithImages) return { ok: true, data: out.data, images: out.images };
+    return { ok: true, data: out };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// ---- plan 7: picture tools (added below; the lists above are unchanged) ----
+
+/** A handler result that also carries pictures for the model. */
+export class WithImages {
+  constructor(readonly data: unknown, readonly images: ToolImage[]) {}
+}
+
+const pngImage = (png: Uint8Array): ToolImage => ({ mediaType: 'image/png', base64: Buffer.from(png).toString('base64') });
+const IMAGE_LIST_DEFAULT = 50;
+const IMAGE_LIST_MAX = 200;
+const imageStatus = z.enum(['none', 'todo', 'done', 'manual', 'skip']);
+const hexColor = z.string().describe("'#rrggbb' 또는 반투명 '#rrggbbaa'");
+const regionInput = z.object({
+  rect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).describe('원본 그림의 픽셀 좌표'),
+  erase: z.enum(['none', 'fill', 'sample']).optional().describe('none 안 지움, fill fillColor 로 채움, sample 영역 바로 바깥 색으로 채움 (기본 sample)'),
+  fillColor: hexColor.optional(),
+  text: z.string().optional().describe('넣을 번역문. 줄바꿈은 \n. 빈 글이면 지우기만'),
+  source: z.string().optional().describe('그림에 원래 적혀 있던 글'),
+  fontPath: z.string().optional().describe('보통 비워 둔다(기본 폰트)'),
+  size: z.number().optional().describe('글자 크기 px (원본 기준, 기본 24)'),
+  color: hexColor.optional(),
+  align: z.enum(['left', 'center', 'right']).optional(),
+  valign: z.enum(['top', 'middle', 'bottom']).optional(),
+  lineHeight: z.number().optional().describe('줄 높이 배수 (기본 1.25)'),
+  bold: z.boolean().optional(),
+  stroke: z.object({ color: hexColor, width: z.number() }).optional().describe('글자 테두리'),
+  shadow: z.object({ color: hexColor, dx: z.number(), dy: z.number(), blur: z.number() }).optional(),
+});
+
+TOOL_DEFS.push(
+  {
+    name: 'image_sheet',
+    description: '게임 그림을 번호 붙은 썸네일 격자(모음판) 한 장으로 볼 때 쓴다. 한 장에 20개, 글자가 있는 그림을 고를 때 먼저 본다.',
+    inputSchema: z.object({
+      folder: z.string().optional().describe("폴더로 좁히기, 예 'img/pictures'"),
+      status: imageStatus.optional().describe('상태로 좁히기 (none 아직 안 봄)'),
+      page: z.number().int().positive().optional().describe('쪽 번호 (기본 1)'),
+    }),
+  },
+  {
+    name: 'image_view',
+    description: '그림 한 장을 크게 볼 때 쓴다. rendered 는 지시서대로 찍은 결과. 긴 변 1568px 이하로 줄여 보내므로 좌표는 scale 로 나눠 원본 좌표로 바꾼다.',
+    inputSchema: z.object({ file: z.string().describe("그림 파일, 예 'img/pictures/menu.png'"), which: z.enum(['original', 'rendered']).optional().describe('기본 original') }),
+  },
+  {
+    name: 'image_set_recipe',
+    description: '그림의 작업 지시서(글자 영역마다 지우는 방식, 번역문, 크기, 색, 정렬)를 쓸 때 쓴다. 이 그림의 영역 전체를 바꾼다. 좌표는 원본 픽셀.',
+    inputSchema: z.object({
+      file: z.string().describe('그림 파일'),
+      regions: z.array(regionInput).describe('글자 영역들'),
+      done: z.boolean().optional().describe('true 면 끝남으로 표시해 패치에 넣는다'),
+    }),
+  },
+  {
+    name: 'image_set_status',
+    description: '그림의 상태를 바꿀 때 쓴다. 글자가 없는 그림은 skip, 다시 할 것은 todo, 다 된 것은 done.',
+    inputSchema: z.object({ file: z.string().describe('그림 파일'), status: z.enum(['todo', 'done', 'skip']) }),
+  },
+  {
+    name: 'image_list',
+    description: '그림 목록을 글로만 볼 때 쓴다(그림 없음). 파일, 크기, 상태, 문제, 이벤트에서 쓰인 횟수.',
+    inputSchema: z.object({
+      status: imageStatus.optional(), folder: z.string().optional(),
+      limit: z.number().int().positive().optional().describe(`최대 개수 (기본 ${IMAGE_LIST_DEFAULT}, 최대 ${IMAGE_LIST_MAX})`),
+    }),
+  },
+);
+
+function needImages(svc: ProjectService) {
+  const images = imageServiceOf(svc);
+  if (!images) throw new Error('그림 기능을 쓸 수 없습니다(게임 폴더를 찾을 수 없음)');
+  return images;
+}
+
+const compactRegion = (r: Region) => ({ id: r.id, rect: r.rect, text: r.text, ...(r.source ? { source: r.source } : {}), size: r.size, erase: r.erase });
+
+HANDLERS.image_sheet = async (svc, input: { folder?: string; status?: z.infer<typeof imageStatus>; page?: number }) => {
+  const s = await needImages(svc).sheet({ folder: input.folder, status: input.status, page: input.page ?? 1 });
+  const data = { page: input.page ?? 1, pages: s.pages, items: s.items };
+  return s.items.length > 0 ? new WithImages(data, [pngImage(s.png)]) : data;
+};
+HANDLERS.image_view = async (svc, input: { file: string; which?: 'original' | 'rendered' }) => {
+  const images = needImages(svc);
+  const which = input.which ?? 'original';
+  const entry = await images.entry(input.file);
+  if (!entry) throw new Error(`없는 그림입니다: ${input.file}`);
+  const v = await images.view(input.file, which);
+  const recipe = images.recipe(input.file);
+  const data = {
+    file: input.file, which, width: entry.width, height: entry.height, scale: Math.round(v.scale * 10000) / 10000, status: entry.status,
+    ...(entry.problem ? { problem: entry.problem } : {}),
+    ...(recipe ? { regions: recipe.regions.map(compactRegion) } : {}),
+  };
+  return new WithImages(data, [pngImage(v.png)]);
+};
+HANDLERS.image_set_recipe = async (svc, input: { file: string; regions: (Partial<Region> & { rect: Region['rect'] })[]; done?: boolean }) => {
+  const images = needImages(svc);
+  // Only fonts the user can see in the font list (or the default) may be named; anything else is made up.
+  const known = new Set([...images.knownFonts(), ...(images.defaultFontPath ? [images.defaultFontPath] : [])].map((p) => p.toLowerCase()));
+  const regions = input.regions.map((r) => ({ ...r, fontPath: r.fontPath && known.has(r.fontPath.toLowerCase()) ? r.fontPath : null }));
+  let recipe = await images.setRecipe(input.file, regions, 'claude');
+  if (input.done) {
+    await images.setStatus(input.file, 'done');
+    recipe = images.recipe(input.file)!;
+  }
+  const overflow = await images.overflow(input.file);
+  return {
+    file: input.file, status: recipe.status, regions: recipe.regions.map(compactRegion),
+    overflow: Object.fromEntries(Object.entries(overflow).filter(([, o]) => o.overflowX || o.overflowY)),
+    ...(recipe.note ? { glossaryNote: recipe.note } : {}),
+  };
+};
+HANDLERS.image_set_status = async (svc, input: { file: string; status: 'todo' | 'done' | 'skip' }) => {
+  const images = needImages(svc);
+  await images.setStatus(input.file, input.status);
+  return { file: input.file, status: images.recipe(input.file)?.status ?? input.status };
+};
+HANDLERS.image_list = async (svc, input: { status?: z.infer<typeof imageStatus>; folder?: string; limit?: number }) => {
+  const folder = input.folder ? input.folder.replace(/\/+$/, '') + '/' : '';
+  const all = (await needImages(svc).list()).filter((e) => (!folder || e.file.startsWith(folder)) && (!input.status || e.status === input.status));
+  const limit = Math.min(input.limit ?? IMAGE_LIST_DEFAULT, IMAGE_LIST_MAX);
+  return {
+    total: all.length,
+    items: all.slice(0, limit).map((e) => ({ file: e.file, width: e.width, height: e.height, status: e.status, ...(e.problem ? { problem: e.problem } : {}), usedByEvents: e.usedByEvents })),
+  };
+};

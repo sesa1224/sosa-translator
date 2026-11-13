@@ -7,6 +7,8 @@ import { encryptAsset } from '../core/engine/crypto.js';
 import { checkGlossary } from '../core/glossary/match.js';
 import { ImageCatalog, pngSize } from '../core/images/catalog.js';
 import { fitInside, MAX_CLAUDE_SIDE } from '../core/images/sheet.js';
+import { layoutRegionText } from '../core/images/layoutText.js';
+import { LoadedFont } from './fonts/fontFile.js';
 import { IMAGES_FILE, isBuildable, normalizeRegion, recipeProblem, saveImages } from '../core/images/store.js';
 import type { ImageEntry, ImageRecipe, ImagesFile, ImageStatus, Rect, Region } from '../core/images/types.js';
 import type { GameInfo } from '../core/types.js';
@@ -53,6 +55,9 @@ export class ImageService extends EventEmitter {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly fontExists: (p: string) => boolean;
   private readonly readFont: (p: string) => Promise<Uint8Array>;
+  /** Font files the chat may name (the font list the user sees); others are dropped. Set by the IPC layer. */
+  knownFonts: () => string[] = () => [];
+  private readonly loadedFonts = new Map<string, Promise<LoadedFont | null>>();
 
   constructor(private readonly o: {
     svc: ProjectService; game: GameInfo | null; render: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'>;
@@ -65,6 +70,22 @@ export class ImageService extends EventEmitter {
     this.catalog = o.game ? new ImageCatalog(o.svc.projectDir, o.game, { folders: o.folders }) : null;
     this.fontExists = o.fontExists ?? ((p) => existsSync(p));
     this.readFont = o.readFont ?? (async (p) => new Uint8Array(await readFile(p)));
+    attachImageService(o.svc, this);
+  }
+
+  /** Overflow of each region of a picture's recipe, measured with its font. */
+  async overflow(file: string): Promise<Record<string, { overflowX: boolean; overflowY: boolean }>> {
+    const r = this.data.recipes[file];
+    if (!r) return {};
+    return regionOverflow(r.regions, this.data.defaultFontPath, (p) => {
+      const key = this.fontStamp(p);
+      let f = this.loadedFonts.get(key);
+      if (!f) {
+        f = this.fontExists(p) ? LoadedFont.load(p).catch(() => null) : Promise.resolve(null);
+        this.loadedFonts.set(key, f);
+      }
+      return f;
+    });
   }
 
   private get dir(): string {
@@ -397,4 +418,34 @@ export function registerImageContributor(svc: ProjectService, images: ImageServi
     lastImageSkips.set(images, r.skipped);
     return r.files;
   });
+}
+
+/** The image service of each open project (the chat tools find it from the project). */
+const services = new WeakMap<ProjectService, ImageService>();
+
+export function attachImageService(svc: ProjectService, images: ImageService | null): void {
+  if (images) services.set(svc, images);
+  else services.delete(svc);
+}
+
+export function imageServiceOf(svc: ProjectService): ImageService | undefined {
+  return services.get(svc);
+}
+
+/** Whether each region's text fits its area with the region's font (unknown fonts are left out). */
+export async function regionOverflow(
+  regions: Region[], defaultFontPath: string | null, load: (p: string) => Promise<{ measure: (t: string, size: number) => { width: number } } | null>,
+): Promise<Record<string, { overflowX: boolean; overflowY: boolean }>> {
+  const out: Record<string, { overflowX: boolean; overflowY: boolean }> = {};
+  for (const r of regions) {
+    if (r.text.trim() === '') continue;
+    const p = r.fontPath ?? defaultFontPath;
+    const font = p ? await load(p) : null;
+    if (!font) continue;
+    // Bold text is drawn a little wider than the font's advances; 5% keeps the warning on the safe side.
+    const k = r.bold ? 1.05 : 1;
+    const l = layoutRegionText(r, (t) => font.measure(t, r.size).width * k);
+    out[r.id] = { overflowX: l.overflowX, overflowY: l.overflowY };
+  }
+  return out;
 }
