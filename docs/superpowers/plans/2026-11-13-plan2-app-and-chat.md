@@ -570,7 +570,7 @@ test('패치 빌드 결과', async () => {
 
 항목 탭: 위치와 `refCount` 가 2 이상이면 "같은 문장 n곳", 원문(`CodeText`), 번역 편집 칸(textarea. `Ctrl+Enter` 로 저장, 저장하면 `unit.setTranslation`), 검사 결과 목록(문제가 없으면 "통과 · 제어 코드 일치" 한 줄, 있으면 규칙별 한 줄), 버튼 "채팅으로 말하기"(오른쪽을 채팅 탭으로 바꾸고 이 항목을 붙인다), "지우기", "승인"(상태가 `error` 이거나 번역이 없으면 누를 수 없고 이유를 옆에 적는다). 선택이 없으면 "줄을 고르면 여기에 자세한 내용이 나와요".
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('제어문자 칩', () => {
@@ -595,10 +595,10 @@ test('채팅으로 말하기는 항목을 붙인다', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/renderer/text.test.tsx` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 텍스트 표와 항목 탭"`**
+- [x] **Step 2: `npx vitest run tests/renderer/text.test.tsx` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 텍스트 표와 항목 탭"`**
 
 ### Task 11: 채팅 탭
 

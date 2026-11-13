@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import type { Api } from '../shared/api';
+import { ItemPanel } from './components/ItemPanel';
 import { ProjectPicker } from './components/ProjectPicker';
 import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
+import { TextTable } from './components/TextTable';
 import { BuildBanner, TopBar } from './components/TopBar';
 import { useApp } from './state';
 
@@ -22,8 +24,22 @@ function RightPanel() {
             className={rightTab === 'chat' ? 'on' : ''} onClick={() => useApp.setRightTab('chat')}>채팅</button>
         </div>
       </div>
-      <div id="panel-right" role="tabpanel" aria-labelledby={rightTab === 'item' ? 'tab-item' : 'tab-chat'} className="right-body" />
+      <div id="panel-right" role="tabpanel" aria-labelledby={rightTab === 'item' ? 'tab-item' : 'tab-chat'} className="right-body">
+        {rightTab === 'item' ? <ItemPanel /> : <AttachedChip />}
+      </div>
     </aside>
+  );
+}
+
+function AttachedChip() {
+  const { attachedId, rowsById } = useApp();
+  const row = attachedId ? rowsById[attachedId] : undefined;
+  if (!row) return null;
+  return (
+    <div className="attached">
+      <span className="tag">{`붙은 항목 · ${row.location}`}</span>
+      <button type="button" className="x" aria-label="붙은 항목 떼기" onClick={() => useApp.attach(null)}>×</button>
+    </div>
   );
 }
 
@@ -36,7 +52,7 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
-          {view === 'text' ? <h1 className="page-title">텍스트</h1> : <h1 className="page-title">설정</h1>}
+          {view === 'text' ? <TextTable /> : <h1 className="page-title">설정</h1>}
         </main>
         <RightPanel />
       </div>
