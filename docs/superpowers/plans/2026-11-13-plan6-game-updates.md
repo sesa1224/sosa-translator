@@ -244,7 +244,7 @@ export interface UpdateSummary {
 - 빌드가 실패하면(기여자 하나가 던지게 한다) 그 번호의 폴더가 없고, 다음 빌드가 같은 번호를 쓴다
 - 패치노트 머리에 `(게임 1.1)`, 버전이 바뀐 빌드에 "게임 1.1 에 맞춤"
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: Claude CLI 안내와 남은 마무리"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: Claude CLI 안내와 남은 마무리"`
 
 ### Task 9: 전체 흐름 시험과 문서
 

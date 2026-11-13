@@ -89,3 +89,47 @@ test('MV www 게임의 설치 방법에는 www 가 나온다', async () => {
   const b = await svc.build();
   expect(strFromU8((await zipOf(b.zipPath))['설치 방법.txt'])).toContain('www');
 });
+
+// ---- plan 6, task 8 ----
+test('빌드가 실패하면 기여자가 먼저 쓴 폴더가 지워지고 다음 빌드가 같은 번호를 쓴다', async () => {
+  const { svc, proj, idOf } = await project();
+  await svc.setTranslation(idOf('月光草'), '월광초', 'user');
+  const fail = async () => { throw new Error('기여자 실패'); };
+  svc.buildContributors.push(fail);
+  await expect(svc.build()).rejects.toThrow('기여자 실패');
+  expect(existsSync(path.join(proj, 'builds', '001'))).toBe(false);
+  svc.buildContributors.splice(svc.buildContributors.indexOf(fail), 1);
+  const b = await svc.build();
+  expect(b.number).toBe(1);
+});
+
+test('빌드 기록은 manifest 가 없는 폴더를 건너뛴다', async () => {
+  const { finishedBuilds } = await import('../../src/core/notes/snapshot.js');
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const { svc, proj, idOf } = await project();
+  await svc.setTranslation(idOf('月光草'), '월광초', 'user');
+  await svc.build();
+  await mkdir(path.join(proj, 'builds', '002'), { recursive: true });
+  await writeFile(path.join(proj, 'builds', '002', 'notes.txt'), '반쯤');
+  expect(await finishedBuilds(proj)).toEqual([1]);
+});
+
+test('패치노트 머리에 게임 버전, 버전이 바뀐 빌드에는 맞춤 표시', async () => {
+  const { makeTempDir } = await import('../helpers/fs.js');
+  const { makeMiniGame } = await import('../helpers/miniGame.js');
+  const { svc, idOf } = await project();
+  await svc.setTranslation(idOf('いいよ'), '좋아', 'user');
+  const b1 = await svc.build();
+  const n1 = strFromU8((await zipOf(b1.zipPath))['패치노트.txt']);
+  expect(n1).toContain('약초원 한국어 패치 빌드 1 (게임 v1)');
+  expect(n1).not.toContain('에 맞춤');
+
+  const v2 = await makeTempDir();
+  await makeMiniGame(v2, { variant: 'v2' });
+  await svc.importVersion(v2, '1.1');
+  registerNotesContributor(svc, { images: null });   // ipc does this when it opens the project again
+  const b2 = await svc.build();
+  const n2 = strFromU8((await zipOf(b2.zipPath))['패치노트.txt']);
+  expect(n2).toContain('약초원 한국어 패치 빌드 2 (게임 1.1)');
+  expect(n2).toContain('게임 1.1 에 맞춤');
+});

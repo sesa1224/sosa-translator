@@ -102,3 +102,23 @@ test('채팅 도구 목록과 시스템 프롬프트', () => {
   expect(p).toContain('게임이 업데이트된 뒤 충돌난 수정은 update_summary 로 목록을 보고, event_read 로 옛 버전(version)과 지금 버전을 각각 읽어 같은 뜻의 수정을 지금 버전의 번호로 다시 낸다(event_patch). 원래 수정의 의도를 바꾸지 않는다.');
   expect(path.isAbsolute(v2)).toBe(true);
 });
+
+// ---- plan 6, task 8: Claude CLI status ----
+import { parseLoggedIn } from '../../src/main/claude/auth.js';
+
+test('claude auth status 의 JSON 에서 loggedIn 을 읽는다', () => {
+  expect(parseLoggedIn('{\n  "loggedIn": true,\n  "authMethod": "claude.ai"\n}\n')).toBe(true);
+  expect(parseLoggedIn('{"loggedIn": false}')).toBe(false);
+  expect(parseLoggedIn('Not logged in')).toBeNull();
+  expect(parseLoggedIn('')).toBeNull();
+});
+
+test('app:claudeStatus: CLI 가 없으면 found false, 있으면 로그인 상태', async () => {
+  deps.claudeLoggedIn = async () => false;
+  deps.claudePath = () => null;
+  expect(await invoke('app:claudeStatus')).toEqual({ found: false, path: null, loggedIn: null });
+  deps.claudePath = () => 'C:/fake/claude.exe';
+  expect(await invoke('app:claudeStatus')).toEqual({ found: true, path: 'C:/fake/claude.exe', loggedIn: false });
+  deps.claudeLoggedIn = async () => true;
+  expect(await invoke('app:claudeStatus')).toMatchObject({ loggedIn: true });
+});

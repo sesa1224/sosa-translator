@@ -518,8 +518,18 @@ export class ProjectService extends EventEmitter {
   build(): Promise<BuildResult> {
     return this.enqueue(async () => {
       const before = this.store.entries();
+      const buildsBefore = await numberedBuildFolders(this.projectDir);
       try {
         return await buildPatch(this.projectDir, this.unitList, this.store, { contributors: this.buildContributors });
+      } catch (e) {
+        // A contributor may have written into builds/NNN before the build failed. A folder without a manifest left
+        // behind would take the number, so the next build would skip it: remove the ones this build made.
+        for (const n of await numberedBuildFolders(this.projectDir)) {
+          if (buildsBefore.has(n)) continue;
+          const dir = nodePath.join(this.projectDir, 'builds', n);
+          if (!existsSync(nodePath.join(dir, 'manifest.json'))) await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+        }
+        throw e;
       } finally {
         const after = this.store.entries();
         const ids = Object.keys(after).filter((id) => before[id]?.status !== after[id].status);
@@ -851,4 +861,15 @@ export interface ProjectService {
   on(event: 'reloaded', listener: () => void): this;
   off(event: 'reloaded', listener: () => void): this;
   emit(event: 'reloaded'): boolean;
+}
+// ---- plan 6, task 8 (appended) ----
+import { readdir as readDir, rm } from 'node:fs/promises';
+
+/** Names of the numbered folders under builds/. */
+async function numberedBuildFolders(projectDir: string): Promise<Set<string>> {
+  try {
+    return new Set((await readDir(nodePath.join(projectDir, 'builds'))).filter((n) => /^\d+$/.test(n)));
+  } catch {
+    return new Set();
+  }
 }

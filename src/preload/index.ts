@@ -80,6 +80,7 @@ const api: Api = {
   app: {
     claudePath: () => call('app:claudePath'),
     showItemInFolder: (file) => call('app:showItemInFolder', file),
+    claudeStatus: () => call('app:claudeStatus'),
   },
   decisions: {
     groups: () => call('decisions:groups'),
@@ -127,6 +128,7 @@ const api: Api = {
     remove: (id) => callE('patches:remove', id),
     setGameFont: (fontPath, subset) => callE('patches:setGameFont', fontPath, subset),
     creatorReport: () => callE('patches:creatorReport'),
+    lastFontEmbed: () => callE('patches:lastFontEmbed'),
   },
   game: {
     run: () => callE('game:run'),

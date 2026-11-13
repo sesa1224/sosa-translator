@@ -72,9 +72,15 @@ export function notesTitle(name: string, number: number): string {
   return `${name} 한국어 패치 빌드 ${number}`;
 }
 
-/** Notes for people, in Korean. Items that are zero get no line. */
-export function formatNotes(diff: BuildDiff, meta: { name: string; version: string }): string {
-  const out = [notesTitle(meta.name, diff.number), diff.previous === null ? '(첫 빌드)' : `(빌드 ${diff.previous} 대비)`];
+/**
+ * Notes for people, in Korean. Items that are zero get no line. label: the game version the patch is for (plan 6),
+ * put in the title; previousLabel: the game version of the build compared with, when known.
+ */
+export function formatNotes(diff: BuildDiff, meta: { name: string; version: string; label?: string; previousLabel?: string | null }): string {
+  const title = notesTitle(meta.name, diff.number) + (meta.label ? ` (게임 ${meta.label})` : '');
+  const out = [title, diff.previous === null ? '(첫 빌드)' : `(빌드 ${diff.previous} 대비)`];
+  if (diff.previous !== null && meta.label && meta.previousLabel && meta.previousLabel !== meta.label) out.push(`- 게임 ${meta.label} 에 맞춤`);
+  const head = out.length;
   if (diff.newTranslations > 0) out.push(`- 새 번역 ${diff.newTranslations}줄`);
   if (diff.changedTranslations > 0) out.push(`- 고친 번역 ${diff.changedTranslations}줄`);
   if (diff.removedTranslations > 0) out.push(`- 빠진 번역 ${diff.removedTranslations}줄`);
@@ -95,7 +101,7 @@ export function formatNotes(diff: BuildDiff, meta: { name: string; version: stri
     for (const a of x.added) out.push(`- ${label}: ${a}`);
     for (const r of x.removed) out.push(`- ${label} 빠짐: ${r}`);
   }
-  if (out.length === 2) out.push('- 바뀐 점 없음');
+  if (out.length === head) out.push('- 바뀐 점 없음');
   return out.join('\n');
 }
 

@@ -661,3 +661,29 @@ export const updateActions = {
   },
 };
 import type { StatusFilter } from '../shared/api';
+// ---- plan 6, task 8: Claude CLI guide and the last font embedding ----
+import type { ClaudeStatus, FontEmbedInfo } from '../shared/api';
+
+export interface AppState {
+  /** Whether the Claude CLI is there and logged in (undefined until checked). */
+  claudeStatus?: ClaudeStatus | null;
+  /** The last build's font embedding (null = none this session). */
+  fontEmbed?: FontEmbedInfo | null;
+}
+
+export const plan6Actions = {
+  async checkClaude(): Promise<void> {
+    try {
+      set({ claudeStatus: await need().app.claudeStatus() });
+    } catch {
+      set({ claudeStatus: null });
+    }
+  },
+  async loadFontEmbed(): Promise<void> {
+    try {
+      set({ fontEmbed: await need().patches.lastFontEmbed() });
+    } catch {
+      set({ fontEmbed: null });
+    }
+  },
+};

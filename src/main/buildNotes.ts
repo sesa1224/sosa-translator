@@ -115,7 +115,11 @@ export function registerNotesContributor(svc: ProjectService, o: { images: Image
     const prevNumber = (await finishedBuilds(ctx.projectDir)).find((n) => n < ctx.number);
     const prev = prevNumber === undefined ? null : await loadSnapshot(ctx.projectDir, prevNumber);
     const diff = diffSnapshots(prev, cur, svc.units());
-    const notes = formatNotes(diff, { name: svc.meta.name, version: svc.meta.current });
+    // plan 6: the notes name the game version, and say so when it changed since the last build.
+    const labels = new Map(versionsOf(svc.meta).map((v) => [v.id, v.label]));
+    const label = labels.get(svc.meta.current) ?? svc.meta.current;
+    const previousLabel = prev ? labels.get(prev.version) ?? prev.version : null;
+    const notes = formatNotes(diff, { name: svc.meta.name, version: svc.meta.current, label, previousLabel });
 
     await saveSnapshot(ctx.projectDir, cur);
     await writeJsonFile(path.join(buildFolder(ctx.projectDir, ctx.number), DIFF_FILE), diff);
@@ -188,3 +192,5 @@ export class NotesJob extends BatchJob<number> {
     }
   }
 }
+// ---- plan 6 (appended) ----
+import { versionsOf } from '../core/update/importVersion.js';

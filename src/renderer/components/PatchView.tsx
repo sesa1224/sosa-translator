@@ -210,6 +210,8 @@ export function FontEmbedSection() {
           <span className="hint">폰트 파일이 패치에 들어가요. 배포해도 되는 폰트인지 확인하세요(본명조, 본고딕, 나눔 계열, Pretendard 등은 괜찮아요. 윈도우 기본 폰트나 유료 폰트는 안 돼요).</span>
         </>
       )}
+      <LastFontEmbed />
+
       {error && <span className="err-text small" role="alert">{error}</span>}
     </section>
   );
@@ -236,5 +238,21 @@ export function GameRunButton() {
       )}
       {app.gameError && <span className="err-text small" role="alert">{app.gameError}</span>}
     </div>
+  );
+}
+
+// ---- plan 6, task 8: what the last build's font embedding found ----
+import { plan6Actions } from '../state';
+
+/** "지난 빌드: 폰트 n KB · 이 폰트에 없는 글자 k개" (warned when the font lacks characters). */
+function LastFontEmbed() {
+  const { fontEmbed, build } = useApp();
+  useEffect(() => { void plan6Actions.loadFontEmbed(); }, [build.kind]);
+  if (!fontEmbed) return null;
+  return (
+    <span className="small">
+      {`지난 빌드: 폰트 ${Math.max(1, Math.round(fontEmbed.bytes / 1024)).toLocaleString('ko-KR')} KB · `}
+      <span className={fontEmbed.missing > 0 ? 'warn-text' : undefined}>{`이 폰트에 없는 글자 ${fontEmbed.missing}개`}</span>
+    </span>
   );
 }

@@ -181,7 +181,7 @@ export interface Api {
     current: Async<InvokeChannels['job:current']>;
     decide: Async<InvokeChannels['job:decide']>;
   };
-  app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']> };
+  app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']>; claudeStatus: Async<InvokeChannels['app:claudeStatus']> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
   preview: PreviewApi;
   fonts: FontsApi;
@@ -410,3 +410,10 @@ export interface UpdateApi {
   summary: AsyncU<UpdateInvokeChannels['update:summary']>; versions: AsyncU<UpdateInvokeChannels['update:versions']>;
 }
 export interface Api { update: UpdateApi }
+/** Whether the Claude CLI can be used: found on this computer, and logged in (null = could not tell). */
+export interface ClaudeStatus { found: boolean; path: string | null; loggedIn: boolean | null }
+export interface InvokeChannels { 'app:claudeStatus': () => ClaudeStatus }
+/** The last build's font embedding (plan 5): its size and how many used characters the font lacks. */
+export interface FontEmbedInfo { bytes: number; missing: number }
+export interface EventInvokeChannels { 'patches:lastFontEmbed': () => FontEmbedInfo | null }
+export interface PatchesApi { lastFontEmbed: AsyncE<EventInvokeChannels['patches:lastFontEmbed']> }

@@ -140,7 +140,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       setModel: rec('chat.setModel', () => undefined),
       undo: rec('chat.undo', () => []),
     },
-    app: { claudePath: rec('app.claudePath', () => 'C:/claude.exe'), showItemInFolder: rec('app.showItemInFolder', () => undefined) },
+    app: { claudePath: rec('app.claudePath', () => 'C:/claude.exe'), showItemInFolder: rec('app.showItemInFolder', () => undefined), claudeStatus: rec('app.claudeStatus', () => upState.claude) },
     decisions: {
       groups: rec('decisions.groups', () => fake.groupsValue),
       set: rec('decisions.set', () => undefined),
@@ -190,6 +190,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
         ev().patches = fontPath ? [...rest, { id: 'font', title: '게임 폰트', note: '', enabled: true, originalBug: false, createdBy: 'user', createdAt: '', body: { kind: 'font', fontPath, subset } }] : rest;
       }),
       creatorReport: rec('patches.creatorReport', () => ev().report),
+      lastFontEmbed: rec('patches.lastFontEmbed', () => upState.fontEmbed),
     },
     game: {
       run: rec('game.run', () => { if (ev().runError) throw new Error(ev().runError!); }),
@@ -337,7 +338,7 @@ export function imagesFake(api: FakeApi): ImagesFake {
 }
 
 // ---- plan 6: game updates ----
-import type { UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
+import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
 /** What the fake's update calls give back; tests change these. */
 export interface UpdateFake {
   inspect: (dir: string) => UpdateInspect;
@@ -345,6 +346,9 @@ export interface UpdateFake {
   summary: UpdateSummary | null;
   importError: string | null;
   versions: VersionInfo[];
+  /** app.claudeStatus and patches.lastFontEmbed (plan 6, task 8). */
+  claude: ClaudeStatus;
+  fontEmbed: FontEmbedInfo | null;
 }
 export function sampleSummary(): UpdateSummary {
   return {
@@ -362,6 +366,8 @@ function defaultUpdateFake(): UpdateFake {
     summary: null,
     importError: null,
     versions: [{ id: 'v1', label: 'v1', importedAt: '2026-11-13T00:00:00.000Z', gameDir: 'C:/game' }],
+    claude: { found: true, path: 'C:/claude.exe', loggedIn: true },
+    fontEmbed: null,
   };
 }
 const updateFakes = new WeakMap<FakeApi, UpdateFake>();

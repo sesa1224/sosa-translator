@@ -103,6 +103,10 @@ app.whenReady().then(async () => {
       return new ClaudeChat({ command, prefixArgs: prefixArgs(), cwd, mcpConfigPath, systemPrompt, model });
     },
     claudePath: resolveClaude,
+    claudeCommand: (configured) => {
+      const command = resolveClaude(configured);
+      return command ? { command, prefixArgs: prefixArgs() } : null;
+    },
     jsonClaude,
     showItemInFolder: (file) => shell.showItemInFolder(file),
     // MVMZ_FONT_DIRS (folders separated by ';') replaces the Windows font folders in tests.

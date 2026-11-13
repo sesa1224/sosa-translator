@@ -100,6 +100,10 @@ export interface IpcDeps {
   // ---- plan 6 ----
   /** Folder dialog for the game's new version (null = cancelled; default: pickDirectory). */
   pickNewVersionDir?(): Promise<string | null>;
+  /** The CLI command for `claude auth status` (default: claudePath(configured) with no prefix arguments). */
+  claudeCommand?(configured: string | null): { command: string; prefixArgs?: string[] } | null;
+  /** Whether that CLI is logged in (tests give a fake; default: runs `claude auth status`). */
+  claudeLoggedIn?(cmd: { command: string; prefixArgs?: string[] }): Promise<boolean | null>;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -778,6 +782,20 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return r;
   });
   handleU('update:summary', () => svc().updateSummary());
+  // ---- plan 6, task 8: Claude CLI guide and the last font embedding ----
+  handle('app:claudeStatus', async (): Promise<shared.ClaudeStatus> => {
+    const configured = (await settings()).claudePath;
+    const found = deps.claudePath(configured);
+    if (!found) return { found: false, path: null, loggedIn: null };
+    const cmd = deps.claudeCommand ? deps.claudeCommand(configured) : { command: found };
+    const loggedIn = cmd ? await (deps.claudeLoggedIn ?? claudeLoggedIn)(cmd) : null;
+    return { found: true, path: found, loggedIn };
+  });
+  handleE('patches:lastFontEmbed', () => {
+    const s = deps.holder.svc;
+    const r = s ? lastFontEmbed.get(s) : undefined;
+    return r ? { bytes: r.bytes, missing: r.missing } : null;
+  });
   handleU('update:versions', () => svc().versions());
 
   return { dispose: () => closeProject() };
@@ -808,3 +826,5 @@ const fakeGameSpawn = ((): unknown => {
   const child = Object.assign(new GameEmitter(), { kill: () => { child.emit('exit', 0); return true; } });
   return child;
 }) as unknown as typeof import('node:child_process').spawn;
+import { claudeLoggedIn } from './claude/auth.js';
+import { lastFontEmbed } from './fontEmbed.js';

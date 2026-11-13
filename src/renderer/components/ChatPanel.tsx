@@ -162,6 +162,7 @@ export function ChatPanel() {
 
   return (
     <div className="chat" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+      <ClaudeGuide />
       <div className="chat-tools">
         <button type="button" className="btn ghost small-btn" onClick={() => void useApp.resetChat()}>새 대화</button>
         <button type="button" className="btn ghost small-btn" disabled={chat.busy} onClick={() => void undo()}>방금 변경 되돌리기</button>
@@ -236,5 +237,28 @@ function AttachedImage() {
       <span className="tag">{`이미지: ${attachedImage}`}</span>
       <button type="button" className="x" aria-label="붙은 그림 떼기" onClick={() => useApp.detachImage()}>×</button>
     </div>
+  );
+}
+
+// ---- plan 6: Claude CLI guide (for people who got the app without the CLI) ----
+import { plan6Actions } from '../state';
+
+/** How to install and log in to the Claude CLI, shown while the chat cannot work. */
+function ClaudeGuide() {
+  const { claudeStatus } = useApp();
+  useEffect(() => { if (claudeStatus === undefined) void plan6Actions.checkClaude(); }, [claudeStatus]);
+  if (!claudeStatus || (claudeStatus.found && claudeStatus.loggedIn !== false)) return null;
+  return (
+    <section className="cli-guide" aria-label="Claude CLI 안내">
+      <span>채팅과 자동 번역은 Claude CLI 가 있어야 해요. 본인의 Claude 구독으로 동작해요.</span>
+      <ol className="cli-steps">
+        {!claudeStatus.found && <li value={1}>터미널에서 <code className="mono">winget install Anthropic.ClaudeCode</code></li>}
+        <li value={2}>터미널에서 <code className="mono">claude</code> 를 실행해 로그인</li>
+      </ol>
+      <span className="sub small">추출, 손 번역, 빌드는 CLI 없이도 돼요.</span>
+      <div className="row-gap">
+        <button type="button" className="btn small-btn" onClick={() => void plan6Actions.checkClaude()}>다시 확인</button>
+      </div>
+    </section>
   );
 }
