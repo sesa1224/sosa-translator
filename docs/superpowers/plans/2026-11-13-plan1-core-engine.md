@@ -353,7 +353,7 @@ test('null 과 배열 아닌 값에 죽지 않는다', () => {
 | Troops | — | `[i].pages[j].list` → `extractFromList(…, [i, 'pages', j, 'list'])` |
 | 그 외(MapInfos, Tilesets, Animations 등) | — | 빈 배열 |
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('액터', () => {
@@ -379,10 +379,10 @@ test('null 항목과 모르는 파일', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/extract/database.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 데이터베이스와 맵 추출"`**
+- [x] **Step 2: `npx vitest run tests/extract/database.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 데이터베이스와 맵 추출"`**
 
 ### Task 6: plugins.js 읽기, 추출, 다시 쓰기
 
