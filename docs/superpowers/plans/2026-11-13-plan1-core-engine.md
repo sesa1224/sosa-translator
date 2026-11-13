@@ -665,7 +665,7 @@ test('바뀐 게 없으면 오류', async () => { await expect(buildPatch(emptyP
 
 모르는 명령이나 인자 부족은 사용법을 찍고 종료 코드 2. 오류는 메시지 한 줄과 종료 코드 1(스택은 찍지 않는다).
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('가져오기부터 패치까지', async () => {
@@ -691,10 +691,10 @@ test('MV/MZ가 아닌 폴더', async () => { expect(await run(['import', emptyDi
 test('인자 부족', async () => { expect(await run(['build'])).toBe(2); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/cli.e2e.test.ts` → FAIL**
-- [ ] **Step 3: 구현** — `commander`, `exitOverride` 로 종료 코드를 돌려받는다. `README.md` 에 위 명령 표와 프로젝트 폴더 구조를 적는다
-- [ ] **Step 4: `npx vitest run` (전체) → 모두 PASS, `npx tsc --noEmit` → 오류 없음**
-- [ ] **Step 5: `git commit -m "feat: 명령줄과 전체 흐름 시험"`**
+- [x] **Step 2: `npx vitest run tests/cli.e2e.test.ts` → FAIL**
+- [x] **Step 3: 구현** — `commander`, `exitOverride` 로 종료 코드를 돌려받는다. `README.md` 에 위 명령 표와 프로젝트 폴더 구조를 적는다
+- [x] **Step 4: `npx vitest run` (전체) → 모두 PASS, `npx tsc --noEmit` → 오류 없음**
+- [x] **Step 5: `git commit -m "feat: 명령줄과 전체 흐름 시험"`**
 
 ---
 
