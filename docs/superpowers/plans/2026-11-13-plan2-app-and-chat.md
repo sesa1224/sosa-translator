@@ -311,7 +311,7 @@ test('되돌리기는 채팅 변경만', async () => {
 - Produces: `src/mcp/server.ts` — 환경 변수 `MVMZ_BRIDGE_URL`, `MVMZ_BRIDGE_TOKEN` 을 읽고, `tools/list` 는 브리지의 `/tools`, `tools/call` 은 `/call` 로 넘긴다. 결과는 `content: [{ type: 'text', text: JSON }]`, 실패면 `isError: true`
 - Produces: `writeMcpConfig(dir: string, bridge: { url: string; token: string }, serverScript: string, nodePath: string): Promise<string>` — `{ mcpServers: { mvmz: { command: nodePath, args: [serverScript], env: { MVMZ_BRIDGE_URL, MVMZ_BRIDGE_TOKEN } } } }` 를 쓰고 경로를 돌려준다. Electron 에서 `nodePath` 는 `process.execPath` 이고 env 에 `ELECTRON_RUN_AS_NODE: '1'` 을 더한다
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('토큰이 없으면 401', async () => { expect((await fetch(bridge.url + '/tools')).status).toBe(401); });
@@ -325,10 +325,10 @@ test('MCP 클라이언트로 도구를 부르면 프로젝트가 바뀐다', asy
 test('127.0.0.1 에서만 듣는다', () => { expect(new URL(bridge.url).hostname).toBe('127.0.0.1'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/bridge.test.ts` → FAIL**
-- [ ] **Step 3: 구현** — HTTP 는 `node:http`. zod → JSON Schema 는 zod 의 내장 변환을 쓴다
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 로컬 브리지와 MCP 서버"`**
+- [x] **Step 2: `npx vitest run tests/main/bridge.test.ts` → FAIL**
+- [x] **Step 3: 구현** — HTTP 는 `node:http`. zod → JSON Schema 는 zod 의 내장 변환을 쓴다
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 로컬 브리지와 MCP 서버"`**
 
 ### Task 6: Claude CLI 인자와 스트림 파서
 
