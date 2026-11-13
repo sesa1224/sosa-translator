@@ -20,3 +20,4 @@ export * from './glossary/rename.js';
 export * from './text/speaker.js';
 export * from './preview/types.js';
 export * from './preview/metrics.js';
+export * from './preview/layout.js';

@@ -138,7 +138,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 색은 다음 줄로 이어진다: `'\\C[3]첫\n둘'` 의 둘째 줄 run 의 color 가 3
 - `measure` 가 `missing: 2` 를 주면 `missingGlyphs 2`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사 배치"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사 배치"`
 
 ### Task 3: 폰트 읽기와 목록
 
