@@ -58,7 +58,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
   const snapshot = (): Snapshot | null => fake.opened
     ? { meta, gameTitle: '霧の薬草園', rows: fake.rows, stats: computeStats(fake.rows), scopes: computeScopes(fake.rows) }
     : null;
-  const build: BuildResult = { number: 1, zipPath: 'C:/projects/약초원/builds/001/약초원_patch_001.zip', files: [{ path: 'a', sha1: '' }, { path: 'b', sha1: '' }, { path: 'c', sha1: '' }], skippedErrors: 1 };
+  const build: BuildResult = { number: 1, zipPath: 'C:/projects/약초원/builds/001/약초원_patch_001.zip', files: [{ path: 'a', sha1: '' }, { path: 'b', sha1: '' }, { path: 'c', sha1: '' }], skippedErrors: 1, warnings: [] };
   const detail = (id: string): UnitDetail => {
     const r = fake.rows.find((x) => x.id === id)!;
     const issues = r.status === 'error'

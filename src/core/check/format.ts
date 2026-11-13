@@ -9,7 +9,8 @@ import type { Issue, TextUnit } from '../types.js';
 import { DEFAULT_RULES, type FormatRules } from './rules.js';
 import { keepPieces } from '../decisions/keys.js';
 import { checkSkeleton, translatedParts } from '../decisions/skeleton.js';
-import type { KeepRule } from '../decisions/types.js';
+import type { Decisions, KeepRule } from '../decisions/types.js';
+import { confirmedDecisionFor } from '../decisions/store.js';
 
 export { DEFAULT_RULES, type FormatRules };
 
@@ -106,12 +107,15 @@ export function checkAll(
   units: TextUnit[],
   store: TranslationStore,
   rules: FormatRules = DEFAULT_RULES,
+  decisions?: Decisions,
 ): { id: string; issues: Issue[] }[] {
   const out: { id: string; issues: Issue[] }[] = [];
   for (const u of units) {
     const entry = store.get(u.id);
     if (entry.target === null) continue;
-    const issues = checkTranslation(u, entry.target, rules);
+    // A unit confirmed as translated with a keep rule also gets the skeleton check.
+    const dec = decisions && u.needsDecision ? confirmedDecisionFor(u, decisions) : null;
+    const issues = checkTranslation(u, entry.target, rules, undefined, dec?.translate ? dec.keep : undefined);
     const hasError = issues.some((i) => i.severity === 'error');
     if (hasError && entry.status !== 'error') store.setStatus(u.id, 'error');
     else if (!hasError && entry.status === 'error') store.setStatus(u.id, 'needs-review');

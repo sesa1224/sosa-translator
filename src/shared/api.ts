@@ -180,3 +180,8 @@ export interface Api {
   app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
 }
+
+// ---- Plan 3b: decisions, title, exchange (added below; existing lines above are unchanged) ----
+
+/** Plugin JS files left out of a build (merged into BuildResult above). */
+export interface BuildResult { warnings: { file: string; message: string }[] }

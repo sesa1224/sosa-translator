@@ -197,7 +197,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - JS 원본 사본을 시험에서 고쳐 위치가 어긋나게 하면 그 파일은 패치에 없고 경고가 하나 온다. 다른 파일은 정상 적용
 - 제목: `gameTitle` 을 `안개 약초원` 으로 번역하면 패치에 `index.html` 이 있고 `<title>안개 약초원</title>` 이다. 제목에 `&` 가 있으면 `&amp;`. `package.top.json` 의 `window.title` 이 빈 글이면 `package.json` 은 패치에 없다. `name` 값은 어떤 경우에도 원본과 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 결정에 따른 적용과 제목 파일"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 결정에 따른 적용과 제목 파일"`
 
 ### Task 7: Claude에게 결정 추천 받기
 

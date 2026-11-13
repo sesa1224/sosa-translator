@@ -3,14 +3,24 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { strFromU8, unzipSync, zipSync } from 'fflate';
-import { checkAll } from '../check/format.js';
+import { checkAll, DEFAULT_RULES } from '../check/format.js';
+import { loadDecisions } from '../decisions/store.js';
 import { openProject } from '../project/project.js';
 import type { TranslationStore } from '../store/translations.js';
-import type { TextUnit } from '../types.js';
+import type { TextUnit, Warning } from '../types.js';
 import { writeJsonFile } from '../util/json.js';
-import { applyTranslations } from './apply.js';
+import { applyTranslationsDetailed } from './apply.js';
+import { TOP_PACKAGE_KEY, titleFiles } from './title.js';
 
-export interface BuildResult { number: number; zipPath: string; files: { path: string; sha1: string }[]; skippedErrors: number }
+export interface BuildResult { number: number; zipPath: string; files: { path: string; sha1: string }[]; skippedErrors: number; warnings: Warning[] }
+
+/** The translation of System.json gameTitle that would go into the patch, or null. */
+function gameTitleTarget(units: TextUnit[], store: TranslationStore): string | null {
+  const unit = units.find((u) => u.refs.some((r) => r.type === 'value' && r.file === 'data/System.json' && r.path.length === 1 && r.path[0] === 'gameTitle'));
+  if (!unit) return null;
+  const e = store.get(unit.id);
+  return e.target !== null && e.status !== 'error' && e.status !== 'declined' ? e.target : null;
+}
 
 function sha1(data: Uint8Array): string {
   return createHash('sha1').update(data).digest('hex');
@@ -46,10 +56,12 @@ function verifyZip(zip: Uint8Array, files: { path: string; sha1: string }[]): vo
  */
 export async function buildPatch(projectDir: string, units: TextUnit[], store: TranslationStore): Promise<BuildResult> {
   const meta = await openProject(projectDir);
-  const checked = checkAll(units, store);
+  const decisions = await loadDecisions(projectDir);
+  const checked = checkAll(units, store, DEFAULT_RULES, decisions);
   const skippedErrors = checked.filter((c) => c.issues.some((i) => i.severity === 'error')).length;
 
-  const changed = await applyTranslations(projectDir, units, store);
+  const { files: changed, warnings } = await applyTranslationsDetailed(projectDir, units, store, { decisions });
+  for (const [file, text] of await titleFiles(projectDir, gameTitleTarget(units, store))) changed.set(file, text);
   if (changed.size === 0) throw new Error('바뀐 파일이 없습니다');
 
   const buildsDir = path.join(projectDir, 'builds');
@@ -61,7 +73,7 @@ export async function buildPatch(projectDir: string, units: TextUnit[], store: T
   const files: { path: string; sha1: string }[] = [];
   const zipEntries: Record<string, Uint8Array> = {};
   for (const [file, text] of changed) {
-    const zipPath = meta.contentPrefix + file;
+    const zipPath = file === TOP_PACKAGE_KEY ? 'package.json' : meta.contentPrefix + file;
     const data = new TextEncoder().encode(text);
     const abs = path.join(patchDir, ...zipPath.split('/'));
     await mkdir(path.dirname(abs), { recursive: true });
@@ -82,5 +94,5 @@ export async function buildPatch(projectDir: string, units: TextUnit[], store: T
   await writeFile(zipPath, zip);
   verifyZip(new Uint8Array(await readFile(zipPath)), files);
 
-  return { number, zipPath, files, skippedErrors };
+  return { number, zipPath, files, skippedErrors, warnings };
 }
