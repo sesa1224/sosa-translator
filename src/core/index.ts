@@ -14,3 +14,6 @@ export * from './check/format.js';
 export * from './build/apply.js';
 export * from './build/patch.js';
 export * from './glossary/types.js';
+export * from './glossary/match.js';
+export * from './glossary/josa.js';
+export * from './glossary/rename.js';

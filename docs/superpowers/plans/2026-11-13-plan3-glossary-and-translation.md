@@ -142,7 +142,7 @@ test('새 상태를 센다', () => {
 
 조사 규칙: 바꾼 낱말 바로 뒤가 아래 짝 중 하나로 시작하고, 그 조사 뒤가 공백·문장부호·줄 끝·제어문자일 때만 받침에 맞는 쪽으로 바꾼다. 짝: `을/를`, `이/가`, `은/는`, `과/와`, `으로/로`(ㄹ 받침은 `로`), `아/야`, `이랑/랑`, `이나/나`, `이라/라`, `이야/야`. 조사 뒤에 다른 글자가 바로 이어지면 고치지 않고 `certain: false`. 뒤가 조사가 아니면 그대로 두고 `certain: true`. `hasFinalConsonant` 가 null 이면 `certain: false`.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 const T = (source: string, target: string, category: TermCategory = 'term'): Term => ({ id: termId(source), source, target, category, status: 'confirmed', candidates: [] });
@@ -180,10 +180,10 @@ test('용어 바꾸기 계획', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/glossary/match.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 용어 일치 검사와 조사 맞춤"`**
+- [x] **Step 2: `npx vitest run tests/glossary/match.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 용어 일치 검사와 조사 맞춤"`**
 
 ### Task 3: 화자 줄 패턴
 

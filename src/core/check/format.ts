@@ -1,3 +1,5 @@
+import { checkGlossary, lineWidthChars } from '../glossary/match.js';
+import type { Term } from '../glossary/types.js';
 import type { TranslationStore } from '../store/translations.js';
 import { controlCodes } from '../text/controlCodes.js';
 import { hasJapanese } from '../text/japanese.js';
@@ -23,8 +25,11 @@ function lineCount(s: string): number {
   return s.split('\n').length;
 }
 
+/** Glossary consistency and line-width limit (optional part of the check). */
+export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null }
+
 /** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
-export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES): Issue[] {
+export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck): Issue[] {
   if (target.trim() === '') {
     return [{ rule: 'empty', severity: 'error', message: '번역이 비어 있습니다' }];
   }
@@ -54,6 +59,21 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
   }
   if (rules.maxLines !== null && unit.kind === 'dialogue' && dstLines > rules.maxLines) {
     issues.push({ rule: 'line-count', severity: 'warning', message: `대사가 ${rules.maxLines}줄을 넘습니다: ${dstLines}줄` });
+  }
+  if (glossary) {
+    issues.push(...checkGlossary(unit.source, target, glossary.terms));
+    const max = glossary.maxLineWidthChars;
+    if (max !== null) {
+      const srcLines = unit.source.split('\n');
+      target.split('\n').forEach((line, i) => {
+        const w = lineWidthChars(line);
+        const src = srcLines[i];
+        // A line the source already overflows is the game's own layout: not reported.
+        if (w > max && (src === undefined || lineWidthChars(src) <= max)) {
+          issues.push({ rule: 'line-width', severity: 'warning', message: `${i + 1}번째 줄이 ${max}자를 넘습니다: ${w}자` });
+        }
+      });
+    }
   }
   return issues;
 }

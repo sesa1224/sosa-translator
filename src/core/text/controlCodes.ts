@@ -14,3 +14,8 @@ export function controlCodes(s: string): string[] {
   }
   return out;
 }
+
+/** s with every control code token removed. */
+export function stripControlCodes(s: string): string {
+  return s.replace(TOKEN, '');
+}
