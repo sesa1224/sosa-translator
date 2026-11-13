@@ -174,6 +174,7 @@ export class TranslateJob extends BatchJob<Batch> {
     const batches = planBatches(svc.units(), (id) => svc.entry(id), svc.glossary(), {
       maxItems: this.o.maxItems, maxChars: this.o.maxChars, ids: this.o.ids,
       includeStatuses: this.o.ids ? ALL_STATUSES : undefined,
+      decisions: svc.decisions(),
     });
     return { batches, total: batches.reduce((n, b) => n + b.items.length, 0) };
   }

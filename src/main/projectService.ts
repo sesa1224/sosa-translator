@@ -29,6 +29,11 @@ import type { Decision, DecisionGroup, Decisions, PluginMeta } from '../core/dec
 import { pluginMetaFromDir } from '../core/extract/pluginMeta.js';
 import { ensureOriginals, FILES_LIST } from '../core/project/originals.js';
 import { originalDir } from '../core/project/project.js';
+import { readFile, writeFile } from 'node:fs/promises';
+import { confirmedDecisionFor } from '../core/decisions/store.js';
+import type { KeepRule } from '../core/decisions/types.js';
+import { buildPackage, planImport, type ImportPlan } from '../core/exchange/package.js';
+import { rowDecisionOf, unitRowDecisions } from '../shared/rows.js';
 
 const UNDO_LIMIT = 200;
 
@@ -84,6 +89,7 @@ export class ProjectService extends EventEmitter {
     } catch {
       this.dec = {};
     }
+    this.refreshRowDecisions();
     const root = originalDir(this.projectDir, this.meta);
     this.pluginMeta = pluginMetaFromDir(root);
     try {
@@ -126,10 +132,104 @@ export class ProjectService extends EventEmitter {
     return this.writeDecisions(() => mergeSuggestions(this.dec, suggested), Object.keys(suggested));
   }
 
+  /** Confirms a decision for a group key or 'unit:<id>' (by the user, or by Claude in the chat). */
+  setDecision(key: string, d: Omit<Decision, 'status' | 'by'>, by: 'user' | 'claude'): Promise<void> {
+    if (!this.knowsKey(key)) return Promise.reject(new Error(`없는 판단 키입니다: ${key}`));
+    const decision: Decision = { translate: d.translate, keep: structuredClone(d.keep), status: 'confirmed', by };
+    if (d.reason !== undefined) decision.reason = d.reason;
+    return this.writeDecisions(() => ({ ...this.dec, [key]: decision }), [key]);
+  }
+
+  /** Turns suggestions into confirmed decisions (all of them, or those of the given keys). */
+  confirmSuggestions(keys?: string[]): Promise<void> {
+    const want = keys ? new Set(keys) : null;
+    const touched = Object.keys(this.dec).filter((k) => this.dec[k].status === 'suggested' && (!want || want.has(k)));
+    return this.writeDecisions(() => {
+      const next = { ...this.dec };
+      for (const k of touched) next[k] = { ...next[k], status: 'confirmed' };
+      return next;
+    }, touched);
+  }
+
+  /** Removes the decision of a key (its units need a decision again). */
+  clearDecision(key: string): Promise<void> {
+    return this.writeDecisions(() => {
+      const { [key]: _gone, ...rest } = this.dec;
+      return rest;
+    }, [key]);
+  }
+
+  /** Whether key is a decision key of some unit, or 'unit:<id>' of a needs-decision unit. */
+  knowsKey(key: string): boolean {
+    if (key.startsWith('unit:')) return this.byId.get(key.slice(5))?.needsDecision === true;
+    return this.unitList.some((u) => u.decisionKey === key);
+  }
+
+  /** The keep rule that applies when the unit is confirmed as translated (for the skeleton check), or undefined. */
+  keepRuleOf(unit: TextUnit): KeepRule | undefined {
+    if (!unit.needsDecision) return undefined;
+    const d = confirmedDecisionFor(unit, this.dec);
+    return d?.translate ? d.keep : undefined;
+  }
+
+  /** Writes the translated game title (System.json gameTitle) as approved. */
+  setGameTitle(target: string): Promise<void> {
+    const unit = this.unitList.find((u) => u.refs.some((r) => r.type === 'value' && r.file === 'data/System.json' && r.path.length === 1 && r.path[0] === 'gameTitle'));
+    if (!unit) return Promise.reject(new Error('게임 제목 항목이 없습니다'));
+    const text = target.trim();
+    if (!text) return Promise.reject(new Error('제목을 입력하세요'));
+    return this.mutate('user', () => {
+      this.remember(unit.id, 'user');
+      this.store.set(unit.id, text, 'approved');
+      return { ids: [unit.id], result: undefined };
+    });
+  }
+
+  /** Writes an exchange package for the given ids to filePath (UTF-8 JSON). */
+  async exportPackage(ids: string[], filePath: string): Promise<void> {
+    const pkg = buildPackage({ meta: this.meta, units: this.unitList, entryOf: (id) => this.store.get(id), glossary: this.gloss, decisions: this.dec, ids });
+    await writeFile(filePath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+  }
+
+  /** Reads a translator's reply (a JSON array, or an object with an items array) and sorts it. Never applies anything. */
+  async importPackage(filePath: string): Promise<ImportPlan> {
+    let raw: unknown;
+    try {
+      raw = JSON.parse((await readFile(filePath, 'utf8')).replace(/^﻿/, ''));
+    } catch {
+      return { ok: [], conflicts: [], unknownIds: [], invalid: 1 };
+    }
+    const items = Array.isArray(raw) ? raw : raw && typeof raw === 'object' && Array.isArray((raw as { items?: unknown }).items) ? (raw as { items: unknown[] }).items : raw;
+    return planImport(this.unitList, (id) => this.store.get(id), this.gloss, this.dec, items as { id: string; target: string }[]);
+  }
+
+  /** Writes an import plan's translations (origin 'external', marked external). Conflicts only when overwriteConflicts. */
+  applyImport(plan: ImportPlan, overwriteConflicts: boolean): Promise<{ written: number }> {
+    return this.mutate('external', () => {
+      const todo = [...plan.ok.map((o) => ({ id: o.id, target: o.target })), ...(overwriteConflicts ? plan.conflicts.map((c) => ({ id: c.id, target: c.incoming })) : [])];
+      const ids: string[] = [];
+      for (const t of todo) {
+        const unit = this.byId.get(t.id);
+        if (!unit) continue;
+        const status: TranslationStatus = this.check(unit, t.target).some((i) => i.severity === 'error') ? 'error' : 'needs-review';
+        this.remember(t.id, 'external');
+        this.store.restore(t.id, { target: t.target, status, updatedAt: new Date().toISOString(), external: true });
+        ids.push(t.id);
+      }
+      return { ids, result: { written: ids.length } };
+    });
+  }
+
+  /** Puts every needs-decision unit's decision state where toRow reads it. */
+  private refreshRowDecisions(): void {
+    for (const u of this.unitList) if (u.needsDecision) unitRowDecisions.set(u, rowDecisionOf(decisionFor(u, this.dec)));
+  }
+
   /** Replaces the decisions, saves them, emits 'decisions-changed' and a change for the units of the touched keys. */
   private writeDecisions(next: () => Decisions, keys: string[]): Promise<void> {
     return this.enqueue(async () => {
       this.dec = next();
+      this.refreshRowDecisions();
       await saveDecisions(this.projectDir, this.dec);
       this.emit('decisions-changed', this.decisions());
       const touched = new Set(keys);
@@ -347,6 +447,9 @@ export class ProjectService extends EventEmitter {
 
   private check(unit: TextUnit, target: string): Issue[] {
     const g = this.gloss;
+    // A unit confirmed as translated with a keep rule also gets the skeleton check.
+    const keep = this.keepRuleOf(unit);
+    if (keep) return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern }, keep);
     return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern });
   }
 

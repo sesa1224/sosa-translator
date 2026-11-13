@@ -6,6 +6,7 @@ import {
   DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type GameDirCheck, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
+import type { DecisionGroup, ImportPlan } from '../../src/shared/api';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
 
@@ -48,6 +49,7 @@ export type FakeApi = Api & {
   calls: unknown[][]; emit(channel: PushChannel, payload: unknown): void; opened: boolean; rows: Row[];
   inspect(dir: string): GameDirCheck;
   glossaryValue: Glossary; chooseResult: ChooseResult; speakerDetection: SpeakerDetection | null; reviewPlanValue: ReviewPlan;
+  groupsValue: DecisionGroup[]; importPlanValue: ImportPlan | null; exportPath: string | null;
 };
 
 export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
@@ -74,6 +76,9 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     chooseResult: { changed: [], uncertain: [] },
     speakerDetection: null,
     reviewPlanValue: { items: 0, estimatedInputTokens: 0, model: 'claude-fable-5-2' },
+    groupsValue: [],
+    importPlanValue: null,
+    exportPath: 'C:/out/약초원.json',
     inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
@@ -90,6 +95,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       snapshot: rec('project.snapshot', snapshot),
       undo: rec('project.undo', () => []),
       build: rec('project.build', () => build),
+      setGameTitle: rec('project.setGameTitle', () => undefined),
     },
     unit: {
       get: rec('unit.get', detail),
@@ -121,6 +127,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       resume: rec('job.resume', () => undefined),
       stop: rec('job.stop', () => undefined),
       current: rec('job.current', () => null),
+      decide: rec('job.decide', () => undefined),
     },
     chat: {
       send: rec('chat.send', () => undefined),
@@ -130,6 +137,17 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       undo: rec('chat.undo', () => []),
     },
     app: { claudePath: rec('app.claudePath', () => 'C:/claude.exe'), showItemInFolder: rec('app.showItemInFolder', () => undefined) },
+    decisions: {
+      groups: rec('decisions.groups', () => fake.groupsValue),
+      set: rec('decisions.set', () => undefined),
+      confirm: rec('decisions.confirm', () => undefined),
+      clear: rec('decisions.clear', () => undefined),
+    },
+    exchange: {
+      export: rec('exchange.export', () => fake.exportPath),
+      planImport: rec('exchange.planImport', () => fake.importPlanValue),
+      applyImport: rec('exchange.applyImport', () => ({ written: fake.importPlanValue?.ok.length ?? 0 })),
+    },
     on(channel, cb) {
       if (!listeners.has(channel)) listeners.set(channel, new Set());
       listeners.get(channel)!.add(cb as any);

@@ -27,6 +27,7 @@ function readStageModels(v: any, d: StageModels): StageModels {
   const pick = (k: 'glossary' | 'translate' | 'review' | 'patchNotes') => (v && typeof v === 'object' && typeof v[k] === 'string' && v[k] ? v[k] : d[k]);
   const out: StageModels = { glossary: pick('glossary'), translate: pick('translate'), review: pick('review'), patchNotes: pick('patchNotes') };
   if (v && typeof v.glossaryRead === 'string' && v.glossaryRead) out.glossaryRead = v.glossaryRead;
+  if (v && typeof v.decide === 'string' && v.decide) out.decide = v.decide;
   return out;
 }
 

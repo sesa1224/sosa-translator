@@ -270,7 +270,7 @@ export interface ExchangePackage {
 - 내보낸 꾸러미 파일을 읽어 번역을 채워 다시 가져오면 `external: true` 로 들어가고, 충돌 항목은 `overwriteConflicts: false` 일 때 그대로다
 - 채팅 도구: `set_decision` 뒤 `list_decisions` 가 그 결정을 보여준다. 모르는 키는 `ok: false`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 결정과 꾸러미 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 결정과 꾸러미 연결"`
 
 ### Task 10: 판단 필요 화면
 
