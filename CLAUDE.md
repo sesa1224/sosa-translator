@@ -9,26 +9,43 @@ RPG Maker MV/MZ 게임을 일본어에서 한국어로 번역하는 윈도우용
 | 문서 | 내용 |
 |---|---|
 | `docs/2026-11-13-mvmz-번역작업실-기획서.md` | 무엇을 왜 만드는지. 사용자가 정한 것은 `[확정]`, Claude가 정한 기본값은 `[내 선택]` 으로 표시돼 있다. 9장은 실제 게임으로 시험하며 알게 된 것 |
-| `docs/superpowers/plans/` | 단계별 구현 계획. 각 계획의 체크박스가 진행 상태다 |
+| `docs/ARCHITECTURE.md` | 프로세스 구성, 데이터 흐름, 기능별로 거치는 모듈, 새 기능을 넣을 때 손대는 곳. 코드를 고치기 전에 읽는다 |
+| `docs/superpowers/plans/` | 단계별 구현 계획(모두 끝남). 맨 위 `README.md` 가 각 문서를 안내한다. 계획서의 "병렬 작업 규칙"은 지금 따르지 않는다 |
 | `docs/default-style-guide.md` | 새 프로젝트에 들어가는 기본 번역 지침. 빌드 때 앱에 그대로 들어간다. 이 파일을 고치면 기본값이 바뀐다 |
 | `docs/mockup/Main.dc.html` | 화면 시안. 배치, 간격, 문구의 기준(시안 도구 형식이라 그대로 실행되지는 않는다) |
-| `README.md` | 실행 방법, 프로젝트 폴더의 파일, 채팅 도구 목록 |
+| `README.md` | 사용자용 안내: 준비물, 실행, 처음부터 끝까지 쓰는 법, 프로젝트 폴더의 파일, 채팅 도구, 명령줄 도구, 문제 해결 |
 | `CHANGELOG.md` | 버전별 바뀐 점. 사용자에게 보이는 변화가 생기면 여기에 한 줄을 더한다 |
 
 ## 구조
 
 ```
-src/core/      화면도 Electron도 모르는 순수 라이브러리. 추출, 번역표, 용어집, 검사, 적용, 패치 빌드
-src/cli.ts     core 를 명령줄로 쓰는 얇은 껍데기 (mvmz import / export / apply / check / build / status)
-src/main/      Electron 메인 프로세스. ProjectService(열린 프로젝트의 유일한 소유자), IPC, Claude CLI 연결, 번역·검수 작업
-src/mcp/       Claude CLI 가 띄우는 stdio MCP 서버. 도구 호출을 로컬 브리지로 메인에 넘긴다
-src/preload/   렌더러에 window.api 를 내준다
-src/renderer/  React 화면
-src/shared/    메인과 렌더러가 같이 쓰는 타입과 순수 함수
-tests/         src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다
+src/core/              화면도 Electron도 모르는 순수 라이브러리. 공개 이름은 src/core/index.ts
+  engine/ project/     게임 판별·암호 풀기, 프로젝트 폴더와 원본 사본
+  extract/ store/      문장 추출(units.json), 번역표(translations.json)
+  glossary/ text/      용어집·조사 맞춤, 제어문자·일본어·화자 줄
+  check/ decisions/    형식 검사, 판단 필요(판단 키, 뼈대 검사)
+  build/ notes/        재삽입과 패치 빌드, 패치노트
+  events/ patches/     이벤트 풀어쓰기·사용처, 원본 대비 수정
+  images/ preview/     그림 목록·지시서, 대사창 미리보기
+  exchange/ update/    외부 번역 꾸러미, 게임 업데이트
+src/cli.ts             core 를 명령줄로 쓰는 얇은 껍데기 (mvmz import / export / apply / check / build / status)
+src/main/              Electron 메인 프로세스
+  projectService.ts    열린 프로젝트의 유일한 소유자. 모든 쓰기가 여기를 거친다
+  ipc.ts               window.api 처리기. 작업(한 번에 하나), 채팅, 미리보기, 그림, 게임 실행을 붙든다
+  toolHandlers.ts      채팅 도구(TOOL_DEFS, HANDLERS)
+  claude/              CLI 인자, 채팅 프로세스, 한 번 호출로 JSON 받기, 시스템 프롬프트
+  translate/           번역·검수·판단 추천·용어집 초안 작업
+  images.ts render/    그림 서비스와 보이지 않는 렌더 작업 창
+  preview.ts fonts/    미리보기, 폰트 목록, 폰트 넣기(fontEmbed.ts)
+  buildNotes.ts gameRun.ts bridge.ts settings.ts story.ts
+src/mcp/               Claude CLI 가 띄우는 stdio MCP 서버. 도구 호출을 로컬 브리지로 메인에 넘긴다
+src/preload/           렌더러에 window.api 를(index.ts), 렌더 작업 창에 그 통로를(render.ts) 내준다
+src/renderer/          React 화면. 상태와 액션은 state.ts, 화면 전환은 App.tsx 의 SCREENS, 그림 찍기는 render-worker/
+src/shared/            메인과 렌더러가 같이 쓰는 것. api.ts(채널 목록과 window.api 모양), rows.ts(행·필터·통계)
+tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다. 가짜 window.api 는 tests/renderer/fakeApi.tsx
 ```
 
-데이터의 흐름: 원본 게임(읽기 전용) → 프로젝트 폴더의 `original/` 사본 → `units.json`(추출한 문장) → `translations.json`(번역표) + `glossary.json`(용어집과 지침) → `builds/NNN/`(바뀐 파일만 묶은 패치 zip).
+데이터의 흐름: 원본 게임(읽기 전용) → 프로젝트 폴더의 `original/vN/` 사본 → `units.json`(추출한 문장) → `translations.json`(번역표, 원문으로 만든 id 가 열쇠) + `glossary.json`(용어집과 지침) + `decisions.json`(판단 필요 결정) + `patches.json`(원본 대비 수정) + `images.json`(그림 작업 지시서) + `preview.json`(게임 폰트와 대사창 치수) → `builds/NNN/`(바뀐 파일만 묶은 패치 zip, 패치노트). 게임 업데이트를 가져오면 바뀌기 전 파일이 `backups/before-vN/` 에, 결과 요약이 `updates/vN.json` 에 남는다. 자세한 것은 `docs/ARCHITECTURE.md`.
 
 ## 꼭 지킬 것
 
@@ -43,10 +60,12 @@ tests/         src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다
 ## 일하는 방식
 
 - 기능은 시험을 먼저 쓰고 만든다. 계획서의 각 작업이 그 순서로 적혀 있다.
-- 끝났다고 말하기 전에 직접 돌린다: `npx vitest run`, `npx tsc --noEmit -p tsconfig.node.json`, `npx tsc --noEmit -p tsconfig.web.json`, `npm run build:app && npm run test:e2e`.
-- 시험용 작은 게임(`tests/helpers/miniGame.ts`)만으로는 실제 게임의 다양함을 알 수 없다. 추출이나 적용을 고쳤으면 실제 MV 게임과 MZ 게임에서 `mvmz import` 를 돌려 본다(게임 폴더는 사용자에게 받는다. 읽기만 한다).
+- 끝났다고 말하기 전에 직접 돌린다: `npx vitest run`, `npx tsc --noEmit -p tsconfig.node.json`, `npx tsc --noEmit -p tsconfig.web.json`, `npm run build:app && npm run test:e2e`, 그리고 `npm run build` 뒤 `node dist/cli.js --help`(명령줄 도구가 실제로 뜨는지).
+- 시험용 작은 게임(`tests/helpers/miniGame.ts`)만으로는 실제 게임의 다양함을 알 수 없다. 추출이나 적용을 고쳤으면 실제 MV 게임과 MZ 게임에서 `node dist/cli.js import <게임 폴더> <임시 프로젝트 폴더> --name <이름>` 을 돌려 본다(게임 폴더는 사용자에게 받는다. 읽기만 한다).
 - 실제 Claude CLI 를 쓰는 시험은 `MVMZ_REAL_CLI=1` 일 때만 돌고 가장 싼 모델을 쓴다. 꼭 필요할 때만 돌린다.
-- 커밋은 작업 단위로 작게, 메시지는 한국어로 `feat:` `fix:` `perf:` `docs:` `chore:` 를 앞에 붙인다.
+- 커밋은 작업 단위로 작게, 메시지는 한국어로 `feat:` `fix:` `perf:` `refactor:` `docs:` `chore:` 를 앞에 붙인다.
+- 채팅 도구, 화면, IPC 채널, 추출 대상을 더할 때 손대는 곳은 `docs/ARCHITECTURE.md` 4장에 있다.
+- 계획서를 쓰던 때의 "같이 쓰는 파일은 맨 끝에 추가만" 규칙은 끝났다. 새 코드는 제자리(맞는 파일, 맞는 묶음)에 넣고, import 는 파일 맨 위에, 이름은 뜻이 드러나게 짓는다. 코드와 주석에 계획 번호를 적지 않는다.
 
 ## 사용자가 정해 둔 규칙
 
@@ -64,5 +83,7 @@ tests/         src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다
 ## 아직 없는 것
 
 - exe 하나로 뭉쳐진 게임(Enigma) 풀기: Python 이 필요해 보류.
+- `.ttc`(폰트 모음 파일): 폰트 목록에 수만 보이고 쓸 수 없다.
+- 코드 서명: 인증서가 없어 배포 파일에 서명하지 않는다.
 - 계획 1~7(3b 포함)은 모두 끝났다. 실제 게임 두 버전으로 업데이트 가져오기를 해 보는 확인은 사람이 할 일로 남아 있다(계획 6 끝의 "사람이 확인할 것").
-- 진행 상태는 `docs/superpowers/plans/` 의 체크박스와 `CHANGELOG.md` 를 본다.
+- 바뀐 점은 `CHANGELOG.md` 를 본다.

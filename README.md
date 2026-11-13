@@ -1,148 +1,101 @@
-# MV/MZ 번역 작업실
+# SoSa Translator (MV/MZ 번역 작업실)
 
-RPG Maker MV/MZ 게임의 일본어 → 한국어 번역에서 기계적인 일(가져오기, 텍스트 추출, 형식 검사, 재삽입, 패치 zip 빌드)은 프로그램이 맡고, Claude 에게는 번역과 판단만 넘기는 윈도우용 도구입니다. 데스크톱 앱(Electron), 그 밑의 라이브러리(`src/core`), 명령줄(`src/cli.ts`)로 되어 있습니다. 원본 게임 폴더에는 아무것도 쓰지 않습니다.
+RPG Maker MV/MZ 게임을 일본어에서 한국어로 옮기는 윈도우용 프로그램입니다. 게임에서 문장 뽑기, 형식 검사, 번역문 다시 넣기, 패치 zip 만들기 같은 기계적인 일은 프로그램이 하고, Claude 에게는 번역과 판단만 맡깁니다. Claude 가 게임 전체를 읽지 않고 프로그램이 추린 조각만 보므로 토큰을 아낍니다.
 
-설계: `docs/2026-11-13-mvmz-번역작업실-기획서.md`, 계획: `docs/superpowers/plans/2026-11-13-plan1-core-engine.md`, `docs/superpowers/plans/2026-11-13-plan2-app-and-chat.md`, `docs/superpowers/plans/2026-11-13-plan3-glossary-and-translation.md`
+- **원본 게임 폴더에는 아무것도 쓰지 않습니다.** 모든 작업 결과는 프로젝트 폴더에 쌓이고, 빌드하면 바뀐 파일만 묶은 패치 zip 이 나옵니다.
+- 데스크톱 앱(Electron), 그 밑의 라이브러리(`src/core`), 명령줄 도구(`src/cli.ts`)로 되어 있습니다.
+- 만든 까닭과 정한 것: `docs/2026-11-13-mvmz-번역작업실-기획서.md`. 코드 구조: `docs/ARCHITECTURE.md`.
 
-## 준비
+## 준비물
 
-Node 22.12 이상이 필요합니다.
+- **Windows 10/11**
+- **Claude CLI 와 로그인**: 채팅, 자동 번역, 검수, 판단 추천, 패치노트 다듬기는 Claude CLI(`claude`)와 본인의 Claude 구독으로 동작합니다. 터미널에서 설치하고 한 번 로그인합니다.
 
-```bash
-npm install
-npm run build      # dist/cli.js
-npm test           # vitest
-```
+  ```bash
+  winget install Anthropic.ClaudeCode
+  ```
 
-## 명령
+  ```bash
+  claude
+  ```
 
-| 명령 | 동작 | 출력 |
-|---|---|---|
-| `mvmz import <gameDir> <projectDir> --name <이름>` | 게임 판별, 프로젝트 생성, 원본 복사, 전체 추출 | 엔진, 항목 수, 판단 필요 수, 경고 |
-| `mvmz export <projectDir> --out <file> [--all]` | 미번역 항목을 JSON 배열로 저장. 판단 필요 항목은 `--all` 일 때만 | 내보낸 수 |
-| `mvmz apply <projectDir> <file>` | `[{id, target}]` 를 번역표에 넣고 저장 | 적용 수, 모르는 id |
-| `mvmz check <projectDir>` | 형식 검사, 오류 항목은 상태를 `error` 로 저장 | 문제 목록. 오류가 있으면 종료 코드 1 |
-| `mvmz build <projectDir>` | 검사 후 바뀐 파일만 묶은 패치 zip | zip 경로, 파일 목록, 건너뛴 오류 수 |
-| `mvmz status <projectDir>` | 상태별 개수 | 전체, 미번역, 검토 필요, 승인, 오류 |
+  앱은 PATH 에서 `claude.exe`(없으면 `claude.cmd`)를 찾고, 설정 화면의 "Claude CLI" 에서 경로를 직접 줄 수도 있습니다. CLI 가 없어도 가져오기, 손 번역, 빌드는 됩니다. 이때 채팅 탭에 설치와 로그인 안내가, 아래 상태 줄에 "Claude CLI 없음" 또는 "로그인 필요"가 보입니다(로그인 여부는 `claude auth status` 로 확인하고, 5초 안에 답이 없으면 모름으로 칩니다).
+- **소스에서 실행할 때만**: Node 22.12 이상(64비트)과 git.
 
-종료 코드: 0 성공, 1 오류(메시지 한 줄), 2 모르는 명령이나 인자 부족(사용법 출력).
+## 실행
 
-전역 설치 없이 쓸 때는 `npm run build` 뒤에 `node dist/cli.js <명령>` 으로 부릅니다.
-
-## 프로젝트 폴더
-
-```
-<projectDir>/
-  project.json            프로젝트 정보 (이름, 엔진, 게임 폴더, www/ 접두사, 버전 목록, 현재 버전)
-  original/v1/            가져온 원본 사본 (읽기 전용으로 취급). 게임 업데이트를 가져오면 original/v2/, v3/ … 가 더해지고 project.json 의 current 가 그 버전
-    data/*.json
-    js/plugins.js
-    js/plugins/*.js
-    files.json            img/, audio/, movies/ 아래 파일 경로 목록 (파일 이름 힌트용)
-    index.html            게임의 index.html (제목 번역용)
-    package.top.json      게임 최상위 package.json (창 제목 번역용. name 은 바꾸지 않음)
-  units.json              추출한 번역 단위 (같은 종류+화자+원문은 하나로 합침, 위치 목록 refs)
-  translations.json       번역표: 단위 id → { target, status, updatedAt, declinedReason?, review?, reviewedAt? }
-  draft-notes.json        용어집 초안의 대본 읽기 메모 (조각 해시별)
-  glossary.json           용어집: { terms, characters, styleGuide, rules, confirmedAt } (처음 고칠 때 생김)
-  decisions.json          판단 필요 결정: 판단 키(또는 unit:<id>) → { translate, keep, status, by, reason? } (처음 정할 때 생김)
-  builds/
-    001/
-      patch/              패치에 들어간 파일 (게임 최상위 기준 경로, MV 배포판이면 www/...)
-      manifest.json       { number, createdAt, version, files: [{ path, sha1 }] }
-      <이름>_patch_001.zip
-  preview.json            미리보기 설정: { fontPath, fontName, overrides } (게임 폰트 경로와 대사창 치수 고친 값. 폰트 파일은 복사하지 않음)
-  images.json             그림 작업 지시서: { defaultFontPath, recipes: 파일 → { file, baseHash, regions, status, manualFile?, note? }, folders? } (처음 쓸 때 생김)
-  images/
-    catalog.json          그림 목록 기억: 경로·크기·수정 시각별 { width, height, hash } (바뀐 파일만 다시 읽음)
-    rendered/<키>.png     지시서대로 찍은 그림 (키 = 원본 해시 + 지시서 + 폰트)
-    thumbs/               목록 썸네일 (긴 변 256)
-    manual/               사용자가 직접 고친 그림의 사본
-  builds/NNN/snapshot.json  그 빌드에 들어간 번역(id → 해시)·그림·파일 요약. 다음 빌드와 비교용
-  builds/NNN/diff.json      지난 빌드와 비교한 숫자와 목록
-  builds/NNN/notes.txt      그 빌드의 패치노트 (고치거나 Claude가 다듬으면 이 글이 zip 의 패치노트.txt 에 들어감)
-  backups/before-<버전>/    게임 업데이트를 가져오기 직전의 project.json, units.json, translations.json 등 (되돌리기용)
-  updates/<버전>.json       그 업데이트에서 바뀐 것의 요약 (업데이트 결과 화면이 읽음)
-  testplay/                 게임 실행용 시험 사본 (.version 에 만든 버전). 버전이 바뀌면 옛 세이브는 testplay-saves-<옛 버전>/ 로
-```
-
-모든 JSON 은 UTF-8, 들여쓰기 2칸입니다.
-
-## 번역 상태
-
-- `untranslated` 번역 없음
-- `needs-review` 번역 있음, 검토 전 (기본값)
-- `approved` 승인됨. 판단 필요 항목은 "번역함"으로 확정된 결정이 있어야 패치에 들어갑니다(결정이 없으면 예전처럼 승인된 것만)
-- `error` 형식 검사 오류. 패치에서 빠집니다
-- `declined` 모델이 번역을 거절함. 이유(`declinedReason`)가 함께 남습니다
-
-## 용어집 (`glossary.json`)
-
-- `terms`: `{ id, source, target, category: name|place|term|sfx|other, status: confirmed|provisional, candidates, note? }`. `provisional` 은 후보 중 추천안으로 진행 중인 용어입니다. 그 용어가 들어간 번역문은 "추천안 용어 사용"으로 표시됩니다.
-- `characters`: 인물 카드 `{ id, source, target, speech, firstPerson?, addressing?, moanStyle? }`. `moanStyle` 은 그 인물의 신음·감탄 소리의 결입니다. 효과음 용어는 화자 있는 대사에는 강제하지 않습니다(신음이 인물마다 다를 수 있게). 그 인물의 대사가 든 묶음에만 붙습니다.
-- `styleGuide`: 말투 지침 글. 새 프로젝트의 처음 값은 `docs/default-style-guide.md` 의 본문(첫 제목과 안내 문단 제외)을 빌드 때 그대로 넣은 것입니다. 초안을 받으면 끝에 `## 이 게임의 말투` 절이 붙습니다.
-- `rules`: 형식 규칙. 제어 코드 유지, 일본어 남기지 않기, 줄 수 같게, 대사 최대 줄 수, 한 줄 최대 글자 수(`maxLineWidthChars`, 반각은 0.5자), 화자 줄 패턴(`speakerPattern`, 정규식, 첫 묶음이 이름).
-- `confirmedAt`: 사용자가 확정한 때. 확정 전에는 전체 번역을 시작할 수 없습니다.
-
-용어 번역을 바꾸면 그 용어가 들어간 번역문을 모두 찾아 바꾸고 뒤의 조사(을/를, 이/가, 은/는, 과/와, 으로/로, 아/야, 이랑/랑, 이나/나, 이라/라, 이야/야)를 받침에 맞춥니다. 조사인지 확실하지 않은 문장은 바꾸되 "검토 필요"로 올립니다.
-
-## 데스크톱 앱
-
-### 실행
+설치 파일(`release/` 의 `SoSa Translator Setup …exe`)이나 zip 을 받았다면 그대로 실행합니다. 소스에서 실행하려면:
 
 ```bash
 npm install
-npx install-electron     # Electron 실행 파일 받기 (처음 한 번, node_modules/electron/dist 에 들어감)
-npm run dev              # 개발 모드로 앱 실행
-npm run build:app        # out/ 에 빌드
-npm run test:e2e         # 빌드된 앱으로 연기 시험 (먼저 build:app)
-npx vitest run           # 단위 시험 전체
 ```
 
-채팅을 쓰려면 Claude CLI(`claude`)가 설치되어 있고 로그인돼 있어야 합니다. 앱은 PATH 에서 `claude.exe`(없으면 `claude.cmd`)를 찾고, 설정 화면에서 경로를 직접 줄 수도 있습니다. 앱 설정은 `%APPDATA%/mvmz-translator/settings.json`, 프로젝트는 기본으로 `문서/MVMZ 번역 작업실/<이름>` 에 만들어집니다.
-
-### 구조
-
-```
-src/main/index.ts           창, 수명 주기, 브리지 시작, MCP 설정 파일 쓰기
-src/main/projectService.ts  열린 프로젝트의 유일한 소유자. 모든 쓰기는 큐로 한 번에 하나씩, 저장 후 'changed'
-src/main/ipc.ts             window.api 처리기 (설정, 프로젝트, 항목, 채팅, 용어집, 작업). 작업은 한 번에 하나
-src/main/settings.ts        앱 설정 읽기/쓰기
-src/main/toolHandlers.ts    채팅 도구 이름 → 처리 함수 (쓰기는 출처 'chat')
-src/main/bridge.ts          127.0.0.1 임의 포트 HTTP 브리지 (실행마다 새 Bearer 토큰)
-src/main/claude/            CLI 인자, stream-json 파서, 프로세스 관리(ClaudeChat), 시스템 프롬프트, 한 번 호출로 JSON 답 받기(json.ts)
-src/main/translate/         용어집 자료와 초안, 묶음 나누기와 번역 프롬프트, 번역 작업, 검수 작업
-src/core/glossary/          용어집 타입·저장, 용어 찾기와 일치 검사, 조사 맞춤, 용어 바꾸기
-src/core/text/speaker.ts    화자 줄 패턴
-src/mcp/server.ts           Claude CLI 가 띄우는 stdio MCP 서버 "mvmz". 모든 호출을 브리지로 넘긴다
-src/preload/index.ts        contextBridge 로 window.api 노출
-src/shared/                 IPC 타입(api.ts), 행 만들기·필터·통계(rows.ts)
-src/renderer/               React 화면 (상태는 state.ts, 화면 조각은 components/)
-src/core/preview/           대사창 치수 알아내기(metrics.ts), 제어문자를 풀어 대사 배치하기(layout.ts)
-src/main/fonts/             폰트 파일 읽기와 글자 폭 재기(opentype.js), 폰트 목록과 캐시
-src/main/preview.ts         열린 프로젝트의 미리보기: 고른 폰트, 픽셀 폭 검사, 넘침 세기
-src/main/story.ts           스토리 보기의 장면 묶기(이벤트 페이지 단위)와 페이지 조건 글
-src/renderer/preview/       렌더러 쪽 폰트 등록(FontFace)과 창 스킨 색
-src/core/images/            그림 목록과 풀기(catalog.ts), 지시서 저장과 검사(store.ts), 그림 속 글 배치(layoutText.ts), 모음판 크기(sheet.ts)
-src/core/notes/             빌드 요약(snapshot.ts), 지난 빌드와 비교·패치노트 글·설치 방법(diff.ts)
-src/main/render/            보이지 않는 렌더 작업 창과 그 차례·재시도(renderService.ts)
-src/renderer/render-worker/ 렌더 작업 창의 화면: 캔버스로 그림 찍기, 모음판, 썸네일
-src/main/images.ts          열린 프로젝트의 그림 서비스: 목록, 지시서, 찍기와 캐시, 패치 기여자
-src/main/buildNotes.ts      패치노트 기여자, zip 다시 묶기, 패치노트 다듬기 작업
+```bash
+npx install-electron
 ```
 
-Claude CLI 는 `-p --input-format stream-json --output-format stream-json` 으로 한 프로세스를 띄워 여러 턴을 주고받습니다. 내장 도구는 모두 끄고(`--tools ""`), `--mcp-config` 로 `mvmz` 서버만 붙이며, 허용 도구도 그 열 개로 제한합니다. 모델을 바꾸거나 멈춘 뒤에는 `--resume <session_id>` 로 같은 대화를 이어갑니다.
+```bash
+npm run dev
+```
 
-### 번역 흐름
+`npx install-electron` 은 Electron 실행 파일을 받는 것으로, 처음 한 번만 합니다.
 
-1. **용어집 초안**: 세 방식 중 하나를 고릅니다. "적당히 읽기"(기본)는 대본에서 고르게 떨어진 장면(약 2,500자씩, 읽는 양 2만/5만/10만 자)과 주요 인물·신음 장면을 골라 읽고, "전체 정독"은 대사 전부를 약 2만 자 조각으로 읽습니다. 조각마다 CLI 를 한 번씩 불러 인물 성격·말투·신음의 결, 고유명사, 효과음을 메모하고(`draft-notes.json` 에 조각 해시와 함께 저장, 같은 조각은 다시 읽지 않음), 모은 메모를 빈도 자료와 함께 한 번 더 보내 정리합니다. "표본만"은 아래 자료만 한 번 보냅니다. 대본 읽기와 용어집 정리 모델은 설정에서 따로 고르고, 초안 대화상자에서 이번 한 번만 바꿀 수 있습니다. 표본 방식은 화자 이름, 고유명사 후보, 효과음 후보, 인물별 대사 표본과 신음 대사, 메뉴 용어를 모아 한 번 보냅니다. 답은 용어(애매하면 후보 2~3개), 인물 카드, 이 게임의 말투로 돌아와 용어집에 합쳐집니다. 이미 있는 용어와 인물은 건드리지 않습니다. 화자 줄 패턴이 비어 있으면 자동으로 찾아 넣습니다.
-2. **확정**: 용어집 화면에서 고치고 "용어집 확정". 결정 안 한 용어가 남아 있어도 확정할 수 있습니다.
-3. **전체 번역** (모델 "전체 번역"): 판단 필요가 아닌 미번역 항목을 파일별로 최대 40개, 본문 6,000자씩 묶어 묶음마다 CLI 를 한 번씩 실행합니다. 묶음에는 말투 지침 전체, 형식 규칙, 그 묶음에 나오는 용어와 인물 카드, 바로 앞 대사 3줄이 붙습니다. 화자 줄은 떼고 본문만 보내며, 이름은 용어집으로 옮겨 다시 붙입니다. 형식 오류가 난 항목만 한 번 더 보내고, 거절된 항목은 "거절됨"으로 남깁니다. 묶음 전체가 거절되거나 답 형식이 틀리면 반으로 나눠 다시 보냅니다. 사용량 한도에 걸리면 "한도 때문에 멈춤"이 되고 "이어하기"로 그 묶음부터 다시 합니다. 끝난 묶음은 번역표에 남아 있으므로 앱을 다시 켜도 남은 것만 묶습니다.
-4. **검수** (모델 "검수"): 범위(전체, 지난 검수 이후 바뀐 것만, 지금 보는 범위)를 고르면 항목 수와 예상 입력 토큰을 보여줍니다. 문제가 있는 줄에만 이유와 고친 안이 붙어 "검토 필요"로 올라오고, 항목 탭에서 "고친 안 받기" 또는 "그대로 두기"를 고릅니다.
+앱 설정(`settings.json`, 폰트 목록 캐시 `fonts-cache.json`, 채팅용 Claude CLI 가 읽는 `mcp.json`)은 윈도우의 앱 설정 폴더(`%APPDATA%` 아래)에, 프로젝트는 기본으로 `문서/MVMZ 번역 작업실/<이름>` 에 만들어집니다. 프로젝트 폴더 위치는 설정에서 바꿀 수 있습니다.
 
-### 판단 필요 항목
+## 처음부터 끝까지 한 번 해 보기
 
-플러그인 커맨드(356/357), 스크립트(355/655), 주석(108/408), 플러그인 설정, 메모란(`<태그:값>`, `<태그>…</태그>`), 켜진 플러그인의 JS 파일 안 문자열에는 화면에 보이는 글자와 코드가 읽는 값이 섞여 있습니다. 이것들은 "판단 키"로 묶어 한 번만 정합니다.
+### 1. 가져오기
+
+첫 화면에서 "게임 폴더 고르기"를 누르거나 게임 폴더(또는 그 안의 파일)를 끌어다 놓습니다. 엔진(MV/MZ)과 제목을 확인하고 프로젝트 이름을 정해 "만들기"를 누르면, 게임의 `data/*.json`, `js/plugins.js`, `js/plugins/*.js` 를 프로젝트의 `original/v1/` 로 복사하고 번역할 문장을 모두 뽑습니다. 같은 종류·같은 화자·같은 원문은 하나로 합쳐 한 번만 번역합니다. exe 하나로 뭉쳐진 게임(Enigma 등)은 아직 열 수 없습니다.
+
+왼쪽 메뉴: 텍스트 · 용어집 · 설정 · 판단 필요 · 이벤트 · 수정 내역 · 이미지 · 빌드 기록 (게임 업데이트를 가져온 뒤에는 업데이트 결과). 위 막대: 프로젝트 닫기 · 새 버전 가져오기 · 게임 실행 · 패치 빌드.
+
+### 2. 용어집
+
+"용어집"에서 "용어집 초안 받기"를 누르고 방식을 고릅니다.
+
+- **적당히 읽기**(기본): 대본에서 고르게 떨어진 장면(약 2,500자씩, 읽는 양 2만/5만/10만 자)과 주요 인물·신음 장면을 골라 읽습니다.
+- **전체 정독**: 대사 전부를 약 2만 자 조각으로 읽습니다.
+- **표본만**: 화자 이름, 고유명사·효과음 후보, 인물별 대사 표본, 메뉴 용어만 모아 한 번 보냅니다.
+
+읽는 방식은 조각마다 CLI 를 한 번씩 불러 인물 성격·말투·신음의 결, 고유명사, 효과음을 메모하고(`draft-notes.json`, 같은 조각은 다시 읽지 않음), 모은 메모를 한 번 더 보내 정리합니다. 시작 전에 조각 수와 예상 입력 토큰이 보입니다. 답은 용어(애매하면 후보 2~3개), 인물 카드, 이 게임의 말투로 돌아와 용어집에 합쳐지고, 이미 있는 용어와 인물은 건드리지 않습니다. 화자 줄 패턴이 비어 있으면 자동으로 찾아 넣습니다.
+
+용어집 화면에서 용어(이름·장소·용어·효과음·기타), 인물 카드(말투, 1인칭, 호칭, 신음 스타일), 말투 지침, 형식 규칙(제어문자 유지, 일본어 남기지 않기, 줄 수, 최대 줄 수, 한 줄 최대 글자 수, 화자 줄 패턴)을 고친 뒤 **"용어집 확정"**을 누릅니다. 확정해야 전체 번역을 맡길 수 있고, 결정 안 한 용어가 남아 있어도 확정할 수 있습니다. 후보 중 추천안으로 진행 중인 용어가 들어간 번역문은 "추천안 용어 사용"으로 표시됩니다.
+
+용어의 번역을 바꾸면 그 용어가 들어간 번역문을 모두 찾아 바꾸고, 뒤의 조사(을/를, 이/가, 은/는, 과/와, 으로/로, 아/야, 이랑/랑, 이나/나, 이라/라, 이야/야)를 받침에 맞춥니다. 조사인지 확실하지 않은 문장은 바꾸되 "검토 필요"로 올립니다.
+
+새 프로젝트의 말투 지침 처음 값은 `docs/default-style-guide.md` 입니다(앱을 빌드할 때 그대로 들어갑니다).
+
+### 3. 번역
+
+"텍스트" 화면의 "새 문장 n개 번역 맡기기"를 누르면 판단 필요가 아닌 미번역 문장을 파일별로 최대 40개, 본문 6,000자씩 묶어 묶음마다 CLI 를 한 번씩 부릅니다. 묶음에는 말투 지침, 형식 규칙, 그 묶음에 나오는 용어와 인물 카드, 바로 앞 대사 3줄이 붙습니다. 화자 줄은 떼고 본문만 보내고, 이름은 용어집대로 옮겨 다시 붙입니다.
+
+- 형식 오류가 난 문장만 한 번 더 보냅니다. 모델이 거절한 문장은 "거절됨"으로 남습니다. 묶음 전체가 거절되거나 답 형식이 틀리면 반으로 나눠 다시 보냅니다.
+- 사용량 한도에 걸리면 "사용량 한도 때문에 멈췄어요"가 되고 "이어하기"로 그 묶음부터 다시 합니다. 끝난 묶음은 번역표에 남으므로 앱을 다시 켜도 남은 것만 보냅니다.
+- 문장을 고르면 오른쪽 "항목" 탭에서 손으로 고치거나, 승인하거나, "다시 번역"하거나, "채팅으로 말하기"로 채팅에 붙일 수 있습니다. "채팅" 탭에서는 Claude 와 이야기하며 고칩니다(아래 채팅 도구 참고).
+- "표 | 스토리"로 바꾸면 고른 범위의 장면(이벤트 페이지, 커먼이벤트, 전투 이벤트 페이지)을 순서대로 읽을 수 있고, 장면마다 "이 장면 다시 번역"과 "장면 승인"이 있습니다.
+
+**번역 상태**
+
+| 상태 | 뜻 |
+|---|---|
+| 미번역 `untranslated` | 번역 없음 |
+| 검토 필요 `needs-review` | 번역 있음, 아직 안 봄 (기본) |
+| 승인 `approved` | 사람이 확인함 |
+| 오류 `error` | 형식 검사 오류. 패치에서 빠집니다 |
+| 거절됨 `declined` | 모델이 번역을 거절함. 이유가 함께 남습니다 |
+
+**외부 번역**: 텍스트 화면의 "내보내기"는 지금 표에 보이는 문장을 꾸러미 파일(`mvmz-exchange-1`: 말투 지침, 형식 규칙, 나오는 용어와 인물, 문장마다 본문·화자·그대로 둘 조각·앞뒤 대사)로 저장합니다. 돌려받은 `[{ "id", "target" }]` 를 "외부 번역 가져오기"하면 넣을 수 있는 수, 검사 오류, 이미 다른 번역이 있어 충돌하는 수(기본은 건너뛰기), 없는 id, 모양이 틀린 항목을 먼저 보여 준 뒤 넣습니다. 들어간 번역은 "외부 번역"으로 표시됩니다.
+
+**게임 제목**: 위 막대의 연필 버튼으로 번역 제목을 정하면 패치에 `index.html` 의 `<title>` 과 최상위 `package.json` 의 `window.title`(비어 있지 않을 때만)이 들어갑니다.
+
+### 4. 검수
+
+텍스트 화면의 "번역 전체 검수"에서 범위(전체, 지난 검수 이후 바뀐 것만, 지금 보는 범위)를 고르면 문장 수와 예상 입력 토큰이 보입니다. 문제가 있는 줄에만 이유와 고친 안이 붙어 "검토 필요"로 올라오고, 항목 탭에서 "고친 안 받기" 또는 "그대로 두기"를 고릅니다.
+
+### 5. 판단 필요
+
+플러그인 커맨드(356/357), 스크립트(355/655), 주석(108/408), 플러그인 설정, 메모란(`<태그:값>`, `<태그>…</태그>`), 켜진 플러그인의 JS 파일 안 문자열에는 화면에 보이는 글자와 **코드가 읽는 값**이 섞여 있습니다. 코드가 읽는 값을 번역하면 게임이 깨지므로, 이것들은 따로 "판단 필요"로 두고 정한 뒤에만 번역합니다. 비슷한 것끼리 "판단 키"로 묶어 한 번만 정합니다.
 
 | 종류 | 판단 키 |
 |---|---|
@@ -153,135 +106,191 @@ Claude CLI 는 `-p --input-format stream-json --output-format stream-json` 으�
 | 메모란 태그 | `note:<파일 종류>:<태그>` |
 | 플러그인 JS 문자열 | `js:<파일 이름>` 묶음, 또는 문자열마다 `unit:<id>` |
 
-결정은 번역함/안 함과 "그대로 둘 부분"(`whole` 값 전체가 글자, `args` MV 커맨드의 앞 `from`개·뒤 `dropLast`개 조각은 그대로, `spans` 일본어 구간만 번역)입니다. `unit:<id>` 결정이 묶음 결정보다 우선합니다.
+1. "판단 필요" 화면에서 "Claude에게 추천 받기": 플러그인 주석(`@type file` 같은 것)과 그림·소리 파일 이름으로 확실한 것은 호출 없이 정하고, 남은 묶음을 30개씩(JS 문자열은 앞뒤 60자 문맥과 함께 40개씩) 보냅니다. 결과는 "추천"으로 남습니다.
+2. "추천 전부 받아들이기", 또는 카드마다 "번역함"(어디를 번역할지 고르기)/"번역 안 함"으로 확정합니다. 확정된 결정만 번역 대상이 되고, 결정이 없는 문장은 번역도 패치도 하지 않습니다. "그대로 둘 부분"은 `whole`(값 전체가 글자), `args`(MV 커맨드의 앞 `from`개·뒤 `dropLast`개 조각은 그대로), `spans`(일본어 구간만 번역) 중 하나입니다. `unit:<id>` 결정이 묶음 결정보다 우선합니다.
+3. 번역할 때 그대로 둘 조각을 함께 보내고, **뼈대 검사**가 그 조각이 한 글자도 바뀌지 않고 순서대로 남았는지 확인합니다. 어긋나면 한 번 다시 보내고, 또 어긋나면 오류로 두어 패치에서 뺍니다.
+4. 빌드할 때 메모란은 그 태그의 값만, 플러그인 JS 는 따옴표 안쪽만 바꿉니다(파일의 나머지는 그대로). 추출 뒤에 JS 파일이 바뀌어 자리가 맞지 않으면 그 파일은 넣지 않고 경고합니다.
 
-1. **판단 필요 화면**에서 "Claude에게 추천 받기"(모델 "판단 필요 추천"): 먼저 플러그인 주석(`@type file` 같은 것)과 그림·소리 파일 이름으로 확실한 것을 호출 없이 정하고, 남은 묶음을 30개씩(JS 문자열은 앞뒤 60자 문맥과 함께 40개씩) 보냅니다. 결과는 "추천"으로 남습니다.
-2. "추천 전부 받아들이기" 또는 카드마다 "번역함"(방식 고르기)/"번역 안 함"으로 확정합니다. 확정된 결정만 번역 대상이 됩니다. 결정이 없는 항목은 번역도 패치도 하지 않습니다.
-3. 전체 번역은 그대로 둘 조각을 `keep` 으로 함께 보내고, "뼈대 검사"가 그 조각이 한 글자도 바뀌지 않았는지 확인합니다. 어긋나면 한 번 다시 보내고, 또 어긋나면 `error` 로 두어 패치에서 뺍니다.
-4. 빌드할 때 메모란은 그 태그의 값만, 플러그인 JS 는 따옴표 안쪽만 바꿉니다(파일의 나머지는 바이트 단위로 같음). 추출 뒤에 JS 파일이 바뀌어 기록한 자리가 맞지 않으면 그 파일은 넣지 않고 경고합니다.
+결정을 "번역 안 함"으로 되돌려도 번역문은 번역표에 남고 패치에서만 빠집니다.
 
-결정을 "번역 안 함"으로 되돌려도 번역문은 번역표에 남고 패치에서만 빠집니다. 채팅에서는 `list_decisions`, `set_decision` 도구로 정합니다.
+### 6. 이미지
 
-**게임 제목**: 위 막대의 연필 버튼으로 번역 제목을 정하면(`System.json` 의 `gameTitle`, 승인됨) 패치에 `index.html` 의 `<title>` 과, 최상위 `package.json` 의 `window.title`(비어 있지 않을 때만)이 들어갑니다.
+"이미지"에서 게임 그림 속 글자를 번역합니다. 그림 파일을 직접 고치지 않고 **작업 지시서**(지울 영역, 넣을 문장, 폰트, 크기, 색, 정렬, 테두리, 그림자)를 저장하면, 프로그램이 지시서대로 그림을 찍어 패치에 넣습니다. 폰트나 문장을 바꾸면 Claude 없이 다시 찍힙니다.
 
-**외부 번역**: 텍스트 화면의 "내보내기"는 지금 필터에 걸린 항목을 꾸러미(`mvmz-exchange-1`: 말투 지침과 형식 규칙, 나오는 용어, 인물, 항목마다 본문·화자·그대로 둘 조각·앞뒤 대사)로 저장합니다. 돌려받은 `[{ "id", "target" }]` 를 "가져오기"하면 넣을 수 있는 수, 검사 오류, 이미 번역이 달라 충돌하는 수(기본은 건너뛰기), 없는 id, 모양이 틀린 항목을 보여준 뒤 넣습니다. 들어간 번역은 "외부 번역"으로 표시됩니다.
+- 대상 폴더: 기본은 `img/pictures`, `img/titles1`, `img/titles2`, `img/system`, `img/parallaxes`(하위 폴더 포함, `.png`·`.png_`·`.rpgmvp`). 설정의 "이미지"에서 바꿉니다.
+- 그리기: 화면에 보이지 않는 창의 캔버스로 찍습니다. 원본 → 영역마다 지우기(색으로 채움, 또는 영역 바로 바깥 색의 평균으로 채움) → 글(그림자 → 테두리 → 채우기). 문장이 영역 폭을 넘으면 공백에서(없으면 글자 단위로) 줄을 바꾸고, 닫는 문장부호는 줄 맨 앞에 오지 않게 합니다. 높이를 넘치면 넘친 채로 찍고 "영역을 넘쳐요"로 알립니다(글자를 몰래 줄이지 않음).
+- 패치에는 "끝남"이고 문제가 없는 그림과 "직접 고침"으로 넣은 PNG 만 들어갑니다. 원본이 암호화 파일이면 같은 키로 다시 암호화해 같은 경로에 넣습니다.
+- 문제 표시: 지시서를 쓴 뒤 원본 그림이 바뀌면 "원본이 바뀜"(확인 전에는 패치에서 빠짐), 폰트 파일이 없으면 "폰트 없음". 찍기에 실패하면 그 그림만 실패로 남고 빌드는 계속됩니다.
+- 채팅에 그림을 붙여 맡길 수도 있습니다. Claude 는 모음판(번호 붙은 썸네일 20장)으로 글자가 있는 그림을 고르고, 크게 본 뒤 지시서를 냅니다. 그림은 긴 변 1,568px 을 넘지 않게 줄여 보냅니다.
 
-묶음 호출 인자: `claude -p --model <id> --output-format json --tools "" --strict-mcp-config --setting-sources project --disable-slash-commands --system-prompt <지침> --json-schema <스키마>`, 묶음 내용은 표준 입력. 답의 `structured_output` 을 씁니다.
+### 7. 이벤트 수정
 
-### 채팅 도구
+"이벤트"에서 파일(맵, 커먼이벤트, 전투 이벤트)과 이벤트(맵은 페이지마다)를 고르면 커맨드를 한국어 한 줄씩 풀어 보여 줍니다. 줄 번호는 원본 목록의 번호입니다. 스위치·변수·커먼이벤트 이름을 누르면 오른쪽에 사용처(켬/조건)가 뜹니다. 줄을 지우거나 끼워 넣어 "수정으로 기록"하거나, "채팅으로 말하기"로 Claude 에게 맡깁니다.
 
-Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
-
-| 도구 | 입력 | 돌려주는 것 |
-|---|---|---|
-| `project_status` | 없음 | `{ name, engine, stats }` |
-| `search_units` | `query`, `status?`, `limit?`(기본 20, 최대 50) | `{ total, items: [{ id, kind, speaker, location, source, target, status, needsDecision }] }` — 원문, 번역, 화자에서 글자 그대로 찾는다 |
-| `get_unit` | `id` | 위 항목 + `refCount`, `issues`, 같은 파일 앞뒤 대사 `before`/`after` 각 2개 |
-| `set_translation` | `id`, `target` | `{ status, issues }` — 오류가 있으면 `error`, 없으면 `needs-review` |
-| `set_status` | `id`, `status: approved \| needs-review` | `{ status }` |
-| `undo_last` | 없음 | `{ ids }` — 채팅에서 한 가장 최근 변경 하나만 되돌린다 |
-| `glossary_search` | `query` | `{ terms, characters }` — 용어와 인물 카드에서 글자 그대로 찾는다 |
-| `glossary_set_term` | `source`, `target`, `category?` | `{ term, changed, uncertain }` — 확정 상태로 저장. 기존 용어의 번역이 바뀌면 번역문도 조사까지 맞춰 바꾼다 |
-| `list_decisions` | `query?` | `{ total, groups: [{ key, label, count, samples, hints, decision }] }` — 판단 필요 묶음 |
-| `set_decision` | `key`, `translate`, `mode?`, `from?`, `dropLast?`, `reason?` | `{ key, decision }` — 바로 확정(`by: claude`). 모르는 키는 실패 |
-| `image_sheet` | `folder?`, `status?`, `page?` | 모음판 그림 1장(20개, 5열, 번호 붙음) + `{ page, pages, items: [{ n, file, width, height, status }] }` |
-| `image_view` | `file`, `which?: original \| rendered` | 그림 1장(긴 변 1,568 이하) + `{ width, height, scale, status, problem?, regions? }`. 좌표는 `scale` 로 나눠 원본 기준으로 |
-| `image_set_recipe` | `file`, `regions`, `done?` | `{ status, regions, overflow, glossaryNote? }` — 그림의 영역 전체를 바꿈. 목록에 없는 `fontPath` 는 무시 |
-| `image_set_status` | `file`, `status: todo \| done \| skip` | `{ status }` |
-| `image_list` | `status?`, `folder?`, `limit?`(기본 50, 최대 200) | `{ total, items }` — 글만, 그림 없음 |
-| `update_summary` | 없음 | 가장 최근 게임 업데이트의 요약과 `conflicts: [{ id, title, reason, file, listPath }]`. 업데이트가 없으면 실패 |
-
-이벤트 도구 `event_read` 는 `version?`(예: `v1`)을 받으면 그 옛 버전의 이벤트를 읽습니다(충돌난 수정을 다시 낼 때).
-
-실제 CLI 로 확인하는 시험(토큰을 씁니다, 모델 `claude-haiku-5-5`, 시험용 작은 게임만):
-- 채팅: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCli.test.ts` (먼저 `npm run build:app`)
-- 정해진 형식의 답: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCliJson.test.ts`
-- 판단 필요 추천: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realDecide.test.ts`
-- 초안 → 확정 → 번역 → 검수 한 바퀴: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realFlow.test.ts` (`MVMZ_REAL_FLOW_OUT=<파일>` 이면 번역문과 호출별 토큰을 JSON 으로 남김)
-
-연기 시험에서 묶음 호출은 `MVMZ_CLAUDE_JSON_COMMAND`, `MVMZ_CLAUDE_JSON_PREFIX_ARGS` 로 가짜 CLI(`tests/fixtures/fake-claude-json.mjs`)를 씁니다.
-
-## 미리보기와 게임 폰트
-
-설정의 "게임 폰트"에서 폰트를 고르면(목록에 마우스를 올리면 그 폰트로 넘치는 줄 수를 미리 셉니다) 항목 탭에 "게임 화면 미리보기"가 나오고, 대사의 줄 폭 검사가 글자 수 대신 실제 폭(픽셀)으로 바뀝니다(규칙 `line-width-px`, 경고라서 패치에는 들어갑니다). 폰트를 정하지 않았거나 고른 파일이 없어지면 글자 수 검사(`line-width`)로 돌아갑니다.
-
-- 폰트 목록: 윈도우 글꼴 폴더 두 곳(`%WINDIR%\Fonts`, `%LOCALAPPDATA%\Microsoft\Windows\Fonts`), 게임의 `fonts/`, 프로젝트의 `fonts/`, 직접 고른 파일. `.ttf`·`.otf` 만 쓰고 `.ttc`(모음 파일)는 아직 쓸 수 없어 수만 보여 줍니다. 읽은 결과는 앱 설정 폴더의 `fonts-cache.json` 에 파일 크기·수정 시각과 함께 남겨 다음에는 바뀐 파일만 다시 읽습니다. "한글 있는 폰트"는 가·힣·뷁 세 글자가 모두 있는 폰트입니다.
-- 대사창 치수: MV 816×(여백 18, 글 여백 6, 글자 28, 줄 36, 4줄, 얼굴 168), MZ 808×(12, 8, 26, 36, 4줄, 얼굴 164)에서 시작해, MZ 는 `System.json` 의 `advanced.uiAreaWidth`·`fontSize`, MV 는 켜진 `YEP_CoreEngine`(`Screen Width`, `Font Size`)과 `Community_Basic`(`screenWidth`)을 반영합니다. 대사창을 바꾸는 플러그인을 쓰는 게임은 "대사창 치수 고치기"에서 손으로 맞춥니다.
-- 배치: `\C[n]` 색, `\V[n]`(값을 모르면 123), `\N[n]`·`\P[n]`(액터 이름, 번역이 있으면 번역), `\G`, `\I[n]`(아이콘 폭), `\{`·`\}`(글자 크기)를 게임처럼 풀고, 글자는 하나씩 폭을 더합니다(커닝 없음). 폰트에 없는 글자는 글자 크기만큼 폭을 잡고 "이 폰트에 없는 글자 n개"로 알립니다. 얼굴 그림이 있는 대사(앞의 `101` 에 얼굴 이름)는 그만큼 좁게 재고, 같은 문장이 얼굴 있는 곳과 없는 곳에 모두 쓰이면 좁은 쪽으로 검사합니다.
-- 미리보기는 프로그램이 흉내 내어 그린 화면입니다. 글자 색은 게임의 `img/system/Window.png`(암호화돼 있으면 풀어서)에서 읽고, 없으면 기본 색을 씁니다. 원본 게임 폴더는 읽기만 합니다. 폰트를 게임에 넣는 기능은 아직 없습니다.
-- 스토리 보기: 텍스트 화면 위의 "표 | 스토리"로 바꿉니다. 왼쪽에서 고른 범위(파일)의 장면(이벤트 페이지, 커먼이벤트, 전투 이벤트 페이지)을 순서대로 보여 주고, 페이지 조건(스위치, 변수, 셀프 스위치, 아이템, 액터)을 글로 적습니다. 장면마다 "이 장면 다시 번역"과 "장면 승인"이 있습니다.
-
-연기 시험은 `MVMZ_FONT_DIRS`(`;` 로 구분한 폴더들)로 윈도우 글꼴 폴더 대신 시험용 폰트 폴더를, `MVMZ_PICK_FONT` 로 파일 고르기 창 대신 정해진 폰트 파일을 씁니다. 시험용 폰트는 시험 안에서 `opentype.js` 로 만들고 저장소에는 폰트 파일을 넣지 않습니다.
-
-## 이벤트와 수정
-
-왼쪽 메뉴의 "이벤트"에서 파일(맵, 커먼이벤트, 전투 이벤트)과 이벤트(맵은 페이지마다)를 고르면 커맨드를 한국어 한 줄씩 풀어 보여 줍니다(`src/core/events/describe.ts`). 대사(`101`+`401`), 스크롤 문장, 주석, 스크립트, MZ 플러그인 커맨드는 한 줄로 합치고, 줄 번호는 원본 목록의 번호입니다. 표에 없는 코드는 `코드 999 [원래 인자]` 로 보입니다. 줄의 스위치·변수·커먼이벤트 이름을 누르면 오른쪽에 사용처(켬/조건)가 뜨고, 누르면 그 이벤트로 갑니다.
-
-수정은 원본을 고치지 않고 `patches.json` 에 "원본 대비 바뀐 점"으로 쌓입니다. 빌드할 때 원본 커맨드마다 원래 번호 꼬리표를 붙이고, 수정(끼워 넣기, 지우기, 바꾸기)을 원본 번호로 적용한 뒤, 번역을 꼬리표로 찾아 넣습니다. 그래서 수정으로 번호가 밀려도 번역이 제자리에 들어가고, 번역이 걸린 커맨드를 지운 수정이면 그 번역만 건너뜁니다. 원본 목록이 기록했을 때와 다르면(내용 기준 해시, 공백·키 순서는 무시) 그 수정은 넣지 않고 "충돌"로 표시합니다. 수정이 하나도 없으면 빌드 결과는 예전과 같습니다.
+수정은 원본을 고치지 않고 `patches.json` 에 "원본 대비 바뀐 점"으로 쌓이고, "수정 내역"에서 켜고 끄거나 지웁니다.
 
 | 수정 종류 | 하는 일 |
 |---|---|
-| `event` | 이벤트 목록 하나에 대한 연산 `insert after`(-1 이면 맨 앞), `delete at`, `replace at` — 번호는 모두 원본 번호. 한 목록에 켜진 수정은 하나 |
-| `json` | 데이터 파일의 값 하나(`baseValue` 가 원본과 다르면 충돌) |
+| `event` | 이벤트 목록 하나에 대한 연산: `insert after`(-1 이면 맨 앞), `delete at`, `replace at`. 번호는 모두 원본 번호. 한 목록에 켜진 수정은 하나 |
+| `json` | 데이터 파일의 값 하나 |
 | `plugin` | 새 플러그인 파일 `js/plugins/<이름>.js` 와 `js/plugins.js` 끝의 등록 |
-| `font` | 게임 폰트 넣기(프로젝트에 하나). MZ 는 `fonts/mvmz-game-font.ttf` 와 `System.json` 의 `advanced.mainFontFilename`, MV 는 폰트와 `fonts/gamefont.css` 의 `GameFont` 블록 |
+| `font` | 게임 폰트 넣기(아래 8) |
 
-프로젝트 폴더에 더해지는 것:
+빌드할 때 원본 커맨드마다 원래 번호 꼬리표를 붙이고, 수정을 원본 번호로 적용한 뒤, 번역을 꼬리표로 찾아 넣습니다. 그래서 수정으로 줄이 밀려도 번역이 제자리에 들어가고, 번역이 걸린 커맨드를 지운 수정이면 그 번역만 건너뜁니다. 원본이 수정을 기록했을 때와 달라졌으면(내용 기준 해시, 공백·키 순서는 무시) 그 수정은 넣지 않고 "충돌"로 표시합니다.
 
-```
-<projectDir>/
-  patches.json            수정 목록: [{ id, title, note, enabled, originalBug, createdBy, createdAt, body }]
-  original/v1/fonts/gamefont.css   MV 게임의 폰트 설정 사본 (있을 때만)
-  testplay/               "게임 실행"용 시험 사본. 그림·소리·실행 파일은 원본과 하드 링크, 나머지는 복사
-    .patched.json         지난번에 패치로 덮어쓴 파일 목록 (다음에 원본으로 되돌릴 것)
-```
+"원본 버그"로 표시한 수정은 "제작자 전달용 목록"에서 마크다운으로 모아 볼 수 있습니다(제목, 위치, 무엇을 왜, 풀어쓴 연산).
 
-- 폰트 넣기: 설정의 "폰트를 게임에 넣기"에서 켭니다. "쓰는 글자만 남겨 용량 줄이기"를 켜면 번역문, 수정으로 넣은 글, 숫자·영문·문장부호·전각 기호만 남깁니다(`subset-font`). 폰트에 원래 없는 글자는 건너뜁니다. 배포해도 되는 폰트인지는 직접 확인하세요. 위 "미리보기와 게임 폰트"의 "폰트를 게임에 넣는 기능은 아직 없습니다"는 이제 이 기능으로 대신합니다.
-- 게임 실행: 위 막대의 "게임 실행"은 가장 최근 빌드의 `patch/` 를 시험용 사본에 얹고 사본의 `Game.exe`(없으면 `nw.exe`)를 켭니다. 처음 한 번은 사본을 만드느라 오래 걸리고, 다음부터는 바뀐 파일만 다시 가져옵니다. 하드 링크로 이어진 파일에 패치를 쓸 때는 사본 쪽 파일을 먼저 지우고 쓰므로 원본은 바뀌지 않습니다. 사본의 `save/` 는 다시 준비해도 덮어쓰지 않습니다.
-- "제작자 전달용 목록": "원본 버그"로 표시한 수정만 모아 마크다운으로 보여 줍니다(제목, 위치, 무엇을 왜, 풀어쓴 연산).
+### 8. 미리보기와 폰트
 
-채팅 도구 다섯 개가 더해집니다(허용 도구는 위 열 개와 합쳐 열다섯 개):
+설정의 "게임 폰트"에서 폰트를 고르면(목록에 마우스를 올리면 그 폰트로 넘치는 줄 수를 미리 셉니다) 항목 탭에 "게임 화면 미리보기"가 나오고, 대사의 줄 폭 검사가 글자 수 대신 실제 픽셀 폭으로 바뀝니다(경고라서 패치에는 들어갑니다). 폰트를 정하지 않았거나 파일이 없어지면 글자 수 검사로 돌아갑니다.
 
-| 도구 | 입력 | 돌려주는 것 |
-|---|---|---|
-| `event_files` | 없음 | `{ files: [{ file, label, events }] }` |
-| `event_list` | `file` | `{ total, events: [{ label, listPath, pages?, condition, commandCount }] }` |
-| `event_read` | `file`, `listPath`, `raw?`, `from?`, `to?` | `{ label, condition, hash, commandCount, lines: [{ index, indent, text }], patch? }` — 원본 JSON 은 `raw: true` 일 때 `from`~`to`(최대 30줄)만 |
-| `usage_search` | `type`(switch, variable, commonEvent, item, picture), `id` | `{ total, items: [{ file, listPath, label, index, text, access }] }` — 페이지 조건은 `index: -1` |
-| `event_patch` | `title`, `file`, `listPath`, `baseHash`, `ops`, `note?`, `originalBug?` | `{ id, title, updated, state, reason? }` — 수정을 `createdBy: claude` 로 더한다. 같은 목록에 수정이 있으면 그 수정의 연산을 바꾼다 |
+- 폰트 목록: 윈도우 글꼴 폴더 두 곳, 게임의 `fonts/`, 프로젝트의 `fonts/`, 직접 고른 파일. `.ttf`·`.otf` 만 쓰고 `.ttc`(모음 파일)는 수만 보여 줍니다. "한글 있는 폰트"는 가·힣·뷁 세 글자가 모두 있는 폰트입니다.
+- 대사창 치수: MV 816(여백 18, 글 여백 6, 글자 28, 줄 36, 4줄, 얼굴 168), MZ 808(12, 8, 26, 36, 4줄, 얼굴 164)에서 시작해, MZ 는 `System.json` 의 `advanced.uiAreaWidth`·`fontSize`, MV 는 켜진 `YEP_CoreEngine`(`Screen Width`, `Font Size`)과 `Community_Basic`(`screenWidth`)을 반영합니다. 대사창을 바꾸는 플러그인을 쓰는 게임은 "대사창 치수 고치기"에서 손으로 맞춥니다.
+- 배치: `\C[n]` 색, `\V[n]`(값을 모르면 123), `\N[n]`·`\P[n]`(액터 이름, 번역이 있으면 번역), `\G`, `\I[n]`(아이콘), `\{`·`\}`(글자 크기)를 게임처럼 풉니다. 폰트에 없는 글자는 "이 폰트에 없는 글자 n개"로 알립니다. 얼굴 그림이 있는 대사는 그만큼 좁게 잽니다. 글자 색은 게임의 `img/system/Window.png` 에서 읽습니다.
+- **폰트를 게임에 넣기**: 설정에서 켜면 고른 폰트가 패치에 들어갑니다(MZ 는 `fonts/mvmz-game-font.ttf`(또는 `.otf`)와 `System.json` 의 `advanced.mainFontFilename`, MV 는 폰트와 `fonts/gamefont.css`). "쓰는 글자만 남겨 용량 줄이기"를 켜면 번역문, 수정으로 넣은 글, 숫자·영문·문장부호·전각 기호만 남깁니다. 지난 빌드의 폰트 크기와 "이 폰트에 없는 글자 n개"가 함께 보입니다. 배포해도 되는 폰트인지는 직접 확인하세요.
 
-실제 CLI 확인: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realEventPatch.test.ts` (먼저 `npm run build:app`, 모델 `claude-haiku-5-5`, 시험용 작은 게임만. `MVMZ_REAL_EVENT_OUT=<파일>` 이면 부른 도구와 토큰을 JSON 으로 남김). 연기 시험은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 게임을 실제로 띄우지 않고 실행한 것으로 칩니다.
-## 그림 속 글자와 패치노트
+### 9. 빌드와 게임 실행
 
-왼쪽 메뉴의 "이미지"에서 게임 그림 속 글자를 번역합니다. 그림 파일 자체가 아니라 "작업 지시서"(지울 영역, 넣을 문장, 폰트, 크기, 색, 정렬)를 `images.json` 에 저장하고, 프로그램이 그 지시서대로 그림을 찍어 패치에 넣습니다. 폰트나 문장을 바꾸면 Claude 없이 다시 찍힙니다.
+위 막대의 **"패치 빌드"**는 형식 검사 뒤 원본과 달라진 파일만 묶어 `builds/NNN/` 에 패치 zip 을 만듭니다. 오류인 번역은 빠지고 그 수가 표시됩니다. zip 최상위에는 `패치노트.txt`(이번 빌드의 글 다음에 지난 빌드들의 글을 최신순으로)와 `설치 방법.txt` 가 들어갑니다.
 
-- 대상: 기본은 `img/pictures`, `img/titles1`, `img/titles2`, `img/system`, `img/parallaxes`(하위 폴더 포함, `.png`·`.png_`·`.rpgmvp`). 설정의 "이미지"에서 바꿉니다. 원본 게임 폴더는 읽기만 하고, 푼 그림·찍은 그림·썸네일은 프로젝트의 `images/` 에만 둡니다.
-- 그리기: 화면에 보이지 않는 Electron 창의 캔버스로 찍습니다(네이티브 이미지 라이브러리 없음). 원본을 그리고 → 영역마다 지우기(색으로 채움, 영역 바로 바깥 색의 평균으로 채움) → 글(그림자 → 테두리 → 채우기). 문장이 영역 폭을 넘으면 공백에서(없으면 글자 단위로) 줄을 바꾸고, 닫는 문장부호는 줄 맨 앞에 오지 않게 앞 줄에 붙입니다. 그래도 높이를 넘치면 넘친 채로 찍고 "영역을 넘쳐요"로 알립니다(글자를 몰래 줄이지 않음).
-- 패치: 상태가 "끝남"이고 문제가 없는 그림, 또는 "직접 고침"으로 넣은 PNG 만 들어갑니다. 원본 크기 그대로 PNG 이고, 원본이 암호화 파일이면 같은 키로 다시 암호화해 같은 경로에 넣습니다.
-- 문제 표시: 지시서를 쓴 뒤 원본 그림이 바뀌면 "원본이 바뀜"(확인 전에는 패치에서 빠짐), 폰트 파일이 없으면 "폰트 없음", 찍기에 실패하면 그 그림만 실패로 남고 빌드는 계속됩니다. 렌더 작업 창이 죽거나 30초 안에 답이 없으면 새 창으로 한 번 더 시도합니다.
-- 채팅: `image_sheet` 로 모음판을 보고, `image_view` 로 크게 보고, `image_set_recipe` 로 지시서를 냅니다. 그림은 도구 결과의 그림 블록으로 보내고, 긴 변 1,568px 을 넘지 않게 줄입니다(토큰을 아끼려고).
+"빌드 기록"에서 빌드마다 패치노트를 고쳐 저장하거나 "Claude에게 다듬기 맡기기"를 누르면 그 빌드의 zip 안 글도 바뀝니다.
 
-빌드할 때마다 `builds/NNN/` 에 요약(`snapshot.json`)을 남기고 지난 빌드와 비교해(`diff.json`) 패치노트를 씁니다(`notes.txt`). zip 최상위에 `패치노트.txt`(이번 빌드의 글 다음에 지난 빌드들의 글을 최신순으로)와 `설치 방법.txt` 가 들어갑니다. 왼쪽 메뉴의 "빌드 기록"에서 노트를 고쳐 저장하거나 "Claude에게 다듬기 맡기기"(설정의 패치노트 정리 모델)를 누르면 그 빌드의 zip 안 글도 바뀝니다(manifest 의 sha1 도 맞춤). 다른 기능이 패치노트에 요약을 넣을 때는 `ProjectService.buildSummaries` 에 함수를 더합니다.
+**"게임 실행"**은 가장 최근 빌드의 패치를 시험용 사본(`testplay/`)에 얹고 사본의 `Game.exe`(없으면 `nw.exe`)를 켭니다. 그림·소리·실행 파일은 원본과 하드 링크로 이어 복사 시간을 줄이고, 패치를 쓸 때는 사본 쪽 파일을 먼저 지우고 쓰므로 원본은 바뀌지 않습니다. 처음 한 번은 사본을 만드느라 오래 걸리고, 다음부터는 바뀐 파일만 다시 가져옵니다. 사본의 `save/` 는 덮어쓰지 않습니다.
 
-실제 CLI 로 확인하는 시험: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realImageTool.test.ts` (도구 결과의 그림이 모델에게 보이는지). 연기 시험은 `MVMZ_TEST_HOOKS=1` 로 렌더 서비스를 시험에서 부를 수 있게 하고(`tests/e2e/render.e2e.test.ts`), `MVMZ_PICK_PNG` 로 직접 고친 그림 고르기 창 대신 정해진 파일을 씁니다.
-
-## 게임 업데이트
+### 10. 게임 업데이트
 
 게임의 새 버전이 나오면 위 막대의 "새 버전 가져오기"에서 새 폴더를 고르거나 끌어다 놓습니다.
 
-1. 확인: 엔진과 제목을 보여 주고 버전 이름을 제목이나 폴더 이름(`ver1.03`, `v1.2`, `1.0.3`)에서 채웁니다. 엔진이 다르거나 `data/*.json` 파일 이름이 절반도 겹치지 않으면 "다른 게임 같아요"라고 경고하고, "그래도 가져오기"를 체크하기 전에는 가져오지 않습니다. 지금 버전과 같은 폴더는 받지 않습니다.
-2. 가져오기: `backups/before-<버전>/` 에 지금 파일을 남기고, 새 원본을 `original/<버전>.tmp` 에 복사해 추출과 비교를 모두 끝낸 뒤에 한꺼번에 바꿉니다. 도중에 실패하면 프로젝트는 그대로입니다. 원본 게임 폴더(옛 버전, 새 버전 모두)는 읽기만 합니다.
-3. 문장: 번역표의 열쇠가 원문이라 원문이 그대로인 문장은 어느 맵으로 옮겨 가도 번역이 붙습니다. 같은 자리의 문장, 또는 같은 파일 안에서 75% 이상 비슷한 문장은 "바뀐 문장"으로 짝지어 새 항목에 이전 원문과 이전 번역(`previous`)을 붙입니다. 문장부호나 공백만 다르거나 화자 줄의 이름만 다르면 이전 번역을 미리 채워 "검토 필요"로 둡니다(`carried`). 비슷한 정도는 제어문자를 뺀 글자 2개 묶음의 Dice 계수이고, 문장 처음과 끝도 한 글자 묶음으로 셉니다. 사라진 문장의 번역은 번역표에 남습니다(문장이 되살아나면 번역도 되살아남).
-4. 수정: 이벤트 목록이 그대로면 그대로 얹고, 앞뒤에 줄이 더해졌으면 커맨드 내용으로 맞춰 번호를 옮깁니다. 수정이 가리키던 줄이 없어졌거나 끼워 넣을 자리의 앞뒤가 바뀌었으면 옮기지 않고 충돌로 남깁니다(비슷한 줄에 대충 붙이지 않음). 충돌난 수정은 결과 화면의 "Claude에게 맡기기"로 채팅에 넘길 수 있습니다.
-5. 그림: 작업 지시서가 있는 그림의 원본이 바뀌었으면 "원본이 바뀜"으로 표시됩니다(지시서는 그대로).
+1. 확인: 엔진과 제목을 보여 주고 버전 이름을 제목이나 폴더 이름(`ver1.03`, `v1.2`, `1.0.3`)에서 채웁니다. 엔진이 다르거나 `data/*.json` 파일 이름이 절반도 겹치지 않으면 "다른 게임 같아요"라고 경고하고, "그래도 가져오기"를 체크해야 진행합니다. 지금 버전과 같은 폴더는 받지 않습니다.
+2. 가져오기: 지금 파일을 `backups/before-<버전>/` 에 남기고, 새 원본의 추출과 비교를 모두 끝낸 뒤에 한꺼번에 바꿉니다. 도중에 실패하면 프로젝트는 그대로입니다.
+3. 문장: 번역표의 열쇠가 원문에서 만든 id 라서, 원문이 그대로인 문장은 어디로 옮겨 가도 번역이 붙습니다. 같은 파일 안에서 75% 이상 비슷한 문장은 "바뀐 문장"으로 짝지어 이전 원문과 이전 번역을 붙입니다. 문장부호·공백만 다르거나 화자 줄의 이름만 다르면 이전 번역을 미리 채워 "검토 필요"로 둡니다. 사라진 문장의 번역은 번역표에 남습니다(문장이 되살아나면 번역도 되살아남).
+4. 수정: 이벤트 목록이 그대로면 그대로 얹고, 앞뒤에 줄이 더해졌으면 커맨드 내용으로 맞춰 번호를 옮깁니다. 가리키던 줄이 없어졌거나 끼워 넣을 자리의 앞뒤가 바뀌었으면 충돌로 남기고, 결과 화면의 "Claude에게 맡기기"로 채팅에 넘길 수 있습니다.
+5. 그림: 지시서가 있는 그림의 원본이 바뀌었으면 "원본이 바뀜"으로 표시됩니다.
 
-결과는 `updates/<버전>.json` 에 남고, 왼쪽 메뉴의 "업데이트 결과"에서 다시 볼 수 있습니다. 텍스트 화면의 "바뀐 문장" 필터와 항목 탭의 "이전 버전의 문장" 상자(바뀐 부분 강조, "이전 번역 가져오기")로 고칩니다. 전체 번역은 바뀐 문장에 이전 번역을 참고로 실어 보냅니다.
+결과는 "업데이트 결과"에서 다시 볼 수 있습니다. 텍스트 화면의 "바뀐 문장" 필터와 항목 탭의 "이전 버전의 문장" 상자("이전 번역 가져오기")로 고치고, 결과 화면의 "새·바뀐 문장 번역 맡기기"로 번역을 맡길 수 있습니다. 전체 번역은 바뀐 문장에 이전 번역을 참고로 실어 보냅니다.
 
-"이 업데이트 되돌리기"는 가장 최근에 가져온 버전만 되돌립니다. 가져오기 직전의 파일로 글자 하나까지 되돌리고 `original/<버전>/` 과 요약을 지웁니다(백업은 `backups/rolled-back-<버전>-<시각>/` 로 남김). v3 를 되돌려 v2 가 되면 v2 의 백업으로 한 번 더 되돌릴 수 있습니다.
+"이 업데이트 되돌리기"는 가장 최근에 가져온 버전만 되돌립니다. 가져오기 직전의 파일로 되돌리고 그 버전의 원본 사본과 요약을 지웁니다(백업은 `backups/rolled-back-<버전>-<시각>/` 로 남김). 작업이 진행 중일 때는 가져오기와 되돌리기를 할 수 없습니다.
 
-연기 시험은 `MVMZ_PICK_DIR2` 로 새 버전 폴더 고르기 창 대신 정해진 폴더를 씁니다.
+## 프로젝트 폴더에 생기는 파일
 
-## Claude CLI 가 없을 때
+모든 JSON 은 UTF-8, 들여쓰기 2칸입니다. 처음 쓸 때 생기는 파일도 있습니다.
 
-채팅과 자동 번역은 Claude CLI 와 본인의 Claude 구독이 있어야 합니다. 추출, 손 번역, 빌드는 CLI 없이도 됩니다. 앱은 `claude auth status` 로 로그인 상태를 확인해(5초 안에 답이 없으면 모름으로 침) 채팅 탭에 설치와 로그인 안내를 보이고, 아래 상태 줄에 "Claude CLI 없음", "로그인 필요", "Claude CLI 연결됨" 중 하나를 보입니다.
+```
+<프로젝트>/
+  project.json            이름, 엔진, 게임 폴더, www/ 접두사, 버전 목록, 지금 버전
+  original/v1/            가져온 원본 사본 (읽기만 함). 업데이트를 가져오면 v2/, v3/ … 이 더해짐
+    data/*.json
+    js/plugins.js, js/plugins/*.js
+    files.json            img/, audio/, movies/ 아래 파일 목록
+    index.html            게임의 index.html (제목 번역용)
+    package.top.json      게임 최상위 package.json (창 제목 번역용)
+    fonts/gamefont.css    MV 게임의 폰트 설정 (있을 때만)
+  units.json              뽑은 문장(번역 단위)과 각 문장이 나오는 자리 목록
+  translations.json       번역표: 문장 id → { target, status, updatedAt, … }
+  glossary.json           용어집: { terms, characters, styleGuide, rules, confirmedAt }
+  draft-notes.json        용어집 초안의 대본 읽기 메모
+  decisions.json          판단 필요 결정: 판단 키(또는 unit:<id>) → { translate, keep, status, by, reason? }
+  patches.json            이벤트 수정 등 원본 대비 바뀐 점
+  preview.json            미리보기 설정: 게임 폰트 경로, 대사창 치수 고친 값
+  images.json             그림 작업 지시서와 기본 폰트, 대상 폴더
+  images/                 그림 목록 기억(catalog.json), 찍은 그림(rendered/), 썸네일(thumbs/), 직접 고친 그림(manual/)
+  builds/NNN/
+    patch/                패치에 들어간 파일 (게임 최상위 기준 경로, MV 배포판이면 www/…)
+    manifest.json         { number, createdAt, version, files: [{ path, sha1 }] }
+    <이름>_patch_NNN.zip
+    snapshot.json         이 빌드에 들어간 것의 요약 (다음 빌드와 비교용)
+    diff.json             지난 빌드와 비교한 숫자와 목록
+    notes.txt             이 빌드의 패치노트
+  backups/before-<버전>/  업데이트를 가져오기 직전의 프로젝트 파일 (되돌리기용)
+  updates/<버전>.json     그 업데이트의 요약 (업데이트 결과 화면이 읽음)
+  testplay/               게임 실행용 시험 사본 (.version, .patched.json)
+```
 
+## 채팅 도구
+
+채팅의 Claude CLI 는 내장 도구(파일 읽기, 셸 등)를 모두 끄고 이 앱의 도구만 씁니다. Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
+
+| 도구 | 입력 | 하는 일 |
+|---|---|---|
+| `project_status` | 없음 | 프로젝트 이름, 엔진, 상태별 줄 수 |
+| `search_units` | `query`, `status?`, `limit?`(기본 20, 최대 50) | 원문·번역·화자에서 글자 그대로 찾기 |
+| `get_unit` | `id` | 한 문장의 자세한 정보와 검사 결과, 같은 파일 앞뒤 대사 각 2개 |
+| `set_translation` | `id`, `target` | 번역 쓰기. 오류가 있으면 `error`, 없으면 `needs-review` |
+| `set_status` | `id`, `status: approved \| needs-review` | 상태 바꾸기 |
+| `undo_last` | 없음 | 채팅에서 한 가장 최근 변경 하나 되돌리기 |
+| `glossary_search` | `query` | 용어와 인물 카드에서 찾기 |
+| `glossary_set_term` | `source`, `target`, `category?` | 용어를 확정 상태로 저장. 번역이 바뀌면 번역문도 조사까지 맞춰 바꿈 |
+| `list_decisions` | `query?` | 판단 필요 묶음 목록 |
+| `set_decision` | `key`, `translate`, `mode?`, `from?`, `dropLast?`, `reason?` | 판단을 바로 확정. 모르는 키는 실패 |
+| `event_files` | 없음 | 이벤트가 있는 파일 목록 |
+| `event_list` | `file` | 한 파일의 이벤트 목록(맵은 페이지마다)과 조건, `listPath` |
+| `event_read` | `file`, `listPath`, `raw?`, `from?`, `to?`, `version?` | 이벤트를 풀어쓴 글과 해시. `raw` 면 그 범위의 원본 커맨드(최대 30줄), `version` 이면 옛 버전의 이벤트 |
+| `usage_search` | `type`(switch, variable, commonEvent, item, picture), `id` | 어디서 켜지고 읽히는지. 페이지 조건은 `index: -1` |
+| `event_patch` | `title`, `file`, `listPath`, `baseHash`, `ops`, `note?`, `originalBug?` | 원본 번호 기준의 수정을 더함. 같은 목록에 수정이 있으면 그 수정을 바꿈 |
+| `image_sheet` | `folder?`, `status?`, `page?` | 번호 붙은 썸네일 모음판 1장(20개)과 목록 |
+| `image_view` | `file`, `which?: original \| rendered` | 그림 1장(긴 변 1,568px 이하)과 크기, `scale`, 영역 |
+| `image_set_recipe` | `file`, `regions`, `done?` | 그림의 지시서를 통째로 바꿈. 목록에 없는 `fontPath` 는 무시 |
+| `image_set_status` | `file`, `status: todo \| done \| skip` | 그림 상태 바꾸기 |
+| `image_list` | `status?`, `folder?`, `limit?`(기본 50, 최대 200) | 그림 목록(글만) |
+| `update_summary` | 없음 | 가장 최근 게임 업데이트의 요약과 충돌난 수정 목록. 업데이트가 없으면 실패 |
+
+## 명령줄 도구
+
+앱 없이 핵심 기능을 쓰는 도구입니다. `npm run build` 로 `dist/cli.js` 를 만든 뒤 `node dist/cli.js <명령>` 으로 부릅니다.
+
+| 명령 | 하는 일 | 출력 |
+|---|---|---|
+| `mvmz import <gameDir> <projectDir> --name <이름>` | 게임 판별, 프로젝트 만들기, 원본 복사, 전체 추출 | 엔진, 문장 수, 판단 필요 수, 경고 |
+| `mvmz export <projectDir> --out <file> [--all]` | 미번역 문장을 JSON 배열로 저장. 판단 필요는 `--all` 일 때만 | 내보낸 수 |
+| `mvmz apply <projectDir> <file>` | `[{ id, target }]` 를 번역표에 넣고 저장 | 넣은 수, 모르는 id |
+| `mvmz check <projectDir>` | 형식 검사. 오류인 문장은 상태를 `error` 로 저장 | 문제 목록. 오류가 있으면 종료 코드 1 |
+| `mvmz build <projectDir>` | 검사 뒤 바뀐 파일만 묶은 패치 zip | zip 경로, 파일 목록, 건너뛴 오류 수 |
+| `mvmz status <projectDir>` | 상태별 개수 | 전체, 미번역, 검토 필요, 승인, 오류 |
+
+종료 코드: 0 성공, 1 오류(메시지 한 줄), 2 모르는 명령이나 인자 부족(사용법 출력).
+
+## 배포용으로 묶기
+
+```bash
+npm run dist
+```
+
+`release/` 에 설치 파일(NSIS)과 zip 이 나옵니다. 설정은 `electron-builder.yml` 입니다. 서명 인증서가 없어 서명하지 않으므로, 처음 실행할 때 윈도우가 경고할 수 있습니다.
+
+## 개발과 시험
+
+```bash
+npx vitest run
+```
+
+```bash
+npx tsc --noEmit -p tsconfig.node.json
+```
+
+```bash
+npx tsc --noEmit -p tsconfig.web.json
+```
+
+```bash
+npm run build:app && npm run test:e2e
+```
+
+- 단위 시험은 `tests/` 에 `src/` 와 같은 구조로 있고, 시험용 작은 게임은 `tests/helpers/miniGame.ts` 가 만듭니다. `tests/e2e` 는 빌드된 앱을 실제로 띄웁니다(먼저 `npm run build:app`).
+- 실제 Claude CLI 를 쓰는 시험은 `MVMZ_REAL_CLI=1` 일 때만 돌고 토큰을 씁니다(가장 싼 모델, 시험용 작은 게임만): `tests/main/realCli.test.ts`(채팅, 먼저 `npm run build:app`), `realCliJson.test.ts`(정해진 형식의 답), `realDecide.test.ts`(판단 추천), `realFlow.test.ts`(초안 → 확정 → 번역 → 검수), `realEventPatch.test.ts`(이벤트 수정), `realImageTool.test.ts`(도구 결과의 그림), `tests/e2e/realImage.e2e.test.ts`.
+- 연기 시험은 `MVMZ_` 로 시작하는 환경 변수로 파일 고르기 창이나 CLI 를 대신합니다: `MVMZ_PICK_DIR`, `MVMZ_PICK_DIR2`(새 버전 폴더), `MVMZ_PICK_FONT`, `MVMZ_PICK_PNG`, `MVMZ_SAVE_FILE`, `MVMZ_OPEN_FILE`, `MVMZ_FONT_DIRS`, `MVMZ_CLAUDE_COMMAND`, `MVMZ_CLAUDE_JSON_COMMAND`(가짜 CLI `tests/fixtures/fake-claude-json.mjs`), `MVMZ_GAME_SPAWN_FAKE`(게임을 실제로 띄우지 않음), `MVMZ_TEST_HOOKS`, `MVMZ_USER_DATA`.
+
+## 문제 해결
+
+| 보이는 것 | 할 일 |
+|---|---|
+| "Claude CLI를 실행할 수 없습니다" / 상태 줄 "Claude CLI 없음" | Claude CLI 를 설치하거나, 설정의 "Claude CLI" 에 `claude.exe` 경로를 넣습니다. 채팅 탭의 "다시 확인"으로 다시 찾습니다 |
+| "로그인이 필요합니다" / 상태 줄 "로그인 필요" | 터미널에서 `claude` 를 실행해 로그인합니다 |
+| "용어집을 먼저 확정하세요" | 용어집 화면에서 "용어집 확정"을 누릅니다 |
+| "다른 작업이 진행 중입니다" | 번역·검수·추천 같은 작업은 한 번에 하나만 됩니다. 위의 작업 막대에서 끝나기를 기다리거나 멈춥니다 |
+| "사용량 한도 때문에 멈췄어요" | Claude 사용량이 회복된 뒤 "이어하기"를 누릅니다. 끝난 묶음은 다시 보내지 않습니다 |
+| "바뀐 파일이 없습니다" (빌드) | 패치에 넣을 번역·수정·그림이 아직 없습니다. 오류 상태인 번역은 들어가지 않습니다 |
+| "먼저 패치를 빌드하세요" (게임 실행) | 게임 실행은 가장 최근 빌드를 씁니다. "패치 빌드"를 먼저 합니다 |
+| "게임 폴더를 찾을 수 없습니다" | 게임 폴더를 옮기거나 지웠습니다. 게임 실행과 그림, 폰트는 원래 게임 폴더를 읽습니다 |
+| "MV/MZ 게임이 아닙니다" | `data/System.json` 이 있는 폴더(MV 배포판은 그 위 폴더)를 고릅니다. exe 하나로 뭉쳐진 게임은 아직 열 수 없습니다 |
+| 폰트 목록에 원하는 폰트가 없음 | `.ttc` 모음 파일은 쓸 수 없습니다. `.ttf`/`.otf` 파일을 "폰트 파일 직접 고르기"로 고릅니다 |
+| 소스에서 실행할 때 `node` 나 `claude` 를 못 찾음 | `C:\Program Files\nodejs` 와 Claude CLI 설치 폴더를 PATH 앞에 붙입니다 |
