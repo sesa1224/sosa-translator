@@ -236,7 +236,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `prepare` 전후로 원본 폴더의 해시가 같다
 - `launch` 가 사본의 `Game.exe` 를 사본 폴더에서 실행한다. 두 번 부르면 두 번째는 오류. `Game.exe` 가 없으면 오류 글자
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 실행"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 실행"`
 
 ### Task 7: ProjectService, IPC, 채팅 도구 연결
 
