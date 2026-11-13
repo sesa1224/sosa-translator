@@ -135,7 +135,7 @@ export interface ImageEntry {
 - 줄이 5개인데 높이가 3줄분이면 `overflowY`
 - `sampleBorderColor`: 온통 빨강 바탕의 그림에서 가운데 영역 → `#ff0000ff`. 왼쪽 위 구석에 붙은 영역은 오른쪽과 아래 띠만 쓴다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 글 배치 계산"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 글 배치 계산"`
 
 ### Task 4: 렌더 작업 창
 

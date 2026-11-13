@@ -35,3 +35,4 @@ export * from './exchange/package.js';
 export * from './images/types.js';
 export * from './images/catalog.js';
 export * from './images/store.js';
+export * from './images/layoutText.js';
