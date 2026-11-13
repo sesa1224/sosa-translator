@@ -42,7 +42,13 @@ function errorText(e: unknown): string {
 /** Extracts all units from original/<current>, writes units.json. Broken files become warnings. */
 export async function extractAll(projectDir: string): Promise<{ units: TextUnit[]; warnings: Warning[] }> {
   const meta = await openProject(projectDir);
-  const root = originalDir(projectDir, meta);
+  const { units, warnings } = await extractFromDir(originalDir(projectDir, meta));
+  await writeJsonFile(path.join(projectDir, UNITS_FILE), units);
+  return { units, warnings };
+}
+
+/** Extracts all units from an original copy (data/, js/) without writing anything. */
+export async function extractFromDir(root: string): Promise<{ units: TextUnit[]; warnings: Warning[] }> {
   const raw: RawUnit[] = [];
   const warnings: Warning[] = [];
 
@@ -74,9 +80,7 @@ export async function extractAll(projectDir: string): Promise<{ units: TextUnit[
 
   raw.push(...(await extractPluginFiles(root, warnings)));
 
-  const units = mergeUnits(raw);
-  await writeJsonFile(path.join(projectDir, UNITS_FILE), units);
-  return { units, warnings };
+  return { units: mergeUnits(raw), warnings };
 }
 
 /** Strings of the enabled plugins' own files (js/plugins/<name>.js). */

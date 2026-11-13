@@ -70,7 +70,7 @@ export function decisionCommands(): unknown[] {
 /** Writes a tiny MV/MZ game into dir (test only). decisions: adds the plan 3b extras (note tag, MZ commands, plugin JS file). */
 export async function makeMiniGame(
   dir: string,
-  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean } = {},
+  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean; variant?: 'v2' } = {},
 ): Promise<void> {
   const engine = opts.engine ?? 'MZ';
   const root = opts.www ? path.join(dir, 'www') : dir;
@@ -113,4 +113,26 @@ export async function makeMiniGame(
     await mkdir(path.join(js, 'plugins'), { recursive: true });
     await writeFile(path.join(js, 'plugins', 'Menu.js'), MENU_PLUGIN_JS, 'utf8');
   }
+
+  if (opts.variant === 'v2') await writeV2(data, engine);
+}
+
+/**
+ * The next version of the mini game (plan 6): one line of the first message rewritten, 'やった！' → 'やった！！', a wait
+ * command added at the front of the map event, a new item, the common event's scroll text removed and a new title.
+ */
+async function writeV2(data: string, engine: Engine): Promise<void> {
+  const map = miniMap(engine);
+  const list = map.events[1]!.pages[0].list as { code: number; indent: number; parameters: unknown[] }[];
+  list[2].parameters[0] = 'こんな夜更けに来るなんて';
+  list[6].parameters[0] = 'やった！！';
+  list.unshift({ code: 230, indent: 0, parameters: [30] });
+  await writeFile(path.join(data, 'Map001.json'), JSON.stringify(map), 'utf8');
+  const items = miniItems() as unknown[];
+  items.push({ id: 2, name: '星の砂', description: '光る砂', note: '' });
+  await writeFile(path.join(data, 'Items.json'), JSON.stringify(items), 'utf8');
+  const common = miniCommonEvents();
+  common[1]!.list = common[1]!.list.filter((c) => c.code !== 105 && c.code !== 405);
+  await writeFile(path.join(data, 'CommonEvents.json'), JSON.stringify(common), 'utf8');
+  await writeFile(path.join(data, 'System.json'), JSON.stringify({ ...miniSystem(false), gameTitle: '霧の薬草園 ver1.1' }), 'utf8');
 }

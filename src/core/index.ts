@@ -52,3 +52,4 @@ export * from './update/types.js';
 export * from './update/diff.js';
 export * from './update/carry.js';
 export * from './update/rebase.js';
+export * from './update/importVersion.js';

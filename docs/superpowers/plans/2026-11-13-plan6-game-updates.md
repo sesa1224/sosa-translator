@@ -158,7 +158,7 @@ export interface UpdateSummary {
 - `versions` 가 옛 형식(`{ id, importedAt }` 만)인 프로젝트도 열리고 가져오기가 된다
 - 두 게임 폴더의 해시가 전후로 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 새 버전 가져오기와 되돌리기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 새 버전 가져오기와 되돌리기"`
 
 ### Task 5: 서비스 연결과 번역 프롬프트
 

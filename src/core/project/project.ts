@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { detectGame } from '../engine/detect.js';
-import type { Engine } from '../types.js';
+import type { Engine, GameInfo } from '../types.js';
 import { readJsonFile, writeJsonFile } from '../util/json.js';
 import { fillOriginals } from './originals.js';
 
@@ -13,7 +13,8 @@ export interface ProjectMeta {
   contentPrefix: string;
   sourceLang: 'ja';
   targetLang: 'ko';
-  versions: { id: string; importedAt: string }[];
+  /** label and gameDir were added with game updates (plan 6); older projects have neither. */
+  versions: { id: string; importedAt: string; label?: string; gameDir?: string }[];
   current: string;
 }
 
@@ -44,7 +45,7 @@ export async function createProject(gameDir: string, projectDir: string, name: s
     contentPrefix: game.contentPrefix,
     sourceLang: 'ja',
     targetLang: 'ko',
-    versions: [{ id: 'v1', importedAt: new Date().toISOString() }],
+    versions: [{ id: 'v1', importedAt: new Date().toISOString(), label: 'v1', gameDir: game.topDir }],
     current: 'v1',
   };
 
@@ -57,6 +58,18 @@ export async function createProject(gameDir: string, projectDir: string, name: s
 
   await writeJsonFile(path.join(projectDir, PROJECT_FILE), meta);
   return meta;
+}
+
+/**
+ * Copies what the project keeps of a game into dst: data/*.json, js/plugins.js, js/plugins/*.js and the helper files
+ * (files.json, index.html, package.top.json, fonts/gamefont.css). Reads the game only.
+ */
+export async function copyOriginals(game: GameInfo, dst: string): Promise<void> {
+  const src = game.contentDir;
+  await copyInto(path.join(src, 'data'), path.join(dst, 'data'), await listFiles(path.join(src, 'data'), '.json'));
+  if (existsSync(path.join(src, 'js', 'plugins.js'))) await copyInto(path.join(src, 'js'), path.join(dst, 'js'), ['plugins.js']);
+  await copyInto(path.join(src, 'js', 'plugins'), path.join(dst, 'js', 'plugins'), await listFiles(path.join(src, 'js', 'plugins'), '.js'));
+  await fillOriginals(game.topDir, src, dst);
 }
 
 export async function openProject(projectDir: string): Promise<ProjectMeta> {

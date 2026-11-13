@@ -63,7 +63,7 @@ export type { Issue, ReviewNote, TranslationStatus, UnitKind };
 // src/main/ipc.ts checks at compile time that they still match the core ones.
 export interface ProjectMeta {
   name: string; engine: 'MV' | 'MZ'; gameDir: string; contentPrefix: string; sourceLang: 'ja'; targetLang: 'ko';
-  versions: { id: string; importedAt: string }[]; current: string;
+  versions: { id: string; importedAt: string; label?: string; gameDir?: string }[]; current: string;
 }
 // Copies of src/core/glossary/types.ts (checked in src/main/ipc.ts).
 export type TermCategory = 'name' | 'place' | 'term' | 'sfx' | 'other';
