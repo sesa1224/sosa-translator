@@ -1,0 +1,33 @@
+appId: app.sosa.translator
+productName: SoSa Translator
+copyright: ""
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+  # Bundled into out/renderer by Vite; not needed again at runtime.
+  - "!node_modules/@fontsource/**"
+  - "!node_modules/react/**"
+  - "!node_modules/react-dom/**"
+  - "!node_modules/@tanstack/**"
+  - "!node_modules/scheduler/**"
+# The MCP server script is started by the Claude CLI as a separate process
+# (Electron running as Node), so keep the app as plain files instead of an archive.
+asar: false
+npmRebuild: false
+# Keep only the UI languages the app can plausibly run in.
+electronLanguages:
+  - ko
+  - en-US
+  - ja
+win:
+  target:
+    - nsis
+    - zip
+  # No code-signing certificate; skip the signing/resource-editing step.
+  signAndEditExecutable: false
+nsis:
+  oneClick: true
+  perMachine: false
+  shortcutName: SoSa Translator
