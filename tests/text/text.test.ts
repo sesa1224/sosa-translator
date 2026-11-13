@@ -4,6 +4,9 @@ import { controlCodes } from '../../src/core/text/controlCodes.js';
 
 test('일본어 판별', () => {
   expect(hasJapanese('月光草')).toBe(true); expect(hasJapanese('あれ')).toBe(true); expect(hasJapanese('ｶﾀｶﾅ')).toBe(true);
+  // Punctuation from the kana blocks is not Japanese on its own: Korean text keeps "・・・" and "ー".
+  expect(hasJapanese('아❤・・아❤ 좋아ー')).toBe(false); expect(hasJapanese('・・・')).toBe(false); expect(hasJapanese('ｰ｡｢｣')).toBe(false);
+  expect(hasJapanese('カー')).toBe(true); expect(hasJapanese('ゝ')).toBe(true);
   expect(hasJapanese('Lv')).toBe(false); expect(hasJapanese('월광초 4')).toBe(false); expect(hasJapanese('')).toBe(false);
 });
 test('제어문자 뽑기', () => {
