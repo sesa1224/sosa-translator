@@ -41,6 +41,7 @@ export interface TranslationEntry {
   declinedReason?: string;   // why the model would not translate it (status 'declined')
   review?: ReviewNote;       // reviewer's open remark
   reviewedAt?: string;       // last time a review looked at it
+  external?: true;           // came in from an outside translator's package
 }
 
 export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width' | 'skeleton'; severity: 'error' | 'warning'; message: string }

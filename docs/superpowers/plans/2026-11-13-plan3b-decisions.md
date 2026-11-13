@@ -249,7 +249,7 @@ export interface ExchangePackage {
 - `planImport`: 모르는 id → `unknownIds`, 기존 번역과 다름 → `conflicts`, 같음 → 어디에도 없음, 번역 없음 → `ok`. 제어문자를 빼먹은 번역은 `ok` 에 들어가되 `issues` 에 오류가 있다
 - JSON 이 배열이 아니거나 항목 모양이 틀려도 예외 없이 `invalid` 로 센다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 외부 번역용 꾸러미"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 외부 번역용 꾸러미"`
 
 ### Task 9: ProjectService, IPC, 채팅 도구 연결
 

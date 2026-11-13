@@ -28,3 +28,4 @@ export * from './extract/pluginMeta.js';
 export * from './extract/notes.js';
 export * from './extract/pluginJs.js';
 export * from './build/title.js';
+export * from './exchange/package.js';

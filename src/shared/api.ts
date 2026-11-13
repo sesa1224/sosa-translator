@@ -15,7 +15,7 @@ export interface RowQuery { text?: string; status?: StatusFilter; file?: string 
 export interface Stats { total: number; untranslated: number; needsReview: number; approved: number; error: number; needsDecision: number; declined: number; provisional: number }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
-export type Origin = 'user' | 'chat' | 'batch' | 'review';
+export type Origin = 'user' | 'chat' | 'batch' | 'review' | 'external';
 export interface ChangeEvent { ids: string[]; origin: Origin }
 
 export interface ChatImage { mediaType: 'image/png' | 'image/jpeg' | 'image/webp'; base64: string }
