@@ -267,7 +267,7 @@ export interface BuildDiff {
 - `builds.list` 가 빌드 두 번 뒤 2개를 최신순으로 주고 `notes` 와 `diff` 가 있다. `builds.setNotes(2, '고친 글')` 뒤 zip 의 `패치노트.txt` 가 그 글로 시작한다
 - 게임 폴더가 없어졌으면(`detectGame` 실패) `images.list` 가 빈 목록과 함께 오류 없이 돌아오고, 빌드는 그림 없이 된다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 이미지와 빌드 기록 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 이미지와 빌드 기록 연결"`
 
 ### Task 9: 이미지 화면
 

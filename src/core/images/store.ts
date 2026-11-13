@@ -13,10 +13,12 @@ export async function loadImages(projectDir: string): Promise<ImagesFile> {
   const file = path.join(projectDir, IMAGES_FILE);
   if (!existsSync(file)) return { defaultFontPath: null, recipes: {} };
   const raw = (await readJsonFile(file)) as Partial<ImagesFile> | null;
-  return {
+  const out: ImagesFile = {
     defaultFontPath: typeof raw?.defaultFontPath === 'string' ? raw.defaultFontPath : null,
     recipes: raw?.recipes && typeof raw.recipes === 'object' ? raw.recipes : {},
   };
+  if (Array.isArray(raw?.folders)) out.folders = raw.folders.filter((f): f is string => typeof f === 'string');
+  return out;
 }
 
 export async function saveImages(projectDir: string, f: ImagesFile): Promise<void> {

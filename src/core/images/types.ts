@@ -27,7 +27,7 @@ export type ImageStatus = 'todo' | 'done' | 'manual' | 'skip';
 export interface ImageRecipe { file: string; baseHash: string; regions: Region[]; status: ImageStatus; manualFile?: string; note?: string }
 
 /** images.json. recipes are keyed by file. */
-export interface ImagesFile { defaultFontPath: string | null; recipes: Record<string, ImageRecipe> }
+export interface ImagesFile { defaultFontPath: string | null; recipes: Record<string, ImageRecipe>; folders?: string[] }   // folders: the user's choice of folders to look in
 
 export interface ImageEntry {
   file: string;                // content-relative, plain name, e.g. 'img/pictures/menu.png'

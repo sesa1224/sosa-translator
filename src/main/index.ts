@@ -121,6 +121,15 @@ app.whenReady().then(async () => {
       const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
       return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
     },
+    // ---- plan 7 ----
+    render: renderService,
+    pickPngFile: async () => {
+      if (process.env.MVMZ_PICK_PNG) return process.env.MVMZ_PICK_PNG;
+      const win = BrowserWindow.getFocusedWindow();
+      const opts = { title: '직접 고친 그림 고르기', properties: ['openFile' as const], filters: [{ name: 'PNG', extensions: ['png'] }] };
+      const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+      return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
+    },
   });
 
   createWindow();

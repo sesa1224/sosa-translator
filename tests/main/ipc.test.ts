@@ -81,7 +81,7 @@ test('스냅숏의 게임 제목, 목록, 항목 읽기, 되돌리기, 채팅 �
   expect(await invoke('chat:undo')).toEqual([]);
   expect(await invoke('project:undo')).toEqual([id]);
   const b = await invoke('project:build');
-  expect(b.files.map((f: any) => f.path)).toEqual(['data/Items.json']);
+  expect(b.files.map((f: any) => f.path)).toEqual(['data/Items.json', '패치노트.txt', '설치 방법.txt']);
   expect(await invoke('project:pickGameDir')).toBe(game);
   await invoke('chat:setModel', 'claude-haiku-5-5');
   expect(fakeChat.model).toBe('claude-haiku-5-5'); expect((await invoke('settings:get')).chatModel).toBe('claude-haiku-5-5');

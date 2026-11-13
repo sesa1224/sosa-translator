@@ -13,6 +13,8 @@ import { IMAGES_FILE, isBuildable, normalizeRegion, recipeProblem, saveImages } 
 import type { ImageEntry, ImageRecipe, ImagesFile, ImageStatus, Rect, Region } from '../core/images/types.js';
 import type { GameInfo } from '../core/types.js';
 import type { ProjectService } from './projectService.js';
+import { IMAGE_FOLDERS } from '../core/images/catalog.js';
+import type { JobProgress } from '../shared/api.js';
 import type { RenderService } from './render/renderService.js';
 
 export const THUMB_SIDE = 256;
@@ -36,7 +38,9 @@ function readImagesFileSync(projectDir: string): ImagesFile {
     const file = path.join(projectDir, IMAGES_FILE);
     if (!existsSync(file)) return { defaultFontPath: null, recipes: {} };
     const raw = JSON.parse(readFileSync(file, 'utf8').replace(/^﻿/, '')) as Partial<ImagesFile>;
-    return { defaultFontPath: typeof raw.defaultFontPath === 'string' ? raw.defaultFontPath : null, recipes: raw.recipes && typeof raw.recipes === 'object' ? raw.recipes : {} };
+    const out: ImagesFile = { defaultFontPath: typeof raw.defaultFontPath === 'string' ? raw.defaultFontPath : null, recipes: raw.recipes && typeof raw.recipes === 'object' ? raw.recipes : {} };
+    if (Array.isArray(raw.folders)) out.folders = raw.folders.filter((f): f is string => typeof f === 'string');
+    return out;
   } catch {
     return { defaultFontPath: null, recipes: {} };
   }
@@ -48,7 +52,7 @@ function readImagesFileSync(projectDir: string): ImagesFile {
  */
 export class ImageService extends EventEmitter {
   private data: ImagesFile;
-  private readonly catalog: ImageCatalog | null;
+  private catalog: ImageCatalog | null;
   private entries = new Map<string, ImageEntry>();
   private listed = false;
   private readonly failed = new Map<string, string>();
@@ -67,7 +71,7 @@ export class ImageService extends EventEmitter {
   }) {
     super();
     this.data = readImagesFileSync(o.svc.projectDir);
-    this.catalog = o.game ? new ImageCatalog(o.svc.projectDir, o.game, { folders: o.folders }) : null;
+    this.catalog = o.game ? new ImageCatalog(o.svc.projectDir, o.game, { folders: o.folders ?? this.data.folders }) : null;
     this.fontExists = o.fontExists ?? ((p) => existsSync(p));
     this.readFont = o.readFont ?? (async (p) => new Uint8Array(await readFile(p)));
     attachImageService(o.svc, this);
@@ -339,6 +343,28 @@ export class ImageService extends EventEmitter {
     });
   }
 
+  /** Folders looked in: the user's choice, or IMAGE_FOLDERS. */
+  folders(): string[] {
+    return [...(this.o.folders ?? this.data.folders ?? IMAGE_FOLDERS)];
+  }
+
+  /** Changes the folders (null = back to the defaults); the next list() looks there. */
+  setFolders(folders: string[] | null): Promise<void> {
+    return this.write(async () => {
+      const clean = folders ? [...new Set(folders.map((f) => f.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')).filter(Boolean))] : [];
+      if (clean.length > 0) this.data.folders = clean;
+      else delete this.data.folders;
+      this.catalog = this.o.game ? new ImageCatalog(this.o.svc.projectDir, this.o.game, { folders: this.data.folders }) : null;
+      this.listed = false;
+      await saveImages(this.o.svc.projectDir, this.data);
+    });
+  }
+
+  /** Files whose finished recipes "re-render all" draws again. */
+  doneFiles(): string[] {
+    return Object.values(this.data.recipes).filter((r) => r.status === 'done').map((r) => r.file);
+  }
+
   /** Forgets every rendered picture so the next request draws it again. */
   async clearRendered(): Promise<void> {
     await rm(path.join(this.dir, 'rendered'), { recursive: true, force: true });
@@ -451,4 +477,70 @@ export async function regionOverflow(
     out[r.id] = { overflowX: l.overflowX, overflowY: l.overflowY };
   }
   return out;
+}
+
+export class RerenderJob extends EventEmitter {
+  private p: JobProgress = { kind: 'images', state: 'idle', done: 0, total: 0, label: '', usage: { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 }, declined: 0, errors: 0 };
+  private stopped = false;
+  private paused = false;
+  private queue: string[] | null = null;
+  private loop: Promise<void> | null = null;
+
+  constructor(private readonly images: ImageService) {
+    super();
+  }
+
+  get progress(): JobProgress {
+    return { ...this.p, usage: { ...this.p.usage } };
+  }
+
+  private update(patch: Partial<JobProgress>): void {
+    this.p = { ...this.p, ...patch };
+    this.emit('progress', this.progress);
+  }
+
+  start(): Promise<void> {
+    if (this.loop) return this.loop;
+    this.paused = false;
+    this.loop = this.run().finally(() => { this.loop = null; });
+    return this.loop;
+  }
+
+  private async run(): Promise<void> {
+    if (!this.queue) {
+      await this.images.clearRendered();
+      this.queue = this.images.doneFiles();
+      this.update({ total: this.queue.length });
+    }
+    this.update({ state: 'running', message: undefined });
+    while (this.queue.length > 0) {
+      if (this.stopped) return this.update({ state: 'stopped' });
+      if (this.paused) return this.update({ state: 'paused' });
+      const file = this.queue[0];
+      this.update({ label: file });
+      let failed = false;
+      try {
+        await this.images.rendered(file);
+      } catch {
+        failed = true;
+      }
+      this.queue.shift();
+      this.update({ done: this.p.done + 1, errors: this.p.errors + (failed ? 1 : 0) });
+    }
+    this.update({ state: this.stopped ? 'stopped' : 'done', label: '' });
+    this.images.emit('changed', this.images.doneFiles());
+  }
+
+  pause(): void {
+    if (this.p.state === 'running') this.paused = true;
+  }
+
+  resume(): void {
+    if (this.p.state === 'paused') void this.start();
+  }
+
+  stop(): void {
+    this.stopped = true;
+    if (!this.loop && this.p.state !== 'done') this.update({ state: 'stopped' });
+  }
 }
