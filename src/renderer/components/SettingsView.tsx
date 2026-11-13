@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { AppSettings } from '../../shared/api';
+import type { AppSettings, StageModels } from '../../shared/api';
+
+const STAGES: [keyof StageModels, string][] = [['glossary', '용어집과 말투 지침'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 import { useApp } from '../state';
 
 export function SettingsView() {
@@ -50,6 +52,23 @@ export function SettingsView() {
               onClick={() => void save({ theme: t })}>{t === 'dark' ? '어두운' : '밝은'}</button>
           ))}
         </div>
+      </section>
+
+      <section className="card settings-card" aria-labelledby="set-stages">
+        <span id="set-stages" className="card-title">단계별 모델</span>
+        <div className="stage-grid">
+          {STAGES.map(([k, label]) => (
+            <div key={k} className="field">
+              <label htmlFor={`stage-${k}`}>{label}</label>
+              <select id={`stage-${k}`} className="input" value={settings.stageModels[k]}
+                onChange={(e) => void save({ stageModels: { ...settings.stageModels, [k]: e.target.value } })}>
+                {!settings.models.some((m) => m.id === settings.stageModels[k]) && <option value={settings.stageModels[k]}>{settings.stageModels[k]}</option>}
+                {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+        <span className="hint">용어집 초안, 전체 번역, 검수를 맡길 때 각각 이 모델을 써요.</span>
       </section>
 
       <section className="card settings-card" aria-labelledby="set-models">

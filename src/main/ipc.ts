@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { openProject, originalDir, readJsonFile, type TextUnit, type TranslationStatus } from '../core/index.js';
 import type * as core from '../core/index.js';
@@ -198,7 +198,16 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     if (!clean) throw new Error('프로젝트 이름을 입력하세요');
     if (BAD_NAME.test(clean) || clean === '.' || clean === '..') throw new Error('프로젝트 이름에 쓸 수 없는 글자가 있습니다 (\\ / : * ? " < > |)');
     const dir = path.join((await settings()).projectsDir, clean);
-    await adopt(await ProjectService.create(gameDir, dir, clean));
+    const existed = existsSync(dir);
+    let created: ProjectService;
+    try {
+      created = await ProjectService.create(gameDir, dir, clean);
+    } catch (e) {
+      // Do not leave a half-made project folder behind (only one this call made).
+      if (!existed) await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+      throw e;
+    }
+    await adopt(created);
   });
   handle('project:open', async (dir: string) => { await adopt(await ProjectService.open(dir)); });
   handle('project:close', () => closeProject());

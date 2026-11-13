@@ -3,8 +3,9 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { Row, StatusFilter } from '../../shared/api';
 import { filterRows } from '../../shared/rows';
 import { num, STATUS_LABEL } from '../format';
-import { orderedRows, useApp } from '../state';
+import { jobActive, orderedRows, useApp } from '../state';
 import { CodeText } from './CodeText';
+import { ReviewDialog } from './ReviewDialog';
 
 const SEARCH_DELAY = 200;
 
@@ -12,6 +13,41 @@ function statusChip(r: Row): { label: string; cls: string } {
   if (r.status === 'untranslated' && r.needsDecision) return { label: '판단 필요', cls: 'st-warn' };
   const cls = { untranslated: 'st-none', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err', declined: 'st-err' }[r.status];
   return { label: STATUS_LABEL[r.status], cls };
+}
+
+/** "Translate new lines" and "review everything" buttons above the table. */
+function JobActions() {
+  const app = useApp();
+  const [reviewing, setReviewing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fresh = useMemo(() => app.rowOrder.filter((id) => {
+    const r = app.rowsById[id];
+    return r.status === 'untranslated' && !r.needsDecision;
+  }).length, [app.rowOrder, app.rowsById]);
+  const confirmed = app.glossary?.confirmedAt != null;
+  const busy = jobActive(app);
+  const translate = async () => {
+    setError(null);
+    try {
+      await useApp.translate(undefined);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <div className="job-actions">
+      <button type="button" className="btn primary" disabled={!confirmed || busy || fresh === 0} onClick={() => void translate()}>
+        {`새 문장 ${num(fresh)}개 번역 맡기기`}
+      </button>
+      {!confirmed && <>
+        <span className="warn-text small">용어집을 먼저 확정하세요</span>
+        <button type="button" className="btn ghost small-btn" onClick={() => useApp.setView('glossary')}>용어집으로</button>
+      </>}
+      <button type="button" className="btn" disabled={busy} onClick={() => setReviewing(true)}>번역 전체 검수</button>
+      {error && <span className="err-text small" role="alert">{error}</span>}
+      {reviewing && <ReviewDialog onClose={() => setReviewing(false)} />}
+    </div>
+  );
 }
 
 function FilterBar() {
@@ -27,6 +63,8 @@ function FilterBar() {
     ['all', '전체', s.total], ['untranslated', '미번역', s.untranslated], ['needs-review', '검토 필요', s.needsReview],
     ['approved', '승인됨', s.approved], ['error', '오류', s.error], ['needs-decision', '판단 필요', s.needsDecision],
   ];
+  if (s.declined > 0) chips.push(['declined', '거절됨', s.declined]);
+  if (s.provisional > 0) chips.push(['provisional', '추천안 용어 사용', s.provisional]);
   const current = query.status ?? 'all';
   return (
     <div className="filters">
@@ -87,6 +125,7 @@ export function TextTable() {
         )}
         <span className="mono sub small">{`${num(rows.length)}줄`}</span>
       </div>
+      <JobActions />
       <FilterBar />
       <div className="table card" role="table" aria-label="텍스트 표" aria-rowcount={rows.length + 1}>
         <div className="tr th" role="row">

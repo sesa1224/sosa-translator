@@ -1,6 +1,9 @@
+import { existsSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { afterAll, beforeAll, expect, test } from 'vitest';
+import { afterAll, beforeAll, expect, test, vi } from 'vitest';
+import { ProjectService } from '../../src/main/projectService.js';
 import { registerIpc, type ChatLike, type IpcDeps } from '../../src/main/ipc.js';
 import { saveSettings, loadSettings } from '../../src/main/settings.js';
 import type { ChatImage, Row } from '../../src/shared/api.js';
@@ -88,4 +91,11 @@ test('스냅숏의 게임 제목, 목록, 항목 읽기, 되돌리기, 채팅 �
   await invoke('project:open', path.join((await invoke('settings:get')).projectsDir, '약초원'));
   expect((await invoke('project:snapshot')).rows.find((r: Row) => r.id === id).target).toBe('월광초');
   await expect(invoke('project:create', game, '  ')).rejects.toThrow('프로젝트 이름을 입력하세요');
+});
+test('만들기가 중간에 실패하면 만들던 폴더를 지운다', async () => {
+  // Creation fails after the project folder was made (e.g. a copy error halfway).
+  const spy = vi.spyOn(ProjectService, 'create').mockImplementationOnce(async (_g, dir) => { await mkdir(path.join(dir, 'original'), { recursive: true }); throw new Error('복사 실패'); });
+  await expect(invoke('project:create', game, '깨진 게임')).rejects.toThrow('복사 실패');
+  spy.mockRestore();
+  expect(existsSync(path.join((await invoke('settings:get')).projectsDir, '깨진 게임'))).toBe(false);
 });

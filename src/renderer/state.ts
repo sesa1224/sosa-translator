@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type {
   Api, AppSettings, BuildResult, CharacterCard, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
-  ProjectListItem, ProjectMeta, ProjectRules, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
+  JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 
 export type ChatMessage =
@@ -36,6 +36,10 @@ export interface AppState {
   glossaryDirty: boolean;
   /** When set, the text table shows only these rows (e.g. lines to check after a term change). */
   idFilter: string[] | null;
+  /** The last translation/review/draft job's progress (null = none this session). */
+  job: JobProgress | null;
+  /** The user closed the job bar; it comes back with the next progress event. */
+  jobDismissed: boolean;
   rightTab: 'item' | 'chat';
   attachedId: string | null;
   chat: ChatState;
@@ -49,7 +53,7 @@ const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
 function initial(): AppState {
   return {
     ready: false, settings: null, projects: [], snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, lastSaved: null, build: { kind: 'idle' },
   };
@@ -181,6 +185,7 @@ async function start(a: Api): Promise<void> {
     a.on('chat:event', (ev) => set((s) => ({ chat: reduceChat(s.chat, ev) }))),
     a.on('settings:changed', (s) => { applyTheme(s); set({ settings: s }); }),
     a.on('glossary:changed', onGlossaryChanged),
+    a.on('job:progress', (p) => set({ job: p, jobDismissed: false })),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -189,7 +194,8 @@ async function start(a: Api): Promise<void> {
   set({ settings, projects, claudePath });
   adoptSnapshot(snap);
   if (snap) await loadGlossary();
-  set({ ready: true });
+  const job = snap ? await a.job.current().catch(() => null) : null;
+  set({ ready: true, job: job ?? null });
 }
 
 function stop(): void {
@@ -254,6 +260,19 @@ const actions = {
   },
   detectSpeakerPattern: (): Promise<SpeakerDetection | null> => need().glossary.detectSpeakerPattern(),
   draftGlossary: (): Promise<void> => need().job.draft(),
+
+  /** Sends every untranslated line (or just these ids) to be translated. */
+  translate: (ids?: string[]): Promise<void> => need().job.translate(ids),
+  reviewPlan: (scope: ReviewScopeArg): Promise<ReviewPlan> => need().job.reviewPlan(scope),
+  startReview: (scope: ReviewScopeArg): Promise<void> => need().job.review(scope),
+  pauseJob: (): Promise<void> => need().job.pause(),
+  resumeJob: (): Promise<void> => need().job.resume(),
+  stopJob: (): Promise<void> => need().job.stop(),
+  dismissJob(): void {
+    set({ jobDismissed: true });
+  },
+  acceptReview: (id: string): Promise<Issue[]> => need().unit.acceptReview(id),
+  rejectReview: (id: string): Promise<void> => need().unit.rejectReview(id),
   setRightTab(rightTab: AppState['rightTab']): void {
     set({ rightTab });
   },
@@ -324,6 +343,11 @@ function useAppState(): AppState {
 
 /** Renderer store hook; static members are the actions (useApp.get(), useApp.selectRow(id), ...). */
 export const useApp = Object.assign(useAppState, actions);
+
+/** Whether a job is running or waiting to go on. */
+export function jobActive(s: AppState): boolean {
+  return s.job !== null && (s.job.state === 'running' || s.job.state === 'paused' || s.job.state === 'paused-limit');
+}
 
 /** Rows in project order. */
 export function orderedRows(s: AppState): Row[] {

@@ -1,7 +1,7 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import type { Issue } from '../../shared/api';
-import { useApp } from '../state';
+import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
@@ -14,16 +14,32 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
 };
 
 export function ItemPanel() {
-  const { selectedId, rowsById, detail } = useApp();
+  const app = useApp();
+  const { selectedId, rowsById, detail, glossary } = app;
   const row = selectedId ? rowsById[selectedId] : undefined;
   const [draft, setDraft] = useState('');
+  /** The saved value the draft started from; a different saved value arriving while editing is a conflict. */
+  const [base, setBase] = useState('');
+  const [conflict, setConflict] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(row?.target ?? '');
+    setBase(row?.target ?? '');
+    setConflict(null);
     setError(null);
-  }, [row?.id, row?.target]);
+  }, [row?.id]);
+  useEffect(() => {
+    const saved = row?.target ?? '';
+    if (saved === base) return;
+    if (draft === base || draft === saved) {
+      // Not editing (or the change is our own save): follow the saved value.
+      setDraft(saved);
+      setBase(saved);
+      setConflict(null);
+    } else setConflict(saved);
+  }, [row?.target]);
 
   if (!row) return <div className="item-empty sub">줄을 고르면 여기에 자세한 내용이 나와요</div>;
 
@@ -51,6 +67,14 @@ export function ItemPanel() {
   const codeCount = controlCodes(row.source).length;
   const approveBlock = row.target === null ? '번역이 있어야 승인할 수 있어요' : hasError ? '오류를 고쳐야 승인할 수 있어요' : null;
   const approved = row.status === 'approved';
+  const confirmed = glossary?.confirmedAt != null;
+  const busy = jobActive(app);
+  const showChange = () => {
+    if (conflict === null) return;
+    setDraft(conflict);
+    setBase(conflict);
+    setConflict(null);
+  };
 
   return (
     <div className="item">
@@ -63,6 +87,29 @@ export function ItemPanel() {
         <span className="label">원문</span>
         <div className="textbox src"><CodeText text={row.source} /></div>
       </div>
+      {row.status === 'declined' && (
+        <div className="field">
+          <span className="label">거절 이유</span>
+          <span className="err-text small">{row.declinedReason ?? '이유 없음'}</span>
+        </div>
+      )}
+      {row.review && (
+        <section className="review-box" aria-label="검수 의견">
+          <span className="label">검수 의견</span>
+          <span className="small">{row.review.problem}</span>
+          <div className="textbox src"><CodeText text={row.review.suggestion} /></div>
+          <div className="row-gap">
+            <button type="button" className="btn primary small-btn" disabled={saving} onClick={() => void run(() => useApp.acceptReview(row.id))}>고친 안 받기</button>
+            <button type="button" className="btn ghost small-btn" disabled={saving} onClick={() => void run(() => useApp.rejectReview(row.id))}>그대로 두기</button>
+          </div>
+        </section>
+      )}
+      {conflict !== null && (
+        <div className="conflict small" role="status">
+          <span className="warn-text">다른 곳에서 이 줄이 바뀌었어요</span>
+          <button type="button" className="btn ghost small-btn" onClick={showChange}>바뀐 내용 보기</button>
+        </div>
+      )}
       <div className="field">
         <label htmlFor="item-target" className="label">번역</label>
         <textarea id="item-target" className="textbox edit" rows={4} value={draft} disabled={saving}
@@ -90,6 +137,11 @@ export function ItemPanel() {
       {approveBlock && <span className="sub small">{approveBlock}</span>}
       <div className="item-actions">
         <button type="button" className="btn ghost" onClick={() => useApp.talkAbout(row.id)}>채팅으로 말하기</button>
+        {!row.needsDecision && (
+          <button type="button" className="btn ghost" disabled={saving || busy || !confirmed}
+            title={!confirmed ? '용어집을 먼저 확정하세요' : busy ? '다른 작업이 진행 중이에요' : undefined}
+            onClick={() => void run(() => useApp.translate([row.id]))}>다시 번역</button>
+        )}
         <button type="button" className="btn ghost" disabled={saving || row.target === null}
           onClick={() => void run(() => useApp.clearTranslation(row.id))}>지우기</button>
         {approved

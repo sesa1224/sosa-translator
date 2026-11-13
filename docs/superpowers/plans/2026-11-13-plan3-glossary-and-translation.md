@@ -623,7 +623,7 @@ test('화자 줄 패턴 자동 찾기', async () => {
 2. 프로젝트 만들기가 중간에 실패하면 만들던 폴더를 지운다(`project:create` 처리기. 만들기 전에 없던 폴더일 때만).
 3. 밝은 테마에서 선택한 줄의 배경을 `--card` 로 바꾸고 왼쪽에 `--accent` 3px 선을 둔다(상태 칩과 색이 겹치지 않게). 어두운 테마도 같은 규칙.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('확정 전에는 번역을 맡길 수 없다', async () => {
@@ -655,10 +655,10 @@ test('단계별 모델 설정', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/renderer/jobs.test.tsx` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS, 전체 `npx vitest run` 통과**
-- [ ] **Step 5: `git commit -m "feat: 번역과 검수 화면"`**
+- [x] **Step 2: `npx vitest run tests/renderer/jobs.test.tsx` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS, 전체 `npx vitest run` 통과**
+- [x] **Step 5: `git commit -m "feat: 번역과 검수 화면"`**
 
 ### Task 12: 전체 흐름 시험과 실제 CLI 확인
 
