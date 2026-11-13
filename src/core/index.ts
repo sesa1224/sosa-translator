@@ -23,3 +23,5 @@ export * from './decisions/types.js';
 export * from './decisions/keys.js';
 export * from './decisions/skeleton.js';
 export * from './decisions/store.js';
+export * from './decisions/auto.js';
+export * from './extract/pluginMeta.js';

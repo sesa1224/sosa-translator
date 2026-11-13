@@ -143,7 +143,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - 위 표의 각 줄에 대해 하나씩: 조건을 만족하는 묶음 → 기대한 제안, 마지막 줄 → 키가 결과에 없음
 - 이미 `confirmed` 결정이 있는 키는 `autoDecide` 결과에 넣지 않는다(호출 쪽에서 합칠 때 사용자 결정을 덮지 않게 `mergeSuggestions(existing, suggested): Decisions` 를 함께 만든다. `confirmed` 는 유지, `suggested` 는 새 것으로 바꿈)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 주석으로 자동 결정"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 주석으로 자동 결정"`
 
 ### Task 4: 메모란 추출
 
