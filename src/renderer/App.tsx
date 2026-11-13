@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { Api } from '../shared/api';
 import { ChatPanel } from './components/ChatPanel';
+import { GlossaryView } from './components/GlossaryView';
 import { ItemPanel } from './components/ItemPanel';
 import { ProjectPicker } from './components/ProjectPicker';
 import { SettingsView } from './components/SettingsView';
@@ -43,7 +44,7 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
-          {view === 'text' ? <TextTable /> : <SettingsView />}
+          {view === 'text' ? <TextTable /> : view === 'glossary' ? <GlossaryView /> : <SettingsView />}
         </main>
         <RightPanel />
       </div>

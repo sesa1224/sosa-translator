@@ -572,7 +572,7 @@ test('채팅 도구로 용어를 정한다', async () => {
 - 말투 지침: 큰 글 편집 칸(고친 뒤 800ms 지나면 저장), "기본 지침으로 되돌리기"(확인 후).
 - 형식 규칙: 제어 코드 유지, 일본어 글자 남기지 않기, 줄 수를 원문과 같게(켜고 끔), 대사 최대 줄 수, 한 줄 최대 글자 수(비우면 검사 안 함), 화자 줄 패턴(프리셋 고르기 + "자동으로 찾기" → 찾은 프리셋과 "대사의 n%가 맞아요").
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('후보를 고른다', async () => {
@@ -598,10 +598,10 @@ test('화자 줄 패턴 자동 찾기', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/renderer/glossary.test.tsx` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 용어집 화면"`**
+- [x] **Step 2: `npx vitest run tests/renderer/glossary.test.tsx` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 용어집 화면"`**
 
 ### Task 11: 번역·검수 버튼, 진행 막대, 검수 받기, 단계별 모델 설정
 

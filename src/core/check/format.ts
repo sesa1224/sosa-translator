@@ -5,9 +5,9 @@ import { controlCodes } from '../text/controlCodes.js';
 import { hasJapanese } from '../text/japanese.js';
 import type { Issue, TextUnit } from '../types.js';
 
-export interface FormatRules { controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null }
+import { DEFAULT_RULES, type FormatRules } from './rules.js';
 
-export const DEFAULT_RULES: FormatRules = { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4 };
+export { DEFAULT_RULES, type FormatRules };
 
 /** Multiset difference a - b. */
 function minus(a: string[], b: string[]): string[] {

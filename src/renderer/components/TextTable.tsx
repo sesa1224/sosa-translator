@@ -42,9 +42,12 @@ function FilterBar() {
 
 export function TextTable() {
   const app = useApp();
-  const { query, selectedId, snapshot } = app;
+  const { query, selectedId, snapshot, idFilter } = app;
   const all = useMemo(() => orderedRows(app), [app.rowOrder, app.rowsById]);
-  const rows = useMemo(() => filterRows(all, query), [all, query]);
+  const rows = useMemo(() => {
+    const only = idFilter ? new Set(idFilter) : null;
+    return filterRows(only ? all.filter((r) => only.has(r.id)) : all, query);
+  }, [all, query, idFilter]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const v = useVirtualizer({
     count: rows.length,
@@ -75,6 +78,11 @@ export function TextTable() {
         {scopeLabel && (
           <button type="button" className="pill on" onClick={() => useApp.setQuery({ file: undefined })} aria-label="범위 필터 해제" title={`범위 ${scopeLabel} 해제`}>
             {scopeLabel} ×
+          </button>
+        )}
+        {idFilter && (
+          <button type="button" className="pill on" onClick={() => useApp.showRows(null)} aria-label="골라 본 줄 필터 해제">
+            {`골라 본 줄 ${num(idFilter.length)}개 ×`}
           </button>
         )}
         <span className="mono sub small">{`${num(rows.length)}줄`}</span>

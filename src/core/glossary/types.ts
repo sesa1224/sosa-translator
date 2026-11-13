@@ -1,4 +1,4 @@
-import type { FormatRules } from '../check/format.js';
+import type { FormatRules } from '../check/rules.js';
 
 export type TermCategory = 'name' | 'place' | 'term' | 'sfx' | 'other';
 export interface TermCandidate { target: string; reason: string }

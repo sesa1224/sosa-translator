@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type {
-  Api, AppSettings, BuildResult, ChatEvent, ChatImage, ChatUsage, Issue, ProjectChanged, ProjectListItem, ProjectMeta, Row, RowQuery,
-  Scope, Snapshot, Stats, TranslationStatus, UnitDetail,
+  Api, AppSettings, BuildResult, CharacterCard, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
+  ProjectListItem, ProjectMeta, ProjectRules, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 
 export type ChatMessage =
@@ -30,7 +30,12 @@ export interface AppState {
   selectedId: string | null;
   detail: UnitDetail | null;
   query: RowQuery;
-  view: 'text' | 'settings';
+  view: 'text' | 'settings' | 'glossary';
+  glossary: Glossary | null;
+  /** The glossary was edited after it was confirmed (this session). */
+  glossaryDirty: boolean;
+  /** When set, the text table shows only these rows (e.g. lines to check after a term change). */
+  idFilter: string[] | null;
   rightTab: 'item' | 'chat';
   attachedId: string | null;
   chat: ChatState;
@@ -44,7 +49,7 @@ const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
 function initial(): AppState {
   return {
     ready: false, settings: null, projects: [], snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, lastSaved: null, build: { kind: 'idle' },
   };
@@ -75,7 +80,7 @@ function applyTheme(s: AppSettings | null): void {
 
 function adoptSnapshot(snap: Snapshot | null): void {
   if (!snap) {
-    set({ snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null, attachedId: null });
+    set({ snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null });
     return;
   }
   const rowsById: Record<string, Row> = {};
@@ -83,7 +88,7 @@ function adoptSnapshot(snap: Snapshot | null): void {
   set({
     snapshot: { meta: snap.meta, gameTitle: snap.gameTitle, stats: snap.stats, scopes: snap.scopes },
     rowOrder: snap.rows.map((r) => r.id), rowsById, selectedId: null, detail: null, attachedId: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', build: { kind: 'idle' },
+    query: { status: 'all' }, view: 'text', rightTab: 'item', build: { kind: 'idle' }, idFilter: null, glossaryDirty: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
   });
 }
@@ -97,6 +102,24 @@ function onProjectChanged(e: ProjectChanged): void {
   });
   const sel = state.selectedId;
   if (sel && e.rows.some((r) => r.id === sel)) void refreshDetail(sel);
+}
+
+function onGlossaryChanged(g: Glossary): void {
+  set((s) => {
+    const prev = s.glossary;
+    const dirty = g.confirmedAt === null ? false
+      : prev !== null && prev.confirmedAt === g.confirmedAt ? s.glossaryDirty || JSON.stringify(prev) !== JSON.stringify(g) : false;
+    return { glossary: g, glossaryDirty: dirty };
+  });
+}
+
+async function loadGlossary(): Promise<void> {
+  try {
+    const g = await need().glossary.get();
+    set({ glossary: g, glossaryDirty: false });
+  } catch {
+    set({ glossary: null });
+  }
 }
 
 function finalizeStreaming(messages: ChatMessage[]): ChatMessage[] {
@@ -157,6 +180,7 @@ async function start(a: Api): Promise<void> {
     a.on('project:changed', onProjectChanged),
     a.on('chat:event', (ev) => set((s) => ({ chat: reduceChat(s.chat, ev) }))),
     a.on('settings:changed', (s) => { applyTheme(s); set({ settings: s }); }),
+    a.on('glossary:changed', onGlossaryChanged),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -164,6 +188,7 @@ async function start(a: Api): Promise<void> {
   applyTheme(settings);
   set({ settings, projects, claudePath });
   adoptSnapshot(snap);
+  if (snap) await loadGlossary();
   set({ ready: true });
 }
 
@@ -184,10 +209,12 @@ const actions = {
   async createProject(gameDir: string, name: string): Promise<void> {
     await need().project.create(gameDir, name);
     adoptSnapshot(await need().project.snapshot());
+    await loadGlossary();
   },
   async openProject(dir: string): Promise<void> {
     await need().project.open(dir);
     adoptSnapshot(await need().project.snapshot());
+    await loadGlossary();
   },
   async closeProject(): Promise<void> {
     await need().project.close();
@@ -208,6 +235,25 @@ const actions = {
   setView(view: AppState['view']): void {
     set({ view });
   },
+  /** Shows only these rows in the text table (null shows everything again). */
+  showRows(ids: string[] | null): void {
+    set({ idFilter: ids, view: 'text', query: { status: 'all' } });
+  },
+
+  chooseTerm: (id: string, target: string): Promise<ChooseResult> => need().glossary.choose(id, target),
+  upsertTerm: (t: Omit<Term, 'id'>): Promise<Term> => need().glossary.upsertTerm(t),
+  removeTerm: (id: string): Promise<void> => need().glossary.removeTerm(id),
+  setCharacters: (cards: CharacterCard[]): Promise<void> => need().glossary.setCharacters(cards),
+  setStyleGuide: (text: string): Promise<void> => need().glossary.setStyleGuide(text),
+  defaultStyleGuide: (): Promise<string> => need().glossary.defaultStyleGuide(),
+  setRules: (rules: Partial<ProjectRules>): Promise<void> => need().glossary.setRules(rules),
+  async confirmGlossary(): Promise<void> {
+    await need().glossary.confirm();
+    set({ glossaryDirty: false });
+    await loadGlossary();
+  },
+  detectSpeakerPattern: (): Promise<SpeakerDetection | null> => need().glossary.detectSpeakerPattern(),
+  draftGlossary: (): Promise<void> => need().job.draft(),
   setRightTab(rightTab: AppState['rightTab']): void {
     set({ rightTab });
   },

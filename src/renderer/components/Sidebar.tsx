@@ -2,14 +2,19 @@ import { num, pct } from '../format';
 import { useApp } from '../state';
 
 export function Sidebar() {
-  const { snapshot, view, query } = useApp();
+  const { snapshot, view, query, glossary } = useApp();
   if (!snapshot) return null;
+  const undecided = glossary ? glossary.terms.filter((t) => t.status === 'provisional').length : 0;
   return (
     <nav className="sidebar" aria-label="작업 메뉴">
       <span className="nav-head">작업</span>
       <button type="button" className={`nav-btn${view === 'text' ? ' on' : ''}`} aria-current={view === 'text' ? 'page' : undefined}
         onClick={() => useApp.setView('text')}>
         <span>텍스트</span><span className="mono sub small">{num(snapshot.stats.untranslated)}</span>
+      </button>
+      <button type="button" className={`nav-btn${view === 'glossary' ? ' on' : ''}`} aria-current={view === 'glossary' ? 'page' : undefined}
+        onClick={() => useApp.setView('glossary')}>
+        <span>용어집</span>{undecided > 0 && <span className="mono warn-text small" title="결정 필요">{num(undecided)}</span>}
       </button>
       <button type="button" className={`nav-btn${view === 'settings' ? ' on' : ''}`} aria-current={view === 'settings' ? 'page' : undefined}
         onClick={() => useApp.setView('settings')}>
