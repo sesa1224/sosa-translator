@@ -1,3 +1,6 @@
+// The chat: one long-running Claude CLI process in stream-json mode with only the app's MCP tools (args.ts).
+// stream.ts turns the CLI's output into ChatEvents for the screen; prompt.ts writes the short system prompt.
+// One-shot calls for the background jobs use json.ts instead.
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';

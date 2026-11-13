@@ -6,9 +6,15 @@ import { openProject, originalDir } from './project.js';
 
 /** Folders whose files a game loads by name (pictures, sounds, movies). */
 const ASSET_DIRS = ['img', 'audio', 'movies'];
+// Helper files kept in each original copy next to data/ and js/. They let later steps work without the game
+// folder: the build rewrites the window title (index.html, package.top.json) and the game font
+// (fonts/gamefont.css), and files.json lists the game's asset files.
+/** Asset files (img/, audio/, movies/) of the game, from listGameFiles. */
 export const FILES_LIST = 'files.json';
 export const INDEX_HTML = 'index.html';
+/** The game's top-level package.json (holds the window title of NW.js deployments). */
 export const TOP_PACKAGE = 'package.top.json';
+/** MV's font file pointer; a game font patch rewrites it. */
 export const GAMEFONT_CSS = 'fonts/gamefont.css';
 
 /** Relative paths ('/'-separated) of every file under img/, audio/ and movies/ of contentDir. */

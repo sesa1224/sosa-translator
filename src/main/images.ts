@@ -1,3 +1,6 @@
+// Pictures of the open project: the list with each picture's status, recipes (images.json), drawing through
+// the hidden render worker window, the picture contributor of patch builds, and the chat's picture tools.
+// Results are cached under the project's images/ folder (rendered/, thumbs/, manual/), never in the game.
 import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, statSync } from 'node:fs';

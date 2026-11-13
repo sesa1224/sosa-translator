@@ -1,3 +1,6 @@
+// Drawing pictures with text happens in a hidden browser window (src/renderer/render-worker) because it needs
+// a canvas and fonts. This service queues the jobs, sends them over IPC (src/shared/renderProtocol.ts) and
+// replaces the window when it dies. ImageService is its only user.
 import { createHash } from 'node:crypto';
 import type { Region } from '../../core/images/types.js';
 import type { RenderReply, RenderRequest } from '../../shared/renderProtocol.js';

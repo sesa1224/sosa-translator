@@ -1,3 +1,6 @@
+// glossary.json: terms (with candidates while a term is provisional), character cards, the style guide and
+// the project's format rules. A new project starts from docs/default-style-guide.md (defaultGuide.ts).
+// match.ts finds terms in text, josa.ts fixes Korean particles after a renamed term, rename.ts plans that rename.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';

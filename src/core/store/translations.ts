@@ -1,3 +1,6 @@
+// translations.json: the translation table, keyed by TextUnit.id. Keying by an id made from the source text
+// (not by file and position) lets the same sentence share one translation and keeps translations through
+// re-extraction and game updates. Only ProjectService writes it in the app; the CLI writes it directly.
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { TextUnit, TranslationEntry, TranslationStatus, UnitKind } from '../types.js';

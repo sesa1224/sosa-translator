@@ -2,6 +2,7 @@ import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg, UnitKind, UnitRef } from '../types.js';
 import { mvCommandKey, mzArgKey, shapeKey } from '../decisions/keys.js';
 
+/** One found sentence before equal ones are merged (mergeUnits). distinct keeps equal sentences apart. */
 export interface RawUnit { kind: UnitKind; source: string; speaker?: string; needsDecision: boolean; ref: UnitRef; decisionKey?: string; distinct?: string }
 
 interface Command { code: number; indent?: number; parameters: unknown[] }

@@ -1,3 +1,6 @@
+// The format check run on every translation: control codes, leftover Japanese, line count and width, glossary
+// terms, and for needs-decision values the skeleton check. ProjectService runs it on every write and marks
+// a translation with an error as 'error' (left out of builds); the CLI's check command runs checkAll.
 import { checkGlossary, lineWidthChars } from '../glossary/match.js';
 import { splitSpeaker } from '../text/speaker.js';
 import type { Term } from '../glossary/types.js';

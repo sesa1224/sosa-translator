@@ -1,3 +1,6 @@
+// Electron entry: makes the window, starts the local bridge for the chat's MCP server (bridge.ts), registers
+// the IPC handlers (ipc.ts) and owns the hidden render worker window. Environment variables starting with
+// MVMZ_ are test hooks used by the end-to-end tests.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';

@@ -1,3 +1,7 @@
+// Writes translations into copies of the game's data files, in memory; the original copy is only read.
+// Each UnitRef says where a sentence sits. Event patches are applied first, with commands tagged by their
+// original position so translations still find their lines (applyWithPatches). Needs-decision units go in
+// only as their confirmed decision allows, and only while the kept pieces are intact (decisions/skeleton.ts).
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getAtPath, parsePluginsFile, serializePluginsFile, setAtPath, type PluginsFile } from '../extract/plugins.js';

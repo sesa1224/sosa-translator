@@ -1,3 +1,6 @@
+// Lays out a message the way the game's message window draws it, so the app can show the in-game preview and
+// warn about lines that overflow the window. metrics.ts finds the window size for the game; the caller gives
+// the font measure (src/main/preview.ts measures with opentype.js), so this module needs no font code.
 import path from 'node:path';
 import { openProject, originalDir } from '../project/project.js';
 import { readJsonFile } from '../util/json.js';

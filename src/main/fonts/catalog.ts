@@ -1,3 +1,6 @@
+// Fonts the user can pick for the game preview and the game: system fonts, the game's fonts/ folder and the
+// project's fonts/ folder. fontFile.ts reads a font's names and whether it has Hangul; fontEmbed.ts puts the
+// chosen font (subset to the characters used) into patch builds.
 import { existsSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import os from 'node:os';

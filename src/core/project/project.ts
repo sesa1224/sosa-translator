@@ -1,3 +1,6 @@
+// The project folder: project.json (name, engine, game folder, versions) and original/<version>/, a copy of
+// the game's data and plugin files (plus the helper files in originals.ts). Text is always read from the copy;
+// pictures, fonts and test play still read the game folder, and nothing ever writes to it.
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';

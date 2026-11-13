@@ -1,3 +1,7 @@
+// Builds a patch: builds/NNN/ with patch/ (the files), manifest.json (paths and sha1) and <name>_patch_NNN.zip.
+// The translated data files come from apply.ts and the game title files from title.ts; contributors that the
+// main process registers add the rest (game font, pictures, patch notes). Translations with format errors are
+// left out and counted. The zip is read back and compared with the manifest, so a broken zip fails the build.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
@@ -21,6 +25,7 @@ export interface BuildContext { projectDir: string; contentPrefix: string; numbe
  * (so a file under the content folder needs contentPrefix in front). Text or bytes.
  */
 export type BuildContributor = (ctx: BuildContext) => Promise<Map<string, string | Uint8Array>>;
+/** contributors: extra files for the zip (fonts, pictures, notes), called after the translations are applied. */
 export interface BuildOptions { contributors?: BuildContributor[] }
 
 /** The translation of System.json gameTitle that would go into the patch, or null. */

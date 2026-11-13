@@ -1,3 +1,6 @@
+// The skeleton check for partly translated values (a script or plugin command where only the Japanese inside
+// is translated). The kept pieces must appear unchanged and in order, with something between each two:
+// a change to the code around the text would break the game while looking like a translation.
 import type { Issue } from '../types.js';
 import { keepPieces } from './keys.js';
 import type { KeepRule } from './types.js';

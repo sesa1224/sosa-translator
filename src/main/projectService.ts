@@ -1,3 +1,7 @@
+// The only owner of an open project's data in the app. Every change (translations, glossary, decisions,
+// patches, builds, game updates) goes through this class, runs one at a time on its queue, saves the file
+// and emits an event; the IPC layer (ipc.ts) turns the events into pushes to the screens, and the chat's tools
+// (toolHandlers.ts) call the same methods. The renderer and the MCP server never write project files.
 import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';

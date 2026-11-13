@@ -1,3 +1,6 @@
+// Background jobs that call the Claude CLI once per batch (translate, review, decide, glossary draft, notes).
+// BatchJob runs the loop: pause, resume, stop, and pause on the usage limit so the job can go on later.
+// batches.ts and material.ts choose what each call sees, so Claude gets only the lines and terms it needs.
 import { EventEmitter } from 'node:events';
 import type { Glossary } from '../../core/glossary/types.js';
 import { composeSpeaker } from '../../core/text/speaker.js';

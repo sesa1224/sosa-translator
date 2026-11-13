@@ -14,10 +14,13 @@ export interface WindowMetrics {
   sizeStep: number;      // \{ \} 한 번에 바뀌는 글자 크기
 }
 export interface PreviewSettings { fontPath: string | null; fontName: string | null; overrides: Partial<WindowMetrics> }
+/** A piece of a laid-out line: text in one color and size, or an icon (\I[n]). */
 export type Run =
   | { type: 'text'; text: string; color: number; size: number }
   | { type: 'icon'; index: number; size: number };
 export interface LaidLine { runs: Run[]; width: number; overflow: number }   // overflow = 넘친 픽셀(0 이상)
 export interface Layout { lines: LaidLine[]; maxWidth: number; available: number; lineOverflow: number; missingGlyphs: number }  // lineOverflow = 넘친 줄 수(maxLines 초과)
+/** Width of text at a font size, and how many of its characters the font has no glyph for. */
 export type Measure = (text: string, fontSize: number) => { width: number; missing: number };
+/** Values the preview puts in for \N, \V, \G and \P (translated actor names where there are any). */
 export interface PreviewContext { actorNames: Record<number, string>; variables: Record<number, string>; currencyUnit: string; partyNames: Record<number, string> }

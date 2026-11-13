@@ -1,3 +1,6 @@
+// The main process side of window.api: one handler per channel of src/shared/api.ts. It also keeps what
+// belongs to the open project but not to its files: the row cache sent to the screens, the chat session,
+// the running job (one at a time), the preview, the picture service and the test-play runner.
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import { readdir, readFile, rm, stat } from 'node:fs/promises';

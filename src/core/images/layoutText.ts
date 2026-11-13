@@ -2,6 +2,7 @@
 // process (overflow notes), so it must not import Node modules.
 import type { Rect, Region } from './types.js';
 
+/** Lines of a region's text placed in picture coordinates, and whether they spill out of the region. */
 export interface RegionLayout {
   lines: { text: string; x: number; y: number; width: number }[];
   overflowX: boolean;

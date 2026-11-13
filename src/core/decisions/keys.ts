@@ -1,3 +1,7 @@
+// Needs-decision strings (plugin parameters and commands, scripts, comments, note tags, plugin JS strings)
+// are judged in groups, not one by one: the decision key says which strings belong together (one plugin
+// parameter, one command argument, one script shape). A keep rule says which part of a value stays as code;
+// keepPieces turns it into the pieces a translation must keep, which decisions/skeleton.ts checks.
 import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg, TextUnit } from '../types.js';
 import type { DecisionGroup, Decisions, KeepRule, ParamMeta, PluginMeta } from './types.js';

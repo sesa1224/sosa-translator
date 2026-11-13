@@ -1,3 +1,6 @@
+// Hands sentences to an outside translator and takes the reply back. buildPackage writes a self-contained JSON
+// file (glossary, characters, context lines, reply format); planImport sorts a reply into new translations,
+// conflicts with existing ones and unknown ids before anything is written (ProjectService.applyImport writes).
 import { checkTranslation } from '../check/format.js';
 import { keepPieces } from '../decisions/keys.js';
 import { confirmedDecisionFor } from '../decisions/store.js';

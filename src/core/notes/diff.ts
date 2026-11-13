@@ -1,7 +1,11 @@
+// Patch notes. Each build keeps a snapshot of what it put into its patch (snapshot.ts); comparing it with the
+// previous build's gives the counts and lists formatNotes writes as Korean text. The main process
+// (src/main/buildNotes.ts) puts the notes and an install guide into the zip.
 import { scopeLabel } from '../../shared/rows.js';
 import type { TextUnit } from '../types.js';
 import type { BuildSnapshot } from './snapshot.js';
 
+/** What changed between two builds, as counted for the patch notes and the build history screen. */
 export interface BuildDiff {
   number: number; previous: number | null;
   newTranslations: number; changedTranslations: number; removedTranslations: number;

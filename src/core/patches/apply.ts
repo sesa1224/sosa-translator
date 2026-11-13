@@ -1,3 +1,7 @@
+// Patches are fixes and additions recorded as changes against the original copy (patches.json): event list
+// edits, JSON value changes, new plugins and the game font. Event and JSON patches record what they expected
+// to find (a list hash or the old value); when the original no longer matches, the patch is a conflict and is
+// never applied, because it would land in the wrong place.
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { getAtPath } from '../extract/plugins.js';

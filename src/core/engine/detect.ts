@@ -1,3 +1,5 @@
+// Recognises an MV/MZ game folder (data/System.json, also under www/ for MV deployments) and reads its engine
+// and asset encryption key. Code that opens a game folder starts here; nothing in the game is ever written.
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { Engine, GameInfo } from '../types.js';

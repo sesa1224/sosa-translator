@@ -3,6 +3,7 @@ import type { Warning } from '../types.js';
 /** One imported version of the game (an entry of ProjectMeta.versions). */
 export interface VersionInfo { id: string; label: string; importedAt: string; gameDir: string }
 
+/** An old and a new sentence taken for the same changed sentence. punctuationOnly: they differ only in spaces, line breaks and punctuation. */
 export interface ChangedPair { oldId: string; newId: string; similarity: number; punctuationOnly: boolean }
 
 /**
@@ -11,8 +12,10 @@ export interface ChangedPair { oldId: string; newId: string; similarity: number;
  */
 export interface UnitDiff { kept: string[]; added: string[]; removed: string[]; changed: ChangedPair[]; moved: { oldId: string; newId: string }[] }
 
+/** What a game update did with one patch: still fits, moved to the new positions, or could not be placed. */
 export interface PatchMove { id: string; title: string; result: 'unchanged' | 'moved' | 'conflict'; reason?: string }
 
+/** The result of one game update, saved in updates/<version>.json and shown on the update result screen. */
 export interface UpdateSummary {
   from: string; to: string; fromLabel: string; toLabel: string;
   kept: number; keptTranslated: number;

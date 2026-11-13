@@ -1,3 +1,6 @@
+// Patch notes for each build: a build contributor that writes the snapshot and diff of the build and puts
+// 패치노트.txt and 설치 방법.txt into the zip, and NotesJob, which asks Claude to polish the notes and rewrites
+// the zip with them. The counting is done by src/core/notes.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';

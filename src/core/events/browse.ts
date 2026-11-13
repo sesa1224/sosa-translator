@@ -1,3 +1,6 @@
+// Read-only access to the event command lists of the project's original copy (or an older version's copy),
+// for the events screen and the chat's event tools. describe.ts turns commands into Korean lines; the hash of
+// a list (patches/hash.ts) is what an event patch records so a later change of the original can be noticed.
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';

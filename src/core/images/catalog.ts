@@ -1,3 +1,6 @@
+// Finds the game's pictures (plain or encrypted PNG) in the picture folders and reads them as plain PNG.
+// The image service in src/main/images.ts builds on this; recipes live in images.json (store.ts) and drawing
+// happens in the render worker window (src/renderer/render-worker) with layoutText.ts.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';

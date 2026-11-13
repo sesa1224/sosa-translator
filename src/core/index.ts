@@ -1,3 +1,7 @@
+// Public entry of the core library: plain Node code that knows nothing of Electron or the screens.
+// The CLI (src/cli.ts) and the main process import from here. The renderer may import single core modules
+// directly only when they use no Node built-ins (text/, decisions/keys, events/describe, glossary/match, ...).
+// Other code and the plan documents rely on these names: add new ones, do not rename.
 export * from './types.js';
 export * from './engine/detect.js';
 export * from './engine/crypto.js';

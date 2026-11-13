@@ -1,3 +1,7 @@
+// Game updates: takes a new version of the game into an existing project. diff.ts pairs old and new sentences,
+// carry.ts carries translations over, rebase.ts moves patches onto the new original. The project files are
+// backed up to backups/before-<version>/ first and the result is saved in updates/<version>.json; a rollback
+// puts the backup back.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, rename, rm, rmdir } from 'node:fs/promises';

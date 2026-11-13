@@ -6,8 +6,10 @@ export type KeepRule =
   | { mode: 'args'; from: number; dropLast: number }    // MV command: only the space-separated pieces [from, end - dropLast) are translated
   | { mode: 'spans' };                                  // only the Japanese spans are translated, the rest stays
 
+/** How a needs-decision group (or one unit) is handled. by 'meta': suggested from the plugin's header comment. */
 export interface Decision { translate: boolean; keep: KeepRule; status: 'suggested' | 'confirmed'; reason?: string; by: 'user' | 'claude' | 'meta' }
 
+/** Needs-decision strings that share a decision key, as the decisions screen and the chat see them. */
 export interface DecisionGroup {
   key: string; label: string; kind: UnitKind; count: number;
   samples: string[];                 // up to 5 distinct sources

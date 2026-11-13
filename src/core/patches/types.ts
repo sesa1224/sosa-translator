@@ -9,6 +9,7 @@ export type ListOp =
   | { op: 'delete'; at: number }                                  // at: original index
   | { op: 'replace'; at: number; commands: EventCommand[] };
 
+/** What a patch changes. event: edits of one command list; json: one value in a data file. */
 export type PatchBody =
   | { kind: 'event'; file: string; listPath: PathSeg[]; baseHash: string; ops: ListOp[] }
   | { kind: 'json'; file: string; path: PathSeg[]; baseValue: unknown; value: unknown }
@@ -21,5 +22,6 @@ export interface Patch {
   createdBy: 'user' | 'claude'; createdAt: string; body: PatchBody;
 }
 
+/** conflict: the original no longer matches what the patch recorded, so it is not applied. */
 export type PatchState = 'applied' | 'disabled' | 'conflict';
 export interface PatchStatus { id: string; state: PatchState; reason?: string }

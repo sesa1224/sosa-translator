@@ -3,6 +3,7 @@ import type { PathSeg } from '../types.js';
 import type { RawUnit } from './events.js';
 import { paramKey } from '../decisions/keys.js';
 
+/** js/plugins.js split around its JSON array, so writing it back keeps the code before and after as it was. */
 export interface PluginsFile { prefix: string; plugins: unknown[]; suffix: string }
 
 /** Splits js/plugins.js into the text before the first '[', the plugin array, and the text after the last ']'. */

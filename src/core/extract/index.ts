@@ -1,3 +1,6 @@
+// Extraction: reads the original copy (data/*.json, js/plugins.js, js/plugins/*.js) and writes units.json.
+// database.ts, events.ts, plugins.ts, notes.ts and pluginJs.ts each find the sentences of one kind of source;
+// mergeUnits joins equal sentences into one unit with every place it appears (see TextUnit for the id).
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
