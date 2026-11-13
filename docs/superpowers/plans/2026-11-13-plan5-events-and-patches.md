@@ -210,7 +210,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `font` 수정이 꺼져 있거나 없으면 기여자가 빈 Map 을 준다
 - `plugin` 수정의 JS 가 `js/plugins/<name>.js` 로 들어간다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 내장"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 내장"`
 
 ### Task 6: 게임 실행
 
