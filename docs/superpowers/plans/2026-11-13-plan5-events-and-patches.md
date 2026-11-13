@@ -139,7 +139,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `validateOps`: `at: 99` → 범위 밖 메시지, 같은 번호 `delete` + `replace` → 메시지, 정상 → null
 - `untagList` 뒤에 `__o` 가 어디에도 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 수정 저장과 목록 연산"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 수정 저장과 목록 연산"`
 
 ### Task 3: 수정을 빌드에 적용
 
