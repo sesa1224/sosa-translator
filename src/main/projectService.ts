@@ -20,6 +20,15 @@ import { termsIn } from '../core/glossary/match.js';
 import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, Term } from '../core/glossary/types.js';
 import type { ChangeEvent, Origin } from '../shared/api.js';
+import { existsSync, readFileSync } from 'node:fs';
+import nodePath from 'node:path';
+import { groupDecisions } from '../core/decisions/keys.js';
+import { mergeSuggestions } from '../core/decisions/auto.js';
+import { decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
+import type { Decision, DecisionGroup, Decisions, PluginMeta } from '../core/decisions/types.js';
+import { pluginMetaFromDir } from '../core/extract/pluginMeta.js';
+import { ensureOriginals, FILES_LIST } from '../core/project/originals.js';
+import { originalDir } from '../core/project/project.js';
 
 const UNDO_LIMIT = 200;
 
@@ -35,6 +44,9 @@ export interface ProjectService {
   off(event: 'glossary-changed', listener: (g: Glossary) => void): this;
   emit(event: 'changed', e: ChangeEvent): boolean;
   emit(event: 'glossary-changed', g: Glossary): boolean;
+  on(event: 'decisions-changed', listener: (d: Decisions) => void): this;
+  off(event: 'decisions-changed', listener: (d: Decisions) => void): this;
+  emit(event: 'decisions-changed', d: Decisions): boolean;
 }
 
 /**
@@ -55,6 +67,77 @@ export class ProjectService extends EventEmitter {
   ) {
     super();
     this.byId = new Map(unitList.map((u) => [u.id, u]));
+    this.loadDecisionData();
+  }
+
+  // ---- decisions (plan 3b) ----
+  private dec: Decisions = {};
+  private pluginMeta: Record<string, PluginMeta> = {};
+  private gameFileNames = new Set<string>();
+
+  /** Reads decisions.json, the plugins' header comments and the game file names (small files, read once). */
+  private loadDecisionData(): void {
+    const decFile = nodePath.join(this.projectDir, DECISIONS_FILE);
+    try {
+      const d = existsSync(decFile) ? JSON.parse(readFileSync(decFile, 'utf8').replace(/^﻿/, '')) : {};
+      this.dec = d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+    } catch {
+      this.dec = {};
+    }
+    const root = originalDir(this.projectDir, this.meta);
+    this.pluginMeta = pluginMetaFromDir(root);
+    try {
+      const list = JSON.parse(readFileSync(nodePath.join(root, FILES_LIST), 'utf8')) as unknown;
+      if (Array.isArray(list)) {
+        for (const f of list) if (typeof f === 'string') this.gameFileNames.add(f.replace(/^.*\//, '').replace(/\.[^.]*$/, ''));
+      }
+    } catch {
+      // no files.json: no file-name hints
+    }
+  }
+
+  /** A copy of the project's decisions. */
+  decisions(): Decisions {
+    return structuredClone(this.dec);
+  }
+
+  /** Needs-decision units grouped by decision key, largest first. */
+  decisionGroups(): DecisionGroup[] {
+    return groupDecisions(this.unitList, this.dec, { fileNames: this.gameFileNames, meta: this.pluginMeta });
+  }
+
+  /** The decision that applies to a unit (its own one first), suggestions included. */
+  decisionOf(id: string): Decision | null {
+    const u = this.byId.get(id);
+    return u ? decisionFor(u, this.dec) : null;
+  }
+
+  /** Text of a file in the original copy (for context around plugin JS strings), or null. */
+  originalText(file: string): string | null {
+    try {
+      return readFileSync(nodePath.join(originalDir(this.projectDir, this.meta), ...file.split('/')), 'utf8');
+    } catch {
+      return null;
+    }
+  }
+
+  /** Merges suggestions (confirmed decisions stay), saves decisions.json and announces the change. */
+  addSuggestions(suggested: Decisions): Promise<void> {
+    return this.writeDecisions(() => mergeSuggestions(this.dec, suggested), Object.keys(suggested));
+  }
+
+  /** Replaces the decisions, saves them, emits 'decisions-changed' and a change for the units of the touched keys. */
+  private writeDecisions(next: () => Decisions, keys: string[]): Promise<void> {
+    return this.enqueue(async () => {
+      this.dec = next();
+      await saveDecisions(this.projectDir, this.dec);
+      this.emit('decisions-changed', this.decisions());
+      const touched = new Set(keys);
+      const ids = this.unitList
+        .filter((u) => u.needsDecision && (touched.has(`unit:${u.id}`) || (u.decisionKey !== undefined && touched.has(u.decisionKey))))
+        .map((u) => u.id);
+      if (ids.length > 0) this.emit('changed', { ids, origin: 'user' });
+    });
   }
 
   /** createProject + extractAll, then opens it. */
@@ -67,7 +150,10 @@ export class ProjectService extends EventEmitter {
 
   static async open(projectDir: string): Promise<ProjectService> {
     const meta = await openProject(projectDir);
+    await ensureOriginals(projectDir);
     const units = await loadUnits(projectDir);
+    // Projects extracted before decision keys existed are extracted again from the original copy (ids do not change).
+    if (units.some((u) => u.needsDecision && u.decisionKey === undefined)) units.splice(0, units.length, ...(await extractAll(projectDir)).units);
     const store = await TranslationStore.load(projectDir);
     return new ProjectService(projectDir, meta, units, store, await loadGlossary(projectDir));
   }

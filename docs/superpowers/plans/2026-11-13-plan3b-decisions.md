@@ -218,7 +218,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - JS 파일의 문자열은 `unit:<id>` 키로 따로 정해진다
 - `auth` 실패 → `failed` 와 로그인 메시지, `limit` → `paused-limit`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 묶음 추천"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 묶음 추천"`
 
 ### Task 8: 외부 번역용 내보내기와 가져오기
 

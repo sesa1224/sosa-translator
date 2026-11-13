@@ -1,5 +1,4 @@
-import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ParamMeta, PluginMeta } from '../decisions/types.js';
 import { openProject, originalDir } from '../project/project.js';
@@ -88,16 +87,14 @@ export function parsePluginMeta(js: string): PluginMeta {
   return meta;
 }
 
-/** Plugin name -> header comment, for every plugin listed in js/plugins.js whose file is in the original copy. */
-export async function loadPluginMeta(projectDir: string): Promise<Record<string, PluginMeta>> {
-  const meta = await openProject(projectDir);
-  const root = originalDir(projectDir, meta);
+/** Plugin name -> header comment, read from an original copy folder (synchronous; the files are small). */
+export function pluginMetaFromDir(root: string): Record<string, PluginMeta> {
   const out: Record<string, PluginMeta> = {};
   const pluginsPath = path.join(root, 'js', 'plugins.js');
   if (!existsSync(pluginsPath)) return out;
   let plugins: unknown[];
   try {
-    plugins = parsePluginsFile(await readFile(pluginsPath, 'utf8')).plugins;
+    plugins = parsePluginsFile(readFileSync(pluginsPath, 'utf8')).plugins;
   } catch {
     return out;
   }
@@ -106,7 +103,13 @@ export async function loadPluginMeta(projectDir: string): Promise<Record<string,
     if (typeof name !== 'string' || /[\\/]/.test(name)) continue;
     const file = path.join(root, 'js', 'plugins', `${name}.js`);
     if (!existsSync(file)) continue;
-    out[name] = parsePluginMeta(await readFile(file, 'utf8'));
+    out[name] = parsePluginMeta(readFileSync(file, 'utf8'));
   }
   return out;
+}
+
+/** Plugin name -> header comment, for every plugin listed in js/plugins.js whose file is in the original copy. */
+export async function loadPluginMeta(projectDir: string): Promise<Record<string, PluginMeta>> {
+  const meta = await openProject(projectDir);
+  return pluginMetaFromDir(originalDir(projectDir, meta));
 }
