@@ -488,7 +488,7 @@ test('원본 게임 폴더는 바뀌지 않는다', async () => { expect(await h
 - Produces: `exportUntranslated(units: TextUnit[], store: TranslationStore, opts?: { includeNeedsDecision?: boolean }): { id: string; kind: UnitKind; speaker?: string; source: string }[]` — target 이 null 인 것만. needsDecision 항목은 기본 제외
 - Produces: `importTranslations(units: TextUnit[], store: TranslationStore, items: { id: string; target: string }[]): { applied: number; unknownIds: string[] }` — units 에 없는 id 는 넣지 않고 `unknownIds` 로 돌려준다
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('기본값, 저장, 다시 읽기', async () => {
@@ -510,10 +510,10 @@ test('가져오기: 모르는 id 는 돌려준다', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/store/translations.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 번역표와 내보내기/가져오기"`**
+- [x] **Step 2: `npx vitest run tests/store/translations.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 번역표와 내보내기/가져오기"`**
 
 ### Task 9: 형식 검사
 
