@@ -177,7 +177,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - 꺼진 플러그인(`status: false`)의 파일은 추출하지 않는다
 - 따옴표가 닫히지 않은 깨진 파일에서 예외를 던지지 않고, 그 파일에 대한 경고 하나를 돌려준다(`extractAll` 의 `warnings`)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 JS 문자열 추출"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 JS 문자열 추출"`
 
 ### Task 6: 적용 — 결정 반영, 메모란, JS 파일, 제목
 

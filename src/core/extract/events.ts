@@ -2,7 +2,7 @@ import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg, UnitKind, UnitRef } from '../types.js';
 import { mvCommandKey, mzArgKey, shapeKey } from '../decisions/keys.js';
 
-export interface RawUnit { kind: UnitKind; source: string; speaker?: string; needsDecision: boolean; ref: UnitRef; decisionKey?: string }
+export interface RawUnit { kind: UnitKind; source: string; speaker?: string; needsDecision: boolean; ref: UnitRef; decisionKey?: string; distinct?: string }
 
 interface Command { code: number; indent?: number; parameters: unknown[] }
 
