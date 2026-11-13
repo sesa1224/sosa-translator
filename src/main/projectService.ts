@@ -76,6 +76,11 @@ export class ProjectService extends EventEmitter {
     this.byId = new Map(unitList.map((u) => [u.id, u]));
     this.loadDecisionData();
     registerFontContributor(this); // plan 5: font and plugin files of patches go into every build
+    // The patch notes (plan 7) list the fixes (plan 5) that went into each build.
+    this.buildSummaries.push(async () => {
+      const applied = new Set((await this.patchStatuses()).filter((x) => x.state === 'applied').map((x) => x.id));
+      return { patches: this.patches().filter((p) => applied.has(p.id)).map((p) => p.title) };
+    });
   }
 
   // ---- decisions (plan 3b) ----
