@@ -177,3 +177,47 @@ test('판단 필요: 추천 받기 → 받아들이기 → 번역 → 제목 →
   expect(cmds).toEqual([{ destination: '번역' }, { picture: '立ち絵' }]);
   await app.close();
 });
+
+test('이벤트: 줄 끼워 넣기 → 수정 내역 → 빌드 → 게임 실행', async () => {
+  const game5 = path.join(tmp, 'game5');
+  await makeMiniGame(game5);
+  await writeFile(path.join(game5, 'Game.exe'), 'not a real exe');
+  const app = await launch({ MVMZ_PICK_DIR: game5, MVMZ_GAME_SPAWN_FAKE: '1' });
+  const w = await app.firstWindow();
+  const nav = w.getByRole('navigation', { name: '작업 메뉴' });
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('이벤트'); await w.getByRole('button', { name: '만들기' }).click();
+
+  await nav.getByRole('button', { name: /^이벤트/ }).click();
+  await expect(w.getByRole('heading', { name: '이벤트' })).toBeVisible();
+  await w.getByRole('button', { name: /맵1 \[MAP001\] · 이벤트 1개/ }).click();
+  await w.getByRole('button', { name: /^이벤트 1 · 1페이지/ }).click();
+  await expect(w.getByText(/あれ？.*こんな夜に来るなんて/)).toBeVisible();
+  await expect(w.locator('[data-line="11"]')).toBeVisible();
+  await w.locator('[data-line="11"]').hover();
+  await w.locator('[data-line="11"]').getByRole('button', { name: '이 줄 아래에 끼워 넣기' }).click();
+  await w.getByLabel('끼워 넣을 것').selectOption('switch-on');
+  await w.getByLabel('스위치 번호').fill('45');
+  await w.getByLabel('수정 제목').fill('기록 스위치 켜기');
+  await w.getByRole('button', { name: '수정으로 기록' }).click();
+  await expect(w.getByText('+ 스위치 45 = 켬')).toBeVisible();
+
+  await nav.getByRole('button', { name: /^수정 내역/ }).click();
+  await expect(w.getByRole('heading', { name: '수정 내역' })).toBeVisible();
+  await expect(w.getByText('적용됨')).toBeVisible();
+
+  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
+  const zip = unzipSync(new Uint8Array(await readFile(path.join(projectsDir, '이벤트/builds/001/이벤트_patch_001.zip'))));
+  const list = JSON.parse(strFromU8(zip['data/Map001.json'])).events[1].pages[0].list;
+  expect(list[12]).toEqual({ code: 121, indent: 0, parameters: [45, 45, 0] });
+
+  await w.getByRole('button', { name: '게임 실행' }).click();
+  await expect(w.getByText('게임 실행 중')).toBeVisible();
+  const copied = JSON.parse(await readFile(path.join(projectsDir, '이벤트/testplay/data/Map001.json'), 'utf8')).events[1].pages[0].list;
+  expect(copied[12]).toEqual({ code: 121, indent: 0, parameters: [45, 45, 0] });
+  expect(existsSync(path.join(projectsDir, '이벤트/testplay/Game.exe'))).toBe(true);
+  // The original game folder is untouched.
+  expect(JSON.parse(await readFile(path.join(game5, 'data/Map001.json'), 'utf8')).events[1].pages[0].list).toHaveLength(13);
+  await w.getByRole('button', { name: '끝내기' }).click();
+  await expect(w.getByRole('button', { name: '게임 실행' })).toBeVisible();
+  await app.close();
+});

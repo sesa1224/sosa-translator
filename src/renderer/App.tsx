@@ -39,6 +39,7 @@ function RightPanel() {
 
 function Workspace() {
   const { view } = useApp();
+  const mainView5 = mainView(useApp());
   return (
     <div className="shell">
       <TopBar />
@@ -47,8 +48,10 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
+          {mainView5 === 'events' ? <EventView /> : mainView5 === 'patches' ? <PatchView5 /> : <>
           {view === 'decisions' ? <DecisionView /> : <>
           {view === 'text' ? <TextTable /> : view === 'glossary' ? <GlossaryView /> : <SettingsView />}
+          </>}
           </>}
         </main>
         <RightPanel />
@@ -75,3 +78,10 @@ export function App() {
   if (!ready) return null;
   return snapshot ? <Workspace /> : <ProjectPicker />;
 }
+
+// ---- plan 5: events and patches screens ----
+import { EventView } from './components/EventView';
+import { mainView } from './state';
+/** The patches screen (plan 5). */
+const PatchView5 = PatchView;
+import { PatchView } from './components/PatchView';

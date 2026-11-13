@@ -82,6 +82,8 @@ export interface IpcDeps {
   pickSaveFile?(defaultName: string): Promise<string | null>;
   /** Open dialog for a translator's reply (null = cancelled). */
   pickOpenFile?(): Promise<string | null>;
+  /** Starts the test-play game (tests give a fake; MVMZ_GAME_SPAWN_FAKE=1 uses one too). */
+  spawnGame?: typeof import('node:child_process').spawn;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -150,6 +152,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   async function closeProject(): Promise<void> {
     stopPreview();
+    closePlan5();
     disposeChat();
     job?.stop();
     job = null;
@@ -203,6 +206,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       if (deps.holder.svc !== s) return;
       deps.broadcast('decisions:changed', s.decisionGroups());
     });
+    adoptPlan5(s);
   }
 
   async function ensureChat(): Promise<ChatLike | null> {
@@ -536,5 +540,101 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return svc().applyImport(plan, overwrite === true);
   });
 
+  // ---- plan 5: events, patches, game run ----
+  const handleE = (channel: EventInvokeChannel, fn: (...args: any[]) => unknown) => {
+    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
+  };
+  let runner: GameRunner | null = null;
+  const patchList = async (s: ProjectService): Promise<shared.PatchList> => ({ patches: s.patches(), statuses: await s.patchStatuses() });
+
+  /** Called when a project is opened: patch changes (from the screen or the chat) reach every window. */
+  function adoptPlan5(s: ProjectService): void {
+    s.on('patches-changed', () => {
+      if (deps.holder.svc !== s) return;
+      void patchList(s).then((l) => { if (deps.holder.svc === s) deps.broadcast('patches:changed', l); }).catch(() => undefined);
+    });
+  }
+
+  function closePlan5(): void {
+    runner?.stop();
+    runner = null;
+  }
+
+  /** patch/ of the newest build, or null when nothing was built yet. */
+  async function latestPatchDir(projectDir: string): Promise<string | null> {
+    const builds = path.join(projectDir, 'builds');
+    if (!existsSync(builds)) return null;
+    const nums = (await readdir(builds)).filter((n) => /^\d+$/.test(n)).sort((a, b) => Number(b) - Number(a));
+    for (const n of nums) {
+      const dir = path.join(builds, n, 'patch');
+      if (existsSync(dir)) return dir;
+    }
+    return null;
+  }
+
+  handleE('events:files', () => eventFiles(svc().projectDir));
+  handleE('events:list', (file: string) => listEvents(svc().projectDir, String(file ?? '')));
+  handleE('events:read', (file: string, listPath: core.PathSeg[]) => readEvent(svc().projectDir, String(file ?? ''), Array.isArray(listPath) ? listPath : []));
+  handleE('events:usage', (target: shared.UsageTarget) => findUsage(svc().projectDir, target));
+  handleE('patches:list', () => patchList(svc()));
+  handleE('patches:add', (p: shared.NewPatch) => svc().addPatch(p, 'user'));
+  handleE('patches:update', (id: string, p: shared.PatchChange) => svc().updatePatch(String(id), p ?? {}));
+  handleE('patches:remove', (id: string) => svc().removePatch(String(id)));
+  handleE('patches:setGameFont', (fontPath: string | null, subset: boolean) => svc().setGameFontPatch(typeof fontPath === 'string' && fontPath ? fontPath : null, subset !== false));
+  handleE('patches:creatorReport', () => svc().creatorReport());
+  handleE('game:run', async () => {
+    const s = svc();
+    const patchDir = await latestPatchDir(s.projectDir);
+    if (!patchDir) throw new Error('먼저 패치를 빌드하세요');
+    if (runner?.running) throw new Error('게임이 이미 실행 중입니다');
+    if (!existsSync(s.meta.gameDir)) throw new Error('게임 폴더를 찾을 수 없습니다');
+    if (!runner) {
+      const r = new GameRunner({ projectDir: s.projectDir, gameDir: s.meta.gameDir, spawn: deps.spawnGame ?? (process.env.MVMZ_GAME_SPAWN_FAKE === '1' ? fakeGameSpawn : undefined) });
+      r.on('exit', () => { if (runner === r) deps.broadcast('game:state', { state: 'idle' }); });
+      runner = r;
+    }
+    const r = runner;
+    const firstRun = !r.prepared;
+    let last = 0;
+    deps.broadcast('game:state', { state: 'preparing', done: 0, total: 0, firstRun });
+    try {
+      await r.prepare(patchDir, (done, total) => {
+        // A few updates a second are enough for the button.
+        const now = Date.now();
+        if (now - last < 100 && done < total) return;
+        last = now;
+        deps.broadcast('game:state', { state: 'preparing', done, total, firstRun });
+      });
+      await r.launch();
+    } catch (e) {
+      deps.broadcast('game:state', { state: 'idle' });
+      throw e;
+    }
+    deps.broadcast('game:state', { state: 'running' });
+  });
+  handleE('game:stop', () => { runner?.stop(); });
+
   return { dispose: () => closeProject() };
 }
+
+// ---- plan 5 (appended) ----
+import { EventEmitter as GameEmitter } from 'node:events';
+import type { EventInvokeChannel } from '../shared/api.js';
+import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
+import { findUsage } from '../core/events/usage.js';
+import { GameRunner } from './gameRun.js';
+import type * as browseTypes from '../core/events/browse.js';
+import type * as usageTypes from '../core/events/usage.js';
+import type * as describeTypes from '../core/events/describe.js';
+
+export const sharedTypesMatch5: [
+  Same<browseTypes.EventFileInfo, shared.EventFileInfo>, Same<browseTypes.EventListInfo, shared.EventListInfo>,
+  Same<browseTypes.EventDetail, shared.EventDetail>, Same<usageTypes.EventRef, shared.EventRef>,
+  Same<describeTypes.DescribedLine, shared.EventLine>, Same<usageTypes.UsageTarget, shared.UsageTarget>,
+] = [true, true, true, true, true, true];
+
+/** A game process that only pretends to run (end-to-end tests): it ends when stopped. */
+const fakeGameSpawn = ((): unknown => {
+  const child = Object.assign(new GameEmitter(), { kill: () => { child.emit('exit', 0); return true; } });
+  return child;
+}) as unknown as typeof import('node:child_process').spawn;

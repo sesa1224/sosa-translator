@@ -75,6 +75,12 @@ function Message({ m, rowsById }: { m: ChatMessage; rowsById: Record<string, Row
 
 export function ChatPanel() {
   const { chat, attachedId, rowsById, settings } = useApp();
+  const attachedEvent = useApp().attachedEvent ?? null;
+  const chatDraft = useApp().chatDraft ?? null;
+  useEffect(() => {
+    const d = eventActions.takeChatDraft();
+    if (d !== null) setText(d);
+  }, [chatDraft]);
   const [text, setText] = useState('');
   const [images, setImages] = useState<Attachment[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
@@ -129,7 +135,7 @@ export function ChatPanel() {
     if (chat.busy) return;
     const t = text.trim();
     if (!t && images.length === 0) return;
-    void useApp.sendChat(t, images.map(({ mediaType, base64 }) => ({ mediaType, base64 })));
+    void eventActions.sendChat(t, images.map(({ mediaType, base64 }) => ({ mediaType, base64 })));
     setText('');
     setImages([]);
     countRef.current = 0;
@@ -166,8 +172,14 @@ export function ChatPanel() {
         {undoNote && <span className="sub small">{undoNote}</span>}
       </div>
       <div className="chat-input">
-        {(attached || images.length > 0) && (
+        {(attached || attachedEvent || images.length > 0) && (
           <div className="attached">
+            {attachedEvent && (
+              <>
+                <span className="tag">{`이벤트 · ${attachedEvent.label}`}</span>
+                <button type="button" className="x" aria-label="붙은 이벤트 떼기" onClick={() => eventActions.attachEvent(null)}>×</button>
+              </>
+            )}
             {attached && (
               <>
                 <span className="tag">{`붙은 항목 · ${attached.location}`}</span>
@@ -211,3 +223,6 @@ export function ChatPanel() {
     </div>
   );
 }
+
+// ---- plan 5 ----
+import { eventActions } from '../state';

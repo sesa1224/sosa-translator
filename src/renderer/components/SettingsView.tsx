@@ -146,7 +146,12 @@ export function SettingsView() {
       </section>
 
       <FontPicker />
+      {/* plan 5: font into the game */}
+      <FontEmbedSection />
       {error && <span className="err-text" role="alert">{error}</span>}
     </div>
   );
 }
+
+// ---- plan 5 ----
+import { FontEmbedSection } from './PatchView';

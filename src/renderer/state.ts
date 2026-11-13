@@ -199,6 +199,7 @@ async function start(a: Api): Promise<void> {
     a.on('glossary:changed', onGlossaryChanged),
     a.on('job:progress', (p) => set({ job: p, jobDismissed: false })),
     a.on('decisions:changed', (g) => set({ decisionGroups: g })),
+    ...plan5Listeners(a),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -397,3 +398,122 @@ export function jobActive(s: AppState): boolean {
 export function orderedRows(s: AppState): Row[] {
   return s.rowOrder.map((id) => s.rowsById[id]);
 }
+
+// ---- plan 5: events, patches, game run (appended; the lines above are unchanged except one listener line in start) ----
+import type { EventRef, GameState, NewPatch, Patch, PatchChange, PatchList, PathSeg, UsageTarget } from '../shared/api';
+
+/** The main screens plan 5 adds; AppState.view holds them too (its declared union is left as it was). */
+export type MainView = AppState['view'] | 'events' | 'patches';
+/** An event the chat message will carry. */
+export interface AttachedEvent { file: string; listPath: PathSeg[]; label: string }
+/** Where the event screen should open (from a usage result, a patch, or the patches screen). */
+export interface EventFocus { file: string; listPath: PathSeg[]; line: number | null; seq: number }
+
+export interface AppState {
+  /** Patches and their state (loaded when needed, then pushed on change). */
+  patchList?: PatchList;
+  game?: GameState;
+  gameError?: string | null;
+  attachedEvent?: AttachedEvent | null;
+  eventFocus?: EventFocus | null;
+  /** Text the chat box should take (from "Claude에게 맡기기"). */
+  chatDraft?: string | null;
+}
+
+export function mainView(s: AppState): MainView {
+  return s.view as MainView;
+}
+
+function plan5Listeners(a: Api): (() => void)[] {
+  return [
+    a.on('patches:changed', (l) => set({ patchList: l })),
+    a.on('game:state', (g) => set({ game: g })),
+  ];
+}
+
+/** The chat text with the attached event's line in front. */
+export function withEventPrefix(text: string, ev: AttachedEvent | null | undefined): string {
+  if (!ev) return text;
+  return `[이벤트] file=${ev.file} listPath=${JSON.stringify(ev.listPath)} 라벨=${ev.label}
+
+${text}`;
+}
+
+let focusSeq = 0;
+
+/** Plan 5 actions (kept apart from useApp's so that object stays as it was). */
+export const eventActions = {
+  openEvents(focus: Omit<EventFocus, 'seq'> | null = null): void {
+    set({ view: 'events' as AppState['view'], eventFocus: focus ? { ...focus, seq: ++focusSeq } : state.eventFocus ?? null });
+  },
+  openPatches(): void {
+    set({ view: 'patches' as AppState['view'] });
+  },
+  async loadPatches(): Promise<void> {
+    try {
+      set({ patchList: await need().patches.list() });
+    } catch {
+      // no project open
+    }
+  },
+  files: () => need().events.files(),
+  list: (file: string) => need().events.list(file),
+  read: (file: string, listPath: PathSeg[]) => need().events.read(file, listPath),
+  usage: (target: UsageTarget): Promise<EventRef[]> => need().events.usage(target),
+  async addPatch(p: NewPatch): Promise<Patch> {
+    const r = await need().patches.add(p);
+    await eventActions.loadPatches();
+    return r;
+  },
+  async updatePatch(id: string, p: PatchChange): Promise<Patch> {
+    const r = await need().patches.update(id, p);
+    await eventActions.loadPatches();
+    return r;
+  },
+  async removePatch(id: string): Promise<void> {
+    await need().patches.remove(id);
+    await eventActions.loadPatches();
+  },
+  async setGameFont(fontPath: string | null, subset: boolean): Promise<void> {
+    await need().patches.setGameFont(fontPath, subset);
+    await eventActions.loadPatches();
+  },
+  creatorReport: (): Promise<string> => need().patches.creatorReport(),
+  /** Puts the event on the chat and shows the chat tab. */
+  talkAboutEvent(ev: AttachedEvent): void {
+    set({ attachedEvent: ev, rightTab: 'chat' });
+  },
+  attachEvent(ev: AttachedEvent | null): void {
+    set({ attachedEvent: ev });
+  },
+  /** useApp.sendChat with the attached event's line in front of what the model reads. */
+  async sendChat(text: string, images: ChatImage[]): Promise<void> {
+    const ev = state.attachedEvent;
+    if (!ev) return useApp.sendChat(text, images);
+    const attached = state.attachedId;
+    set((s) => ({ attachedEvent: null, chat: { ...s.chat, busy: true, messages: [...s.chat.messages, { kind: 'user', text, images, attached: `이벤트 · ${ev.label}` }] } }));
+    try {
+      await need().chat.send(withEventPrefix(text, ev), images, attached ?? undefined);
+    } catch (e) {
+      set((s) => ({ chat: reduceChat(s.chat, { type: 'error', message: errorText(e) }) }));
+    }
+  },
+  async runGame(): Promise<void> {
+    set({ gameError: null });
+    try {
+      await need().game.run();
+    } catch (e) {
+      set({ gameError: errorText(e) });
+    }
+  },
+  stopGame: (): Promise<void> => need().game.stop(),
+  /** Opens the chat with a draft message and, for an event patch, its event attached. */
+  askClaude(text: string, ev: AttachedEvent | null): void {
+    set({ chatDraft: text, rightTab: 'chat', ...(ev ? { attachedEvent: ev } : {}) });
+  },
+  takeChatDraft(): string | null {
+    const d = state.chatDraft ?? null;
+    if (d !== null) set({ chatDraft: null });
+    return d;
+  },
+};

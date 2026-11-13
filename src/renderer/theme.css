@@ -310,3 +310,50 @@ select.input { padding: 0 12px; }
 .tiny { font-size: 11px; }
 .exchange-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .decision-box .row-gap { margin-top: 4px; }
+
+/* ---- plan 5: events screen ---- */
+.ev-page { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+.ev-cols { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.ev-left { flex: 1 1 220px; max-width: 320px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.ev-files, .ev-list, .ev-usage-list { display: flex; flex-direction: column; gap: 2px; }
+.ev-list { max-height: 60vh; overflow-y: auto; }
+.ev-pick { min-height: 44px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--sub); text-align: left; font-size: 14px; display: flex; flex-direction: column; gap: 2px; }
+.ev-pick.on, .ev-pick:hover { background: var(--card); color: var(--text); }
+.ev-usage-list .ev-pick { flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; }
+.ev-cond { font-size: 12px; }
+.ev-main { flex: 3 1 420px; min-width: 0; overflow: hidden; }
+.ev-usage { flex: 1 1 220px; max-width: 320px; padding-bottom: 8px; }
+.ev-head { justify-content: space-between; }
+.ev-empty, .ev-pad { padding: 18px; }
+.ev-lines { padding: 10px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.9; overflow-x: auto; }
+.ev-line { position: relative; display: flex; align-items: center; gap: 12px; padding-right: 12px; min-height: 30px; }
+.ev-line:hover { background: var(--card); }
+.ev-num { color: var(--mute); min-width: 2.5em; text-align: right; flex: none; }
+.ev-text { white-space: pre-wrap; word-break: break-word; flex: 1; }
+.ev-add { background: var(--accent-bg); color: var(--accent-text); }
+.ev-del { background: var(--err-bg); color: var(--err); }
+.ev-del .ev-text { text-decoration: line-through; }
+.ev-hl { outline: 2px solid var(--warn); outline-offset: -2px; }
+/* Floats over the line so the text keeps its full width. */
+.ev-tools { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px; padding: 2px; border-radius: 8px; background: var(--panel); opacity: 0; pointer-events: none; }
+.ev-line:hover .ev-tools, .ev-line:focus-within .ev-tools { pointer-events: auto; }
+.ev-line:hover .ev-tools, .ev-line:focus-within .ev-tools { opacity: 1; }
+.ev-name { border: 0; padding: 0 2px; background: transparent; color: var(--accent-text); font: inherit; text-decoration: underline dotted; cursor: pointer; }
+.ev-form { margin: 4px 12px 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); display: flex; flex-direction: column; gap: 8px; font-family: inherit; }
+.ev-form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ev-num-input { width: 110px; }
+.ev-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
+
+/* ---- plan 5: patches screen, font into the game, game run ---- */
+.patch-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.patch-row:last-child { border-bottom: 0; }
+.patch-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.patch-title { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); font-size: 14px; font-weight: 500; padding: 4px 6px; margin-left: -6px; }
+.patch-title:hover, .patch-title:focus { border-color: var(--line); background: var(--bg); }
+.patch-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.check { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; }
+.btn.danger { border-color: var(--err); color: var(--err); background: var(--err-bg); }
+.report-dialog { width: min(720px, 100%); }
+.report-text { margin: 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.game-run { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.game-state { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; }

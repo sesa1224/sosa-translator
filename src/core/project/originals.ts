@@ -9,6 +9,7 @@ const ASSET_DIRS = ['img', 'audio', 'movies'];
 export const FILES_LIST = 'files.json';
 export const INDEX_HTML = 'index.html';
 export const TOP_PACKAGE = 'package.top.json';
+export const GAMEFONT_CSS = 'fonts/gamefont.css';
 
 /** Relative paths ('/'-separated) of every file under img/, audio/ and movies/ of contentDir. */
 export async function listGameFiles(contentDir: string): Promise<string[]> {
@@ -36,9 +37,10 @@ export async function fillOriginals(topDir: string, contentDir: string, dst: str
     await writeJsonFile(path.join(dst, FILES_LIST), await listGameFiles(contentDir));
     added.push(FILES_LIST);
   }
-  const copies: [string, string][] = [[path.join(contentDir, 'index.html'), INDEX_HTML], [path.join(topDir, 'package.json'), TOP_PACKAGE]];
+  const copies: [string, string][] = [[path.join(contentDir, 'index.html'), INDEX_HTML], [path.join(topDir, 'package.json'), TOP_PACKAGE], [path.join(contentDir, 'fonts', 'gamefont.css'), GAMEFONT_CSS]];
   for (const [src, name] of copies) {
     if (existsSync(path.join(dst, name)) || !existsSync(src)) continue;
+    await mkdir(path.dirname(path.join(dst, name)), { recursive: true });
     await copyFile(src, path.join(dst, name));
     added.push(name);
   }
@@ -52,7 +54,7 @@ export async function fillOriginals(topDir: string, contentDir: string, dst: str
 export async function ensureOriginals(projectDir: string): Promise<{ added: string[]; missingGameDir: boolean }> {
   const meta = await openProject(projectDir);
   const dst = originalDir(projectDir, meta);
-  const needed = [FILES_LIST, INDEX_HTML, TOP_PACKAGE].filter((n) => !existsSync(path.join(dst, n)));
+  const needed = [FILES_LIST, INDEX_HTML, TOP_PACKAGE, GAMEFONT_CSS].filter((n) => !existsSync(path.join(dst, n)));
   if (needed.length === 0) return { added: [], missingGameDir: false };
   if (!existsSync(meta.gameDir)) return { added: [], missingGameDir: true };
   const contentDir = path.join(meta.gameDir, ...meta.contentPrefix.split('/').filter(Boolean));

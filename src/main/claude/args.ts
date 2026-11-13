@@ -19,3 +19,6 @@ export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; syste
   if (o.resumeSessionId) args.push('--resume', o.resumeSessionId);
   return args;
 }
+
+// Plan 5: event and patch tools (appended so the list above stays as it was).
+CHAT_TOOLS.push('event_files', 'event_list', 'event_read', 'usage_search', 'event_patch');

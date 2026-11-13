@@ -116,7 +116,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `{ code: 999, parameters: ['x', 1] }` → `코드 999 ["x",1]`. 인자가 배열이 아니어도 예외가 없다
 - 이름이 빈 글이면 대괄호를 붙이지 않는다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 풀어쓰기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 풀어쓰기"`
 
 ### Task 2: 수정 저장과 목록 연산
 
@@ -139,7 +139,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `validateOps`: `at: 99` → 범위 밖 메시지, 같은 번호 `delete` + `replace` → 메시지, 정상 → null
 - `untagList` 뒤에 `__o` 가 어디에도 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 수정 저장과 목록 연산"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 수정 저장과 목록 연산"`
 
 ### Task 3: 수정을 빌드에 적용
 
@@ -168,7 +168,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 꺼진 수정은 적용되지 않는다
 - 결과 어디에도 `__o` 가 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정을 빌드에 적용"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정을 빌드에 적용"`
 
 ### Task 4: 사용처 검색과 이벤트 읽기
 
@@ -187,7 +187,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `listEvents('data/Map001.json')` 이 페이지마다 한 줄, `readEvent` 의 `hash` 가 `listHash(raw)` 와 같다
 - `null` 이벤트와 빈 목록에서 예외가 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 사용처 검색과 이벤트 읽기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 사용처 검색과 이벤트 읽기"`
 
 ### Task 5: 폰트 내장
 
@@ -210,7 +210,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `font` 수정이 꺼져 있거나 없으면 기여자가 빈 Map 을 준다
 - `plugin` 수정의 JS 가 `js/plugins/<name>.js` 로 들어간다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 내장"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 내장"`
 
 ### Task 6: 게임 실행
 
@@ -236,7 +236,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `prepare` 전후로 원본 폴더의 해시가 같다
 - `launch` 가 사본의 `Game.exe` 를 사본 폴더에서 실행한다. 두 번 부르면 두 번째는 오류. `Game.exe` 가 없으면 오류 글자
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 실행"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 실행"`
 
 ### Task 7: ProjectService, IPC, 채팅 도구 연결
 
@@ -256,7 +256,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 채팅 도구: `event_read` 가 풀어쓴 줄과 해시를 주고 `raw` 없이 원본 JSON 이 없다. `event_patch` 뒤 `patches()` 에 `createdBy: 'claude'` 인 수정이 있다. 같은 목록에 다시 `event_patch` 하면 수정이 늘지 않고 `ops` 가 바뀐다
 - `creatorReport` 가 `originalBug` 인 수정만 담고, 풀어쓴 연산 글(`+ 스위치 45 [기록1 완료] = 켬`)이 들어 있다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정과 이벤트 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정과 이벤트 연결"`
 
 ### Task 8: 이벤트 화면
 
@@ -277,7 +277,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 이미 수정이 있는 목록에서는 `patches.update` 로 연산이 더해진다
 - "이 줄 지우기" → `{ op: 'delete', at: n }`. 합쳐진 줄(대사)을 지우면 그 묶음의 커맨드가 모두 지워진다(`101` 과 그 `401` 들)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 화면"`
 
 ### Task 9: 수정 내역 화면, 폰트 넣기, 게임 실행 버튼
 
@@ -297,17 +297,17 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 폰트 스위치 → `patches.setGameFont('<경로>', true)`. 줄이기를 끄고 켜면 `false`. 폰트가 없으면 스위치가 없고 안내 글이 있다
 - "게임 실행" → `game.run`. `game:state` 가 `preparing` 3/10 이면 "게임 준비 중 3 / 10", `running` 이면 "끝내기" 버튼. 오류 글자가 보인다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정 내역 화면과 게임 실행"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정 내역 화면과 게임 실행"`
 
 ### Task 10: 전체 흐름 시험과 실제 CLI 확인
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`(자기 `test(…)` 블록을 파일 끝에 통째로 더한다. 임시 게임 폴더 이름은 `game5`), `README.md`, `CHANGELOG.md`("준비 중" 아래에 "이벤트와 수정" 묶음을 더하고 알려진 한계의 해당 줄을 고친다) · Create `tests/main/realEventPatch.test.ts`
 
-- [ ] **연기 시험**: 가져오기 → 이벤트 화면에서 맵1 이벤트1 → 풀어쓴 줄 확인 → 한 줄 아래에 "스위치 45 켬" 끼워 넣기 → 수정 내역에 `적용됨` → 패치 빌드 → zip 의 `data/Map001.json` 에 그 커맨드가 있음 → (게임 실행은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 실제로 띄우지 않고 실행한 것으로 친다) 게임 실행 → "게임 실행 중" → 사본 폴더에 패치가 적용돼 있음
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`, 시험용 게임만): 시험용 게임에 "이벤트1이 끝나도 스위치 45를 켜지 않아 이벤트2(조건: 스위치 45)가 시작되지 않는" 상황을 만들고, 채팅 한 번으로 "이벤트1이 끝나도 이벤트2로 안 넘어가. 고쳐줘"를 보낸다. 확인: Claude가 `usage_search` 나 `event_read` 를 부르고 `event_patch` 로 스위치를 켜는 줄을 넣는지, 빌드 결과에 반영되는지. 부른 도구의 순서와 만든 수정, 쓴 토큰을 보고에 그대로 붙인다. 로그인이 아니면 건너뛰고 보고에 적는다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`git commit -m "feat: 이벤트와 수정 전체 흐름 시험"`**
+- [x] **연기 시험**: 가져오기 → 이벤트 화면에서 맵1 이벤트1 → 풀어쓴 줄 확인 → 한 줄 아래에 "스위치 45 켬" 끼워 넣기 → 수정 내역에 `적용됨` → 패치 빌드 → zip 의 `data/Map001.json` 에 그 커맨드가 있음 → (게임 실행은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 실제로 띄우지 않고 실행한 것으로 친다) 게임 실행 → "게임 실행 중" → 사본 폴더에 패치가 적용돼 있음
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`, 시험용 게임만): 시험용 게임에 "이벤트1이 끝나도 스위치 45를 켜지 않아 이벤트2(조건: 스위치 45)가 시작되지 않는" 상황을 만들고, 채팅 한 번으로 "이벤트1이 끝나도 이벤트2로 안 넘어가. 고쳐줘"를 보낸다. 확인: Claude가 `usage_search` 나 `event_read` 를 부르고 `event_patch` 로 스위치를 켜는 줄을 넣는지, 빌드 결과에 반영되는지. 부른 도구의 순서와 만든 수정, 쓴 토큰을 보고에 그대로 붙인다. 로그인이 아니면 건너뛰고 보고에 적는다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`git commit -m "feat: 이벤트와 수정 전체 흐름 시험"`**
 
 ---
 

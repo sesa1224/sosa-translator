@@ -17,6 +17,8 @@ export function buildSystemPrompt(meta: ProjectMeta, stats: Stats, styleGuide?: 
     '- 사용자에게는 한국어로 짧게 답한다.',
     '- 판단 필요 항목은 list_decisions 로 묶음을 보고 set_decision 으로 정한다. 화면에 보이는 글자라는 근거가 있을 때만 번역함으로 한다.',
   ];
+  // Plan 5: events and patches.
+  lines.push('- 이벤트를 고칠 때는 event_read 로 풀어쓴 글과 해시를 받고, 필요한 줄만 raw 로 원본을 본 뒤, event_patch 로 원본 번호 기준의 연산을 낸다. 원본을 통째로 다시 쓰지 않는다. 버그의 원인을 찾을 때는 usage_search 로 스위치와 변수가 어디서 켜지고 읽히는지부터 본다. 게임 원본의 결함을 고친 것이면 originalBug 를 true 로 한다.');
   if (styleGuide && styleGuide.trim()) lines.push('', '번역할 때는 아래 번역 지침을 따른다.', '', '<번역 지침>', styleGuide.trim(), '</번역 지침>');
   return lines.join('\n');
 }
