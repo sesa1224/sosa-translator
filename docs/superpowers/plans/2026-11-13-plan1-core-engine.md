@@ -570,7 +570,7 @@ test('줄 수', () => {
 - `lines`: `start` 부터 `count` 개의 커맨드를 번역의 줄 수만큼의 커맨드로 바꾼다. 새 커맨드는 `{ code, indent: 원래 첫 줄의 indent, parameters: [줄] }`. 한 목록 안의 `lines` 와 `choice` 는 `start`/`index` 가 큰 것부터 처리해서 앞쪽 번호가 밀리지 않게 한다.
 - 데이터 파일은 `JSON.stringify(json)`(한 줄), `js/plugins.js` 는 `serializePluginsFile`.
 
-- [ ] **Step 1: 실패하는 시험 쓰기** (`tr(source, target, status?)` 는 source 로 unit 을 찾아 `store.set` 하는 시험 도우미)
+- [x] **Step 1: 실패하는 시험 쓰기** (`tr(source, target, status?)` 는 source 로 unit 을 찾아 `store.set` 하는 시험 도우미)
 
 ```ts
 test('번역 없으면 빈 결과', async () => { expect((await applyTranslations(proj, units, store)).size).toBe(0); });
@@ -600,10 +600,10 @@ test('오류 상태는 건너뛴다', async () => {
 test('원본 사본은 바뀌지 않는다', async () => { expect(await hashDir(path.join(proj, 'original'))).toBe(before); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/build/apply.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 번역 적용"`**
+- [x] **Step 2: `npx vitest run tests/build/apply.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 번역 적용"`**
 
 ### Task 11: 패치 zip 만들기
 

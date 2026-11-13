@@ -11,3 +11,4 @@ export * from './extract/index.js';
 export * from './util/json.js';
 export * from './store/translations.js';
 export * from './check/format.js';
+export * from './build/apply.js';
