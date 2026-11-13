@@ -243,7 +243,7 @@ test('확장자', () => {
 
 토큰 규칙: `\` + 영문자들 + 선택적 `[...]`(예 `\C[2]`, `\N[1]`, `\FS[20]`), `\` + 기호 하나(`{ } . | ! > < ^ $ \`), `%` + 숫자(`%1`). 영문자 부분은 대문자로 바꾼다(`\c[2]` 와 `\C[2]` 는 같다).
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('일본어 판별', () => {
@@ -257,10 +257,10 @@ test('제어문자 뽑기', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/text/text.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 일본어 판별과 제어문자 추출"`**
+- [x] **Step 2: `npx vitest run tests/text/text.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 일본어 판별과 제어문자 추출"`**
 
 ### Task 4: 이벤트 커맨드 목록에서 추출
 
