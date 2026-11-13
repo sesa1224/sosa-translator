@@ -98,7 +98,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - `availableWidth(DEFAULT_METRICS.MV, false)` → `768`, `true` → `600`. MZ → `768`, `604`
 - `effectiveMetrics` 가 `overrides` 의 값만 덮는다. 설정 저장 후 다시 읽으면 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사창 치수"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사창 치수"`
 
 ### Task 2: 글 배치
 
