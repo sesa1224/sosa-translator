@@ -7,6 +7,7 @@ import {
   loadUnits,
   openProject,
   TranslationStore,
+  type BuildContributor,
   type BuildResult,
   type Issue,
   type ProjectMeta,
@@ -505,11 +506,14 @@ export class ProjectService extends EventEmitter {
   }
 
   /** Builds a patch zip. Status changes made by the build's check are saved and announced. */
+  /** Parts of the app that add files to each patch (fonts, images, notes) register here. Append only. */
+  readonly buildContributors: BuildContributor[] = [];
+
   build(): Promise<BuildResult> {
     return this.enqueue(async () => {
       const before = this.store.entries();
       try {
-        return await buildPatch(this.projectDir, this.unitList, this.store);
+        return await buildPatch(this.projectDir, this.unitList, this.store, { contributors: this.buildContributors });
       } finally {
         const after = this.store.entries();
         const ids = Object.keys(after).filter((id) => before[id]?.status !== after[id].status);
