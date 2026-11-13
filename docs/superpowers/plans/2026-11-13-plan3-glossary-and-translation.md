@@ -198,7 +198,7 @@ test('용어 바꾸기 계획', () => {
 - Produces: `composeSpeaker(speakerLine: string, speaker: string, speakerTarget: string, body: string): string` — 첫 줄에서 이름만 바꾸고(제어문자와 괄호는 그대로) `'\n' + body`
 - Produces: `speakerNames(units: TextUnit[], pattern: string | null): { name: string; count: number }[]` — `unit.speaker`(MZ)와 화자 줄에서 뽑은 이름을 합쳐 많은 순
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 const D = (source: string): TextUnit => ({ id: source, kind: 'dialogue', source, needsDecision: false, refs: [] });
@@ -222,10 +222,10 @@ test('화자 이름 모으기', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/text/speaker.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 화자 줄 패턴"`**
+- [x] **Step 2: `npx vitest run tests/text/speaker.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 화자 줄 패턴"`**
 
 ### Task 4: runClaudeJson
 

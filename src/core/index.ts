@@ -17,3 +17,4 @@ export * from './glossary/types.js';
 export * from './glossary/match.js';
 export * from './glossary/josa.js';
 export * from './glossary/rename.js';
+export * from './text/speaker.js';
