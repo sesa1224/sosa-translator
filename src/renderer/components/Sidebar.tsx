@@ -24,6 +24,11 @@ export function Sidebar() {
         onClick={() => useApp.openDecisions()}>
         <span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
       </button>
+      {/* plan 5: events */}
+      <button type="button" className={`nav-btn${mainView(useApp.get()) === 'events' ? ' on' : ''}`} aria-current={mainView(useApp.get()) === 'events' ? 'page' : undefined}
+        onClick={() => eventActions.openEvents()}>
+        <span>이벤트</span>
+      </button>
 
       <span className="nav-head spaced">범위별 진행률</span>
       {snapshot.scopes.map((s) => {
@@ -46,3 +51,6 @@ export function Sidebar() {
     </nav>
   );
 }
+
+// ---- plan 5 ----
+import { eventActions, mainView } from '../state';

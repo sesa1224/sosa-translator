@@ -1,5 +1,5 @@
 import type { EventCommand } from '../patches/types.js';
-import { idName, type NameTable } from './names.js';
+import { idName, type NameTable } from './nameFormat.js';
 
 const UNKNOWN_MAX = 120;
 const COMPARE = ['=', '≥', '≤', '>', '<', '≠'];

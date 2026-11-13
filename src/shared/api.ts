@@ -322,3 +322,4 @@ export interface PatchesApi {
 }
 export interface GameApi { run: AsyncE<EventInvokeChannels['game:run']>; stop: AsyncE<EventInvokeChannels['game:stop']> }
 export interface Api { events: EventsApi; patches: PatchesApi; game: GameApi }
+export type PathSeg = PathSegT;

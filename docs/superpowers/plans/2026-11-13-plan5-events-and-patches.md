@@ -277,7 +277,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 이미 수정이 있는 목록에서는 `patches.update` 로 연산이 더해진다
 - "이 줄 지우기" → `{ op: 'delete', at: n }`. 합쳐진 줄(대사)을 지우면 그 묶음의 커맨드가 모두 지워진다(`101` 과 그 `401` 들)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 화면"`
 
 ### Task 9: 수정 내역 화면, 폰트 넣기, 게임 실행 버튼
 
