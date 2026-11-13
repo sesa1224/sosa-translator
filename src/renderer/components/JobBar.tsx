@@ -2,7 +2,7 @@ import type { JobKind } from '../../shared/api';
 import { num, pct } from '../format';
 import { useApp } from '../state';
 
-const RUNNING_LABEL: Record<JobKind, string> = { draft: '용어집 초안 받는 중', translate: '번역 중', review: '검수 중', decide: '판단 필요 추천 받는 중' };
+const RUNNING_LABEL: Record<JobKind, string> = { draft: '용어집 초안 받는 중', translate: '번역 중', review: '검수 중', decide: '판단 필요 추천 받는 중', notes: '패치노트 다듬는 중', images: '그림 다시 찍는 중' };
 
 /** Progress of the translation / review / draft job, shown above the work area while one exists. */
 export function JobBar() {
@@ -32,6 +32,16 @@ export function JobBar() {
       <div className="banner ok job" role="status">
         <span>{`판단 필요 추천을 받았어요 · ${num(job.done)}개 · 오류 ${num(job.errors)}`}</span>
         <button type="button" className="btn small-btn" onClick={() => useApp.openDecisions()}>판단 필요 화면으로</button>
+        <div className="grow" />
+        {close}
+      </div>
+    );
+  }
+  // plan 7: patch notes and re-rendering pictures
+  if (job.state === 'done' && (job.kind === 'notes' || job.kind === 'images')) {
+    return (
+      <div className="banner ok job" role="status">
+        <span>{job.kind === 'notes' ? '패치노트를 다듬었어요' : `그림 ${num(job.done)}장을 다시 찍었어요${job.errors > 0 ? ` · 실패 ${num(job.errors)}` : ''}`}</span>
         <div className="grow" />
         {close}
       </div>

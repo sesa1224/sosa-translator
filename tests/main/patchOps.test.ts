@@ -85,7 +85,7 @@ test('setGameFontPatch 는 font 수정을 하나만 유지한다', async () => {
 });
 
 test('채팅 도구: event_read 는 풀어쓴 줄과 해시를 주고 원본 JSON 은 raw 일 때만', async () => {
-  expect(TOOL_DEFS.map((t) => t.name).slice(-5)).toEqual(['event_files', 'event_list', 'event_read', 'usage_search', 'event_patch']);
+  expect(TOOL_DEFS.map((t) => t.name)).toEqual(expect.arrayContaining(['event_files', 'event_list', 'event_read', 'usage_search', 'event_patch']));
   const files = (await callTool(svc, 'event_files', {})) as any;
   expect(files.data.files.map((f: any) => f.file)).toContain('data/Map001.json');
   const list = (await callTool(svc, 'event_list', { file: 'data/Map001.json' })) as any;

@@ -4,6 +4,7 @@ import type { AppSettings, StageModels } from '../../shared/api';
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 import { useApp } from '../state';
 import { FontPicker } from './FontPicker';
+import { ImageFolderSettings } from './ImageView';
 import { DEFAULT_DECIDE_MODEL } from '../../shared/api';
 
 export function SettingsView() {
@@ -148,6 +149,7 @@ export function SettingsView() {
       <FontPicker />
       {/* plan 5: font into the game */}
       <FontEmbedSection />
+      <ImageFolderSettings />
       {error && <span className="err-text" role="alert">{error}</span>}
     </div>
   );

@@ -96,7 +96,7 @@ export interface ImageEntry {
 - `list()` 두 번째 호출은 파일을 다시 읽지 않는다. 파일 하나를 바꾸면 그것만 다시 읽고 해시가 달라진다
 - 폴더가 없어도 예외 없이 빈 목록
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 그림 목록과 풀기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 그림 목록과 풀기"`
 
 ### Task 2: 지시서 저장
 
@@ -115,7 +115,7 @@ export interface ImageEntry {
 - `isBuildable`: `todo` 는 false, `done` + 문제없음은 true, `done` + `base-changed` 는 false, `manual` + `manualFile` 은 true, `skip` 은 false
 - 저장하고 다시 읽으면 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 지시서 저장"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 지시서 저장"`
 
 ### Task 3: 그리기 계획 (순수 계산)
 
@@ -135,7 +135,7 @@ export interface ImageEntry {
 - 줄이 5개인데 높이가 3줄분이면 `overflowY`
 - `sampleBorderColor`: 온통 빨강 바탕의 그림에서 가운데 영역 → `#ff0000ff`. 왼쪽 위 구석에 붙은 영역은 오른쪽과 아래 띠만 쓴다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 글 배치 계산"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 글 배치 계산"`
 
 ### Task 4: 렌더 작업 창
 
@@ -157,7 +157,7 @@ export interface ImageEntry {
 - (e2e) 모음판: 그림 5장, 3열 → 가로 3칸 세로 2줄 크기의 PNG, 긴 변이 1,568 이하
 - e2e 는 결과 PNG 를 `zlib` 로 풀어 픽셀을 읽는다(`tests/helpers/png.ts` 에 `readPng`)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 렌더 작업 창"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 렌더 작업 창"`
 
 ### Task 5: 이미지 서비스
 
@@ -198,7 +198,7 @@ buildFiles(contentPrefix: string): Promise<{ files: Map<string, Uint8Array>; ski
 - `sheet` 가 20개씩 나누고 `pages` 를 준다. `view` 가 3000×1000 그림에 `scale` 약 0.52 를 준다
 - 기여자를 등록한 빌드의 zip 에 그 그림이 들어 있다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 서비스"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 서비스"`
 
 ### Task 6: 채팅 도구에 그림 보내기
 
@@ -216,7 +216,7 @@ buildFiles(contentPrefix: string): Promise<{ files: Map<string, Uint8Array>; ski
 - `image_set_recipe` 에 `fontPath` 를 줘도 목록(계획 4의 폰트 목록 + 기본 폰트)에 없는 경로면 무시하고 null 로 저장한다
 - (실제 CLI, `MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`) 시험 안에서 만든 그림(단색 바탕에 큰 흰 네모 하나)을 `image_view` 로 받게 하고 "이 그림에 흰 네모가 몇 개 보여?"에 숫자로 답하게 해, 도구 결과의 그림이 실제로 모델에게 보이는지 확인한다. 보이지 않으면(모델이 그림이 없다고 답하거나 CLI 가 그림 블록을 떨어뜨리면) **여기서 멈추고 보고한다**. 이 계획의 채팅 쪽 전체가 여기에 기댄다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인(실제 CLI 확인 포함) → `git commit -m "feat: 채팅 도구로 그림 보기와 지시서 쓰기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인(실제 CLI 확인 포함) → `git commit -m "feat: 채팅 도구로 그림 보기와 지시서 쓰기"`
 
 ### Task 7: 패치노트 기록
 
@@ -251,7 +251,7 @@ export interface BuildDiff {
 - `NotesJob`(가짜 호출)이 받은 글을 `notes.txt` 에 쓰고, zip 을 다시 묶은 뒤에도 zip 검증(파일별 sha1)이 맞다
 - MV `www` 의 설치 방법 글에 `www` 가 나온다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 패치노트 기록"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 패치노트 기록"`
 
 ### Task 8: IPC 연결
 
@@ -267,7 +267,7 @@ export interface BuildDiff {
 - `builds.list` 가 빌드 두 번 뒤 2개를 최신순으로 주고 `notes` 와 `diff` 가 있다. `builds.setNotes(2, '고친 글')` 뒤 zip 의 `패치노트.txt` 가 그 글로 시작한다
 - 게임 폴더가 없어졌으면(`detectGame` 실패) `images.list` 가 빈 목록과 함께 오류 없이 돌아오고, 빌드는 그림 없이 된다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 이미지와 빌드 기록 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 이미지와 빌드 기록 연결"`
 
 ### Task 9: 이미지 화면
 
@@ -292,7 +292,7 @@ export interface BuildDiff {
 - `problem: 'base-changed'` 인 그림에 안내와 "확인했어요" → `images.acceptBase`
 - 넘침 정보가 있으면 "영역을 넘쳐요"가 보인다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 화면"`
 
 ### Task 10: 빌드 기록 화면, 전체 흐름 시험
 
@@ -302,12 +302,12 @@ export interface BuildDiff {
 - 빌드 기록: 빌드마다 카드(최신이 위). `빌드 4 · 2026-11-13 21:40 · 파일 21개`, 패치노트 글(편집 칸, 고치고 "저장" → `builds.setNotes`), "Claude에게 다듬기 맡기기"(`builds.polishNotes`, 모델 이름을 옆에 보인다), "폴더 열기", 접힌 "바뀐 점 자세히"(새 번역 n, 고친 번역 n, 범위별 표, 새 그림과 바뀐 그림 목록, 더해진 파일과 빠진 파일).
 - 빌드가 없으면 "아직 빌드가 없어요. 위의 패치 빌드를 누르면 여기에 기록이 쌓여요."
 
-- [ ] **단위 시험**: 카드가 최신순, 노트를 고치고 저장 → `builds.setNotes(4, '…')`, 다듬기 → `builds.polishNotes(4)`, 자세히를 펴면 숫자가 보인다
-- [ ] **연기 시험**(가짜 채팅 CLI 없이, 화면에서 손으로): 시험용 게임에 `img/pictures/menu.png`(시험 안에서 만든 단색 그림) → 가져오기 → 이미지 화면 → 그 그림 고르기 → 원본 위에서 끌어 영역 만들기 → 문장 "이야기" 입력 → 시험 폰트를 기본 이미지 폰트로 → 번역본에 그림이 뜸 → "끝남으로 표시" → 패치 빌드 → zip 에 `img/pictures/menu.png` 가 있고 원본과 바이트가 다르며 크기가 같음, `패치노트.txt` 와 `설치 방법.txt` 가 있음 → 빌드 기록에 카드가 보임
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 CLI 로 그림 한 장 해 보기**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`): 시험 안에서 만든 그림(어두운 단색 바탕에 일본어 두 줄을 시험용 일본어 글리프가 든 폰트로 찍은 것. 일본어 글리프를 만들 수 없으면 영어 낱말 두 개로 대신한다)을 두고, 채팅 한 번으로 "이 게임의 그림 속 글자를 번역해줘"를 보낸다. 부른 도구의 순서, 만든 지시서(영역 좌표와 글), 쓴 토큰을 보고에 그대로 붙이고, 찍힌 그림을 공유 노트 폴더에 저장한다. 영역이 글자 위치와 대략 맞는지 사람이 볼 수 있게 원본과 결과를 나란히 둔다. 로그인이 아니면 건너뛰고 보고에 적는다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`git commit -m "feat: 빌드 기록 화면과 이미지 전체 흐름 시험"`**
+- [x] **단위 시험**: 카드가 최신순, 노트를 고치고 저장 → `builds.setNotes(4, '…')`, 다듬기 → `builds.polishNotes(4)`, 자세히를 펴면 숫자가 보인다
+- [x] **연기 시험**(가짜 채팅 CLI 없이, 화면에서 손으로): 시험용 게임에 `img/pictures/menu.png`(시험 안에서 만든 단색 그림) → 가져오기 → 이미지 화면 → 그 그림 고르기 → 원본 위에서 끌어 영역 만들기 → 문장 "이야기" 입력 → 시험 폰트를 기본 이미지 폰트로 → 번역본에 그림이 뜸 → "끝남으로 표시" → 패치 빌드 → zip 에 `img/pictures/menu.png` 가 있고 원본과 바이트가 다르며 크기가 같음, `패치노트.txt` 와 `설치 방법.txt` 가 있음 → 빌드 기록에 카드가 보임
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 CLI 로 그림 한 장 해 보기**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만, 모델 `claude-haiku-5-5`): 시험 안에서 만든 그림(어두운 단색 바탕에 일본어 두 줄을 시험용 일본어 글리프가 든 폰트로 찍은 것. 일본어 글리프를 만들 수 없으면 영어 낱말 두 개로 대신한다)을 두고, 채팅 한 번으로 "이 게임의 그림 속 글자를 번역해줘"를 보낸다. 부른 도구의 순서, 만든 지시서(영역 좌표와 글), 쓴 토큰을 보고에 그대로 붙이고, 찍힌 그림을 공유 노트 폴더에 저장한다. 영역이 글자 위치와 대략 맞는지 사람이 볼 수 있게 원본과 결과를 나란히 둔다. 로그인이 아니면 건너뛰고 보고에 적는다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`git commit -m "feat: 빌드 기록 화면과 이미지 전체 흐름 시험"`**
 
 ---
 

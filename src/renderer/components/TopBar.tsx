@@ -54,6 +54,7 @@ export function BuildBanner() {
     <div className="banner ok" role="status">
       <span>{`패치를 만들었습니다 · 파일 ${r.files.length}개 · 오류로 뺀 항목 ${r.skippedErrors}개`}</span>
       <span className="mono sub small">{r.zipPath}</span>
+      <NotesLink />
       <div className="grow" />
       <button type="button" className="btn small-btn" onClick={() => void useApp.showInFolder(r.zipPath)}>폴더 열기</button>
       <button type="button" className="btn ghost small-btn" onClick={() => useApp.dismissBuild()}>닫기</button>
@@ -63,3 +64,8 @@ export function BuildBanner() {
 
 // ---- plan 5 ----
 import { GameRunButton } from './PatchView';
+// ---- plan 7 ----
+/** Opens the build history, where the notes of the build just made are. */
+function NotesLink() {
+  return <button type="button" className="btn ghost small-btn" onClick={() => useApp.setView('builds')}>패치노트 보기</button>;
+}

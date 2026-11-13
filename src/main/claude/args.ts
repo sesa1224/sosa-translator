@@ -1,6 +1,8 @@
 export const MCP_SERVER_NAME = 'mvmz';
 export const CHAT_TOOLS = ['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last', 'glossary_search', 'glossary_set_term', 'list_decisions', 'set_decision'];
 export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;
+// plan 7: picture tools
+CHAT_TOOLS.push('image_sheet', 'image_view', 'image_set_recipe', 'image_set_status', 'image_list');
 
 /** Arguments for a headless, stream-json Claude CLI session limited to the app's MCP tools. */
 export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; systemPrompt: string; resumeSessionId?: string }): string[] {

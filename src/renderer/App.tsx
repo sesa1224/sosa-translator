@@ -12,6 +12,8 @@ import { TextTable } from './components/TextTable';
 import { BuildBanner, TopBar } from './components/TopBar';
 import { useApp } from './state';
 import { DecisionView } from './components/DecisionView';
+import { ImageView } from './components/ImageView';
+import { BuildsView } from './components/BuildsView';
 
 declare global {
   interface Window { api: Api }
@@ -49,8 +51,12 @@ function Workspace() {
         <Sidebar />
         <main className="main">
           {mainView5 === 'events' ? <EventView /> : mainView5 === 'patches' ? <PatchView5 /> : <>
+          {view === 'builds' ? <BuildsView /> : <>
+          {view === 'images' ? <ImageView /> : <>
           {view === 'decisions' ? <DecisionView /> : <>
           {view === 'text' ? <TextTable /> : view === 'glossary' ? <GlossaryView /> : <SettingsView />}
+          </>}
+          </>}
           </>}
           </>}
         </main>

@@ -9,6 +9,7 @@ import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, WindowMet
 import type { SceneInfo } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 import type { DecisionGroup, ImportPlan } from '../../src/shared/api';
+import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } from '../../src/shared/api';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
 
@@ -194,11 +195,42 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       run: rec('game.run', () => { if (ev().runError) throw new Error(ev().runError!); }),
       stop: rec('game.stop', () => undefined),
     },
+    // ---- plan 7 ----
+    images: {
+      list: rec('images.list', () => im.entries),
+      recipe: rec('images.recipe', (file: string) => im.recipes[file] ?? null),
+      thumb: rec('images.thumb', () => new Uint8Array([1])),
+      full: rec('images.full', () => new Uint8Array([2])),
+      setRecipe: rec('images.setRecipe', (file: string, regions: (Partial<Region> & { rect: Region['rect'] })[]) => {
+        const r: ImageRecipe = { file, baseHash: 'h', status: im.recipes[file]?.status ?? 'todo', regions: regions.map((x, i) => ({ ...defaultRegion(), id: `r${i}`, ...x })) };
+        im.recipes[file] = r;
+        return r;
+      }),
+      setStatus: rec('images.setStatus', () => undefined),
+      pickManual: rec('images.pickManual', () => true),
+      clearManual: rec('images.clearManual', () => undefined),
+      acceptBase: rec('images.acceptBase', () => undefined),
+      setDefaultFont: rec('images.setDefaultFont', (p: string | null) => { im.defaultFont = p; }),
+      rerenderAll: rec('images.rerenderAll', () => undefined),
+      defaultFont: rec('images.defaultFont', () => im.defaultFont),
+      overflow: rec('images.overflow', (file: string) => im.overflow[file] ?? {}),
+      failure: rec('images.failure', (file: string) => im.failure[file] ?? null),
+      folders: rec('images.folders', () => ({ folders: im.folders, defaults: ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes'] })),
+      setFolders: rec('images.setFolders', (f: string[] | null) => { im.folders = f ?? ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes']; }),
+    },
+    builds: {
+      list: rec('builds.list', () => im.builds),
+      setNotes: rec('builds.setNotes', () => undefined),
+      polishNotes: rec('builds.polishNotes', () => undefined),
+      openFolder: rec('builds.openFolder', () => undefined),
+    },
   };
   const pv = defaultPreviewFake();
   const evState = defaultEventsFake();
   eventsFakes.set(fake, evState);
   previewFakes.set(fake, pv);
+  const im = defaultImagesFake();
+  imagesFakes.set(fake, im);
   return fake;
 }
 
@@ -272,4 +304,21 @@ const eventsFakes = new WeakMap<FakeApi, EventsFake>();
 /** The events/patches state behind a fake api. */
 export function eventsFake(api: FakeApi): EventsFake {
   return eventsFakes.get(api)!;
+}
+// ---- plan 7: pictures and build history ----
+/** What the fake's images and builds calls give back; tests change these. */
+export interface ImagesFake {
+  entries: ImageEntry[]; recipes: Record<string, ImageRecipe>; overflow: Record<string, Record<string, RegionOverflow>>;
+  defaultFont: string | null; failure: Record<string, string>; builds: BuildRecord[]; folders: string[];
+}
+export function defaultRegion(): Region {
+  return { id: 'r0', rect: { x: 0, y: 0, w: 10, h: 10 }, erase: 'sample', text: '', fontPath: null, size: 24, color: '#ffffff', align: 'center', valign: 'middle', lineHeight: 1.25, bold: false, stroke: null, shadow: null };
+}
+function defaultImagesFake(): ImagesFake {
+  return { entries: [], recipes: {}, overflow: {}, defaultFont: null, failure: {}, builds: [], folders: ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes'] };
+}
+const imagesFakes = new WeakMap<FakeApi, ImagesFake>();
+/** The images state behind a fake api. */
+export function imagesFake(api: FakeApi): ImagesFake {
+  return imagesFakes.get(api)!;
 }

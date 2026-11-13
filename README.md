@@ -52,6 +52,15 @@ npm test           # vitest
       manifest.json       { number, createdAt, version, files: [{ path, sha1 }] }
       <이름>_patch_001.zip
   preview.json            미리보기 설정: { fontPath, fontName, overrides } (게임 폰트 경로와 대사창 치수 고친 값. 폰트 파일은 복사하지 않음)
+  images.json             그림 작업 지시서: { defaultFontPath, recipes: 파일 → { file, baseHash, regions, status, manualFile?, note? }, folders? } (처음 쓸 때 생김)
+  images/
+    catalog.json          그림 목록 기억: 경로·크기·수정 시각별 { width, height, hash } (바뀐 파일만 다시 읽음)
+    rendered/<키>.png     지시서대로 찍은 그림 (키 = 원본 해시 + 지시서 + 폰트)
+    thumbs/               목록 썸네일 (긴 변 256)
+    manual/               사용자가 직접 고친 그림의 사본
+  builds/NNN/snapshot.json  그 빌드에 들어간 번역(id → 해시)·그림·파일 요약. 다음 빌드와 비교용
+  builds/NNN/diff.json      지난 빌드와 비교한 숫자와 목록
+  builds/NNN/notes.txt      그 빌드의 패치노트 (고치거나 Claude가 다듬으면 이 글이 zip 의 패치노트.txt 에 들어감)
 ```
 
 모든 JSON 은 UTF-8, 들여쓰기 2칸입니다.
@@ -111,6 +120,12 @@ src/main/fonts/             폰트 파일 읽기와 글자 폭 재기(opentype.j
 src/main/preview.ts         열린 프로젝트의 미리보기: 고른 폰트, 픽셀 폭 검사, 넘침 세기
 src/main/story.ts           스토리 보기의 장면 묶기(이벤트 페이지 단위)와 페이지 조건 글
 src/renderer/preview/       렌더러 쪽 폰트 등록(FontFace)과 창 스킨 색
+src/core/images/            그림 목록과 풀기(catalog.ts), 지시서 저장과 검사(store.ts), 그림 속 글 배치(layoutText.ts), 모음판 크기(sheet.ts)
+src/core/notes/             빌드 요약(snapshot.ts), 지난 빌드와 비교·패치노트 글·설치 방법(diff.ts)
+src/main/render/            보이지 않는 렌더 작업 창과 그 차례·재시도(renderService.ts)
+src/renderer/render-worker/ 렌더 작업 창의 화면: 캔버스로 그림 찍기, 모음판, 썸네일
+src/main/images.ts          열린 프로젝트의 그림 서비스: 목록, 지시서, 찍기와 캐시, 패치 기여자
+src/main/buildNotes.ts      패치노트 기여자, zip 다시 묶기, 패치노트 다듬기 작업
 ```
 
 Claude CLI 는 `-p --input-format stream-json --output-format stream-json` 으로 한 프로세스를 띄워 여러 턴을 주고받습니다. 내장 도구는 모두 끄고(`--tools ""`), `--mcp-config` 로 `mvmz` 서버만 붙이며, 허용 도구도 그 열 개로 제한합니다. 모델을 바꾸거나 멈춘 뒤에는 `--resume <session_id>` 로 같은 대화를 이어갑니다.
@@ -166,6 +181,11 @@ Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
 | `glossary_set_term` | `source`, `target`, `category?` | `{ term, changed, uncertain }` — 확정 상태로 저장. 기존 용어의 번역이 바뀌면 번역문도 조사까지 맞춰 바꾼다 |
 | `list_decisions` | `query?` | `{ total, groups: [{ key, label, count, samples, hints, decision }] }` — 판단 필요 묶음 |
 | `set_decision` | `key`, `translate`, `mode?`, `from?`, `dropLast?`, `reason?` | `{ key, decision }` — 바로 확정(`by: claude`). 모르는 키는 실패 |
+| `image_sheet` | `folder?`, `status?`, `page?` | 모음판 그림 1장(20개, 5열, 번호 붙음) + `{ page, pages, items: [{ n, file, width, height, status }] }` |
+| `image_view` | `file`, `which?: original \| rendered` | 그림 1장(긴 변 1,568 이하) + `{ width, height, scale, status, problem?, regions? }`. 좌표는 `scale` 로 나눠 원본 기준으로 |
+| `image_set_recipe` | `file`, `regions`, `done?` | `{ status, regions, overflow, glossaryNote? }` — 그림의 영역 전체를 바꿈. 목록에 없는 `fontPath` 는 무시 |
+| `image_set_status` | `file`, `status: todo \| done \| skip` | `{ status }` |
+| `image_list` | `status?`, `folder?`, `limit?`(기본 50, 최대 200) | `{ total, items }` — 글만, 그림 없음 |
 
 실제 CLI 로 확인하는 시험(토큰을 씁니다, 모델 `claude-haiku-5-5`, 시험용 작은 게임만):
 - 채팅: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCli.test.ts` (먼저 `npm run build:app`)
@@ -225,3 +245,16 @@ Claude 에게 보이는 이름은 `mcp__mvmz__<도구>` 입니다.
 | `event_patch` | `title`, `file`, `listPath`, `baseHash`, `ops`, `note?`, `originalBug?` | `{ id, title, updated, state, reason? }` — 수정을 `createdBy: claude` 로 더한다. 같은 목록에 수정이 있으면 그 수정의 연산을 바꾼다 |
 
 실제 CLI 확인: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realEventPatch.test.ts` (먼저 `npm run build:app`, 모델 `claude-haiku-5-5`, 시험용 작은 게임만. `MVMZ_REAL_EVENT_OUT=<파일>` 이면 부른 도구와 토큰을 JSON 으로 남김). 연기 시험은 `MVMZ_GAME_SPAWN_FAKE=1` 이면 게임을 실제로 띄우지 않고 실행한 것으로 칩니다.
+## 그림 속 글자와 패치노트
+
+왼쪽 메뉴의 "이미지"에서 게임 그림 속 글자를 번역합니다. 그림 파일 자체가 아니라 "작업 지시서"(지울 영역, 넣을 문장, 폰트, 크기, 색, 정렬)를 `images.json` 에 저장하고, 프로그램이 그 지시서대로 그림을 찍어 패치에 넣습니다. 폰트나 문장을 바꾸면 Claude 없이 다시 찍힙니다.
+
+- 대상: 기본은 `img/pictures`, `img/titles1`, `img/titles2`, `img/system`, `img/parallaxes`(하위 폴더 포함, `.png`·`.png_`·`.rpgmvp`). 설정의 "이미지"에서 바꿉니다. 원본 게임 폴더는 읽기만 하고, 푼 그림·찍은 그림·썸네일은 프로젝트의 `images/` 에만 둡니다.
+- 그리기: 화면에 보이지 않는 Electron 창의 캔버스로 찍습니다(네이티브 이미지 라이브러리 없음). 원본을 그리고 → 영역마다 지우기(색으로 채움, 영역 바로 바깥 색의 평균으로 채움) → 글(그림자 → 테두리 → 채우기). 문장이 영역 폭을 넘으면 공백에서(없으면 글자 단위로) 줄을 바꾸고, 닫는 문장부호는 줄 맨 앞에 오지 않게 앞 줄에 붙입니다. 그래도 높이를 넘치면 넘친 채로 찍고 "영역을 넘쳐요"로 알립니다(글자를 몰래 줄이지 않음).
+- 패치: 상태가 "끝남"이고 문제가 없는 그림, 또는 "직접 고침"으로 넣은 PNG 만 들어갑니다. 원본 크기 그대로 PNG 이고, 원본이 암호화 파일이면 같은 키로 다시 암호화해 같은 경로에 넣습니다.
+- 문제 표시: 지시서를 쓴 뒤 원본 그림이 바뀌면 "원본이 바뀜"(확인 전에는 패치에서 빠짐), 폰트 파일이 없으면 "폰트 없음", 찍기에 실패하면 그 그림만 실패로 남고 빌드는 계속됩니다. 렌더 작업 창이 죽거나 30초 안에 답이 없으면 새 창으로 한 번 더 시도합니다.
+- 채팅: `image_sheet` 로 모음판을 보고, `image_view` 로 크게 보고, `image_set_recipe` 로 지시서를 냅니다. 그림은 도구 결과의 그림 블록으로 보내고, 긴 변 1,568px 을 넘지 않게 줄입니다(토큰을 아끼려고).
+
+빌드할 때마다 `builds/NNN/` 에 요약(`snapshot.json`)을 남기고 지난 빌드와 비교해(`diff.json`) 패치노트를 씁니다(`notes.txt`). zip 최상위에 `패치노트.txt`(이번 빌드의 글 다음에 지난 빌드들의 글을 최신순으로)와 `설치 방법.txt` 가 들어갑니다. 왼쪽 메뉴의 "빌드 기록"에서 노트를 고쳐 저장하거나 "Claude에게 다듬기 맡기기"(설정의 패치노트 정리 모델)를 누르면 그 빌드의 zip 안 글도 바뀝니다(manifest 의 sha1 도 맞춤). 다른 기능이 패치노트에 요약을 넣을 때는 `ProjectService.buildSummaries` 에 함수를 더합니다.
+
+실제 CLI 로 확인하는 시험: `MVMZ_REAL_CLI=1 npx vitest run tests/main/realImageTool.test.ts` (도구 결과의 그림이 모델에게 보이는지). 연기 시험은 `MVMZ_TEST_HOOKS=1` 로 렌더 서비스를 시험에서 부를 수 있게 하고(`tests/e2e/render.e2e.test.ts`), `MVMZ_PICK_PNG` 로 직접 고친 그림 고르기 창 대신 정해진 파일을 씁니다.

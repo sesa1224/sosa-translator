@@ -30,6 +30,13 @@ import { listFonts, systemFontDirs } from './fonts/catalog.js';
 import { readFontInfo } from './fonts/fontFile.js';
 import { PreviewService } from './preview.js';
 import { buildScenes } from './story.js';
+import type { RenderService } from './render/renderService.js';
+import type { ImagesInvokeChannel } from '../shared/api.js';
+import type { BuildDiff as CoreBuildDiff } from '../core/notes/diff.js';
+import { ImageService, registerImageContributor, RerenderJob } from './images.js';
+import { NotesJob, readBuildDiff, readBuildNotes, registerNotesContributor, setBuildNotes } from './buildNotes.js';
+import { buildFolder, finishedBuilds } from '../core/notes/snapshot.js';
+import { IMAGE_FOLDERS } from '../core/images/catalog.js';
 
 // Compile-time check that the renderer-side copies in shared/api.ts match the core types.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -39,6 +46,7 @@ export const sharedTypesMatch: [
 ] = [true, true, true, true];
 
 export const sharedTypesMatch3b: [Same<ExchangeImportPlan, shared.ImportPlan>] = [true];
+export const sharedTypesMatch7: [Same<CoreBuildDiff, shared.BuildDiff>] = [true];
 
 export const JOB_BUSY = '다른 작업이 진행 중입니다';
 export const CONFIRM_FIRST = '용어집을 먼저 확정하세요';
@@ -84,6 +92,11 @@ export interface IpcDeps {
   pickOpenFile?(): Promise<string | null>;
   /** Starts the test-play game (tests give a fake; MVMZ_GAME_SPAWN_FAKE=1 uses one too). */
   spawnGame?: typeof import('node:child_process').spawn;
+  // ---- plan 7 ----
+  /** Draws pictures (the hidden worker window in the app, a fake in tests). */
+  render?: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'>;
+  /** Open dialog for a hand-fixed PNG (null = cancelled). */
+  pickPngFile?(): Promise<string | null>;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -153,6 +166,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   async function closeProject(): Promise<void> {
     stopPreview();
     closePlan5();
+    stopImages();
     disposeChat();
     job?.stop();
     job = null;
@@ -207,6 +221,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       deps.broadcast('decisions:changed', s.decisionGroups());
     });
     adoptPlan5(s);
+    await startImages(s);
   }
 
   async function ensureChat(): Promise<ChatLike | null> {
@@ -613,6 +628,103 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     deps.broadcast('game:state', { state: 'running' });
   });
   handleE('game:stop', () => { runner?.stop(); });
+  // ---- plan 7: pictures and build history ----
+  let images: ImageService | null = null;
+  const handleI = (channel: ImagesInvokeChannel, fn: (...args: any[]) => unknown) => {
+    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
+  };
+  const noRender: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'> = {
+    render: () => Promise.reject(new Error('그림을 찍을 수 없습니다')),
+    sheet: () => Promise.reject(new Error('그림을 찍을 수 없습니다')),
+    thumbnail: () => Promise.reject(new Error('그림을 찍을 수 없습니다')),
+  };
+  const needImages = (): ImageService => {
+    if (!images) throw new Error('열린 프로젝트가 없습니다');
+    return images;
+  };
+
+  /** Makes the project's image service and registers the picture and notes contributors (the worker window starts on first use). */
+  async function startImages(s: ProjectService): Promise<void> {
+    const game = await gameContent(s);
+    if (deps.holder.svc !== s) return;
+    const im = new ImageService({ svc: s, game, render: deps.render ?? noRender });
+    im.knownFonts = () => [...listedFonts, ...userFonts].map((f) => f.path);
+    images = im;
+    registerImageContributor(s, im);
+    registerNotesContributor(s, { images: im });
+    im.on('changed', (files) => {
+      if (images !== im) return;
+      void (async () => {
+        const out: core.ImageEntry[] = [];
+        for (const f of files) {
+          const e = await im.entry(f).catch(() => undefined);
+          if (e) out.push(e);
+        }
+        if (out.length > 0 && images === im) deps.broadcast('images:changed', out);
+      })();
+    });
+  }
+
+  function stopImages(): void {
+    images?.removeAllListeners();
+    images = null;
+  }
+
+  const fileArg = (f: unknown) => String(f ?? '');
+  const whichArg = (w: unknown): 'original' | 'rendered' => (w === 'rendered' ? 'rendered' : 'original');
+  handleI('images:list', () => (images ? images.list() : []));
+  handleI('images:recipe', (file: string) => needImages().recipe(fileArg(file)));
+  handleI('images:thumb', (file: string, which: string) => needImages().thumbnail(fileArg(file), whichArg(which)));
+  handleI('images:full', (file: string, which: string) => (whichArg(which) === 'rendered' ? needImages().rendered(fileArg(file)) : needImages().original(fileArg(file))));
+  handleI('images:setRecipe', (file: string, regions: unknown) => needImages().setRecipe(fileArg(file), Array.isArray(regions) ? regions : [], 'user'));
+  handleI('images:setStatus', (file: string, status: core.ImageStatus) => needImages().setStatus(fileArg(file), status));
+  handleI('images:pickManual', async (file: string) => {
+    const im = needImages();
+    const picked = deps.pickPngFile ? await deps.pickPngFile() : null;
+    if (!picked) return false;
+    await im.setManual(fileArg(file), picked);
+    return true;
+  });
+  handleI('images:clearManual', (file: string) => needImages().setManual(fileArg(file), null));
+  handleI('images:acceptBase', (file: string) => needImages().acceptBase(fileArg(file)));
+  handleI('images:setDefaultFont', (p: string | null) => needImages().setDefaultFont(typeof p === 'string' && p ? p : null));
+  handleI('images:defaultFont', () => images?.defaultFontPath ?? null);
+  handleI('images:overflow', (file: string) => needImages().overflow(fileArg(file)));
+  handleI('images:failure', (file: string) => needImages().failure(fileArg(file)) ?? null);
+  handleI('images:folders', () => ({ folders: images ? images.folders() : [...IMAGE_FOLDERS], defaults: [...IMAGE_FOLDERS] }));
+  handleI('images:setFolders', (folders: string[] | null) => needImages().setFolders(Array.isArray(folders) ? folders.map(String) : null));
+  handleI('images:rerenderAll', () => {
+    if (busy()) throw new Error(JOB_BUSY);
+    void launch(new RerenderJob(needImages()));
+  });
+
+  handleI('builds:list', async (): Promise<shared.BuildRecord[]> => {
+    const s = svc();
+    const out: shared.BuildRecord[] = [];
+    for (const n of await finishedBuilds(s.projectDir)) {
+      const dir = buildFolder(s.projectDir, n);
+      try {
+        const manifest = (await readJsonFile(path.join(dir, 'manifest.json'))) as { createdAt: string; files: unknown[] };
+        const zipName = (await readdir(dir)).find((x) => x.toLowerCase().endsWith('.zip')) ?? '';
+        out.push({ number: n, createdAt: manifest.createdAt, zipPath: path.join(dir, zipName), files: manifest.files.length, notes: await readBuildNotes(s.projectDir, n), diff: await readBuildDiff(s.projectDir, n) });
+      } catch {
+        // a broken build folder is left out
+      }
+    }
+    return out;
+  });
+  handleI('builds:setNotes', (number: number, text: string) => setBuildNotes(svc().projectDir, Number(number), String(text ?? '')));
+  handleI('builds:polishNotes', async (number: number) => {
+    if (busy()) throw new Error(JOB_BUSY);
+    const o = await jobOptions('review');
+    const model = (await settings()).stageModels.patchNotes;
+    void launch(new NotesJob({ ...o, model, number: Number(number) }));
+  });
+  handleI('builds:openFolder', async (number: number) => {
+    const dir = buildFolder(svc().projectDir, Number(number));
+    const zipName = (await readdir(dir)).find((x) => x.toLowerCase().endsWith('.zip'));
+    deps.showItemInFolder(zipName ? path.join(dir, zipName) : dir);
+  });
 
   return { dispose: () => closeProject() };
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { num, pct } from '../format';
 import { useApp } from '../state';
 
@@ -5,6 +6,9 @@ export function Sidebar() {
   const { snapshot, view, query, glossary } = useApp();
   if (!snapshot) return null;
   const undecided = glossary ? glossary.terms.filter((t) => t.status === 'provisional').length : 0;
+  // plan 7: the picture list is read once per opened project (for the count below).
+  const meta = snapshot?.meta;
+  useEffect(() => { if (meta) void useApp.loadImages(); }, [meta]);
   return (
     <nav className="sidebar" aria-label="작업 메뉴">
       <span className="nav-head">작업</span>
@@ -31,6 +35,8 @@ export function Sidebar() {
       </button>
       {/* plan 5: patches */}
       <PatchNavButton />
+      <ImagesNavButton />
+      <BuildsNavButton />
 
       <span className="nav-head spaced">범위별 진행률</span>
       {snapshot.scopes.map((s) => {
@@ -57,3 +63,24 @@ export function Sidebar() {
 // ---- plan 5 ----
 import { eventActions, mainView } from '../state';
 import { PatchNavButton } from './PatchView';
+// ---- plan 7 ----
+function ImagesNavButton() {
+  const { view, images } = useApp();
+  const todo = images ? images.filter((e) => e.status === 'todo').length : 0;
+  return (
+    <button type="button" className={`nav-btn${view === 'images' ? ' on' : ''}`} aria-current={view === 'images' ? 'page' : undefined}
+      onClick={() => useApp.setView('images')}>
+      <span>이미지</span>{todo > 0 && <span className="mono sub small" title="할 것">{num(todo)}</span>}
+    </button>
+  );
+}
+
+function BuildsNavButton() {
+  const { view } = useApp();
+  return (
+    <button type="button" className={`nav-btn${view === 'builds' ? ' on' : ''}`} aria-current={view === 'builds' ? 'page' : undefined}
+      onClick={() => useApp.setView('builds')}>
+      <span>빌드 기록</span>
+    </button>
+  );
+}

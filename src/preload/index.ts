@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { Api, InvokeChannel, PushChannel } from '../shared/api.js';
 import type { PreviewInvokeChannel } from '../shared/api.js';
+import type { ImagesInvokeChannel } from '../shared/api.js';
 
 /** ipcRenderer.invoke with the "Error invoking remote method 'x': Error: " prefix removed. */
 async function call(channel: InvokeChannel, ...args: unknown[]): Promise<any> {
@@ -14,6 +15,11 @@ async function call(channel: InvokeChannel, ...args: unknown[]): Promise<any> {
 
 /** call() for the plan 4 channels. */
 function callP(channel: PreviewInvokeChannel, ...args: unknown[]): Promise<any> {
+  return call(channel as unknown as InvokeChannel, ...args);
+}
+
+/** call() for the plan 7 channels. */
+function callI(channel: ImagesInvokeChannel, ...args: unknown[]): Promise<any> {
   return call(channel as unknown as InvokeChannel, ...args);
 }
 
@@ -125,6 +131,31 @@ const api: Api = {
   game: {
     run: () => callE('game:run'),
     stop: () => callE('game:stop'),
+  },
+  // ---- plan 7: pictures and build history ----
+  images: {
+    list: () => callI('images:list'),
+    recipe: (file) => callI('images:recipe', file),
+    thumb: (file, which) => callI('images:thumb', file, which),
+    full: (file, which) => callI('images:full', file, which),
+    setRecipe: (file, regions) => callI('images:setRecipe', file, regions),
+    setStatus: (file, status) => callI('images:setStatus', file, status),
+    pickManual: (file) => callI('images:pickManual', file),
+    clearManual: (file) => callI('images:clearManual', file),
+    acceptBase: (file) => callI('images:acceptBase', file),
+    setDefaultFont: (path) => callI('images:setDefaultFont', path),
+    rerenderAll: () => callI('images:rerenderAll'),
+    defaultFont: () => callI('images:defaultFont'),
+    overflow: (file) => callI('images:overflow', file),
+    failure: (file) => callI('images:failure', file),
+    folders: () => callI('images:folders'),
+    setFolders: (folders) => callI('images:setFolders', folders),
+  },
+  builds: {
+    list: () => callI('builds:list'),
+    setNotes: (number, text) => callI('builds:setNotes', number, text),
+    polishNotes: (number) => callI('builds:polishNotes', number),
+    openFolder: (number) => callI('builds:openFolder', number),
   },
 };
 

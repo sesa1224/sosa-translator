@@ -39,7 +39,7 @@ export interface DraftPlan { chunks: number; chars: number; estimatedInputTokens
 export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 
-export type JobKind = 'draft' | 'translate' | 'review' | 'decide';
+export type JobKind = 'draft' | 'translate' | 'review' | 'decide' | 'notes' | 'images';
 export type JobState = 'idle' | 'running' | 'paused' | 'paused-limit' | 'done' | 'failed' | 'stopped';
 export interface JobProgress { kind: JobKind; state: JobState; done: number; total: number; label: string; usage: ChatUsage; declined: number; errors: number; message?: string }
 export const DEFAULT_MODELS: ModelOption[] = [
@@ -323,3 +323,59 @@ export interface PatchesApi {
 export interface GameApi { run: AsyncE<EventInvokeChannels['game:run']>; stop: AsyncE<EventInvokeChannels['game:stop']> }
 export interface Api { events: EventsApi; patches: PatchesApi; game: GameApi }
 export type PathSeg = PathSegT;
+// ---- Plan 7: pictures and build history (added below; existing lines above are unchanged) ----
+export type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
+/** Copy of src/core/notes/diff.ts BuildDiff (checked in src/main/ipc.ts). */
+export interface BuildDiff {
+  number: number; previous: number | null;
+  newTranslations: number; changedTranslations: number; removedTranslations: number;
+  byScope: { label: string; added: number; changed: number }[];
+  newImages: string[]; changedImages: string[];
+  addedFiles: string[]; removedFiles: string[];
+  extras: Record<string, { added: string[]; removed: string[] }>;
+}
+/** One finished build for the build history screen. */
+export interface BuildRecord { number: number; createdAt: string; zipPath: string; files: number; notes: string; diff: BuildDiff | null }
+export interface RegionOverflow { overflowX: boolean; overflowY: boolean }
+type ImageRegionInput = Partial<import('../core/images/types.js').Region> & { rect: import('../core/images/types.js').Rect };
+export interface PushEvents { 'images:changed': import('../core/images/types.js').ImageEntry[] }
+/** Plan 7 request/response channels (kept apart so the older lists stay as they were). */
+export interface ImagesInvokeChannels {
+  'images:list': () => import('../core/images/types.js').ImageEntry[];
+  'images:recipe': (file: string) => import('../core/images/types.js').ImageRecipe | null;
+  'images:thumb': (file: string, which: 'original' | 'rendered') => Uint8Array;
+  'images:full': (file: string, which: 'original' | 'rendered') => Uint8Array | null;
+  'images:setRecipe': (file: string, regions: ImageRegionInput[]) => import('../core/images/types.js').ImageRecipe;
+  'images:setStatus': (file: string, status: import('../core/images/types.js').ImageStatus) => void;
+  'images:pickManual': (file: string) => boolean;
+  'images:clearManual': (file: string) => void;
+  'images:acceptBase': (file: string) => void;
+  'images:setDefaultFont': (path: string | null) => void;
+  'images:rerenderAll': () => void;
+  'images:defaultFont': () => string | null;
+  'images:overflow': (file: string) => Record<string, RegionOverflow>;
+  'images:failure': (file: string) => string | null;
+  'images:folders': () => { folders: string[]; defaults: string[] };
+  'images:setFolders': (folders: string[] | null) => void;
+  'builds:list': () => BuildRecord[];
+  'builds:setNotes': (number: number, text: string) => void;
+  'builds:polishNotes': (number: number) => void;
+  'builds:openFolder': (number: number) => void;
+}
+export type ImagesInvokeChannel = keyof ImagesInvokeChannels;
+type AsyncI<F> = F extends (...a: infer A) => infer R ? (...a: A) => Promise<R> : never;
+export interface ImagesApi {
+  list: AsyncI<ImagesInvokeChannels['images:list']>; recipe: AsyncI<ImagesInvokeChannels['images:recipe']>;
+  thumb: AsyncI<ImagesInvokeChannels['images:thumb']>; full: AsyncI<ImagesInvokeChannels['images:full']>;
+  setRecipe: AsyncI<ImagesInvokeChannels['images:setRecipe']>; setStatus: AsyncI<ImagesInvokeChannels['images:setStatus']>;
+  pickManual: AsyncI<ImagesInvokeChannels['images:pickManual']>; clearManual: AsyncI<ImagesInvokeChannels['images:clearManual']>;
+  acceptBase: AsyncI<ImagesInvokeChannels['images:acceptBase']>; setDefaultFont: AsyncI<ImagesInvokeChannels['images:setDefaultFont']>;
+  rerenderAll: AsyncI<ImagesInvokeChannels['images:rerenderAll']>; defaultFont: AsyncI<ImagesInvokeChannels['images:defaultFont']>;
+  overflow: AsyncI<ImagesInvokeChannels['images:overflow']>; failure: AsyncI<ImagesInvokeChannels['images:failure']>;
+  folders: AsyncI<ImagesInvokeChannels['images:folders']>; setFolders: AsyncI<ImagesInvokeChannels['images:setFolders']>;
+}
+export interface BuildsApi {
+  list: AsyncI<ImagesInvokeChannels['builds:list']>; setNotes: AsyncI<ImagesInvokeChannels['builds:setNotes']>;
+  polishNotes: AsyncI<ImagesInvokeChannels['builds:polishNotes']>; openFolder: AsyncI<ImagesInvokeChannels['builds:openFolder']>;
+}
+export interface Api { images: ImagesApi; builds: BuildsApi }

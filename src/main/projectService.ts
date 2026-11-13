@@ -746,6 +746,9 @@ export class ProjectService extends EventEmitter {
     }
     return lines.join('\n');
   }
+  // ---- plan 7: build notes ----
+  /** Other parts of the app summarise what they put into each patch (key → lines) for the patch notes. Append only. */
+  readonly buildSummaries: (() => Promise<Record<string, string[]>>)[] = [];
 }
 
 /** Gives the pixel-width check for a unit (only dialogue is checked), or undefined to use the character count. */
