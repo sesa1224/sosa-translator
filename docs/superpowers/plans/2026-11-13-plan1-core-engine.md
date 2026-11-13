@@ -398,7 +398,7 @@ test('null 항목과 모르는 파일', () => {
 
 겹친 JSON: 값이 문자열이고 `[`, `{`, `"` 로 시작하며 `JSON.parse` 가 성공하고 결과가 객체, 배열, 문자열이면 한 단계 들어간다. 그 자리의 경로 조각은 `{ key, json: true }`. `setAtPath` 는 `json: true` 조각을 만나면 그 값을 파싱해 안쪽을 바꾼 뒤 `JSON.stringify` 로 다시 감싼다. `status: false` 인 플러그인도 추출한다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기** (`text` 는 `makeMiniGame` 의 plugins.js 글자)
+- [x] **Step 1: 실패하는 시험 쓰기** (`text` 는 `makeMiniGame` 의 plugins.js 글자)
 
 ```ts
 test('읽고 그대로 쓰면 원본과 같다', () => { expect(serializePluginsFile(parsePluginsFile(text))).toBe(text); });
@@ -419,10 +419,10 @@ test('겹친 자리에 쓰면 다시 감싼다', () => {
 test('못 읽는 파일', () => { expect(() => parsePluginsFile('hello')).toThrow('plugins.js 를 읽을 수 없습니다'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/extract/plugins.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 플러그인 설정 추출과 다시 쓰기"`**
+- [x] **Step 2: `npx vitest run tests/extract/plugins.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 플러그인 설정 추출과 다시 쓰기"`**
 
 ### Task 7: 프로젝트 만들기와 전체 추출
 
