@@ -11,7 +11,7 @@ export interface Term {
 }
 export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }
 export interface ProjectRules extends FormatRules {
-  maxLineWidthChars: number | null;   // width in Korean characters (half-width counts 0.5). Pixel widths come in plan 4
+  maxLineWidthChars: number | null;   // width in Korean characters (half-width counts 0.5); for dialogue the pixel check replaces it once a game font is set
   speakerPattern: string | null;      // regex source; the first group is the speaker name
 }
 export interface Glossary { terms: Term[]; characters: CharacterCard[]; styleGuide: string; rules: ProjectRules; confirmedAt: string | null }

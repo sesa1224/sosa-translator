@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import type { Region } from '../../core/images/types.js';
+import type { RenderReply, RenderRequest } from '../../shared/renderProtocol.js';
 
 /** Draws one picture from its recipe. fonts: font path → file bytes. */
 export interface RenderJob { base: Uint8Array; regions: Region[]; fonts: Record<string, Uint8Array>; defaultFontPath: string | null }
 /** A contact sheet: cells in a grid, each picture shrunk into its cell with its number and label below. */
 export interface SheetJob { cells: { label: string; png: Uint8Array }[]; columns: number; cellSize: number }
 
-import type { RenderReply, RenderRequest } from '../../shared/renderProtocol.js';
 export type { RenderReply, RenderRequest };
 
 /** The hidden worker window as the service sees it (a BrowserWindow wrapper in the app, a fake in tests). */

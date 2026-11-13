@@ -17,7 +17,7 @@ export interface EventFileInfo { file: string; label: string; events: number }
 
 const MAP_FILE = /^Map(\d+)\.json$/i;
 
-/** data/ of the current original copy, or of an older version's copy (plan 6). */
+/** data/ of the current original copy, or of an older version's copy. */
 async function dataDir(projectDir: string, version?: string): Promise<string> {
   const meta = await openProject(projectDir);
   if (version === undefined || version === meta.current) return path.join(originalDir(projectDir, meta), 'data');

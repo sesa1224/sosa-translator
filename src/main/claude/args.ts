@@ -1,8 +1,17 @@
+// Command-line arguments for the chat's Claude CLI session.
+//
+// The session may use only the app's MCP tools (src/main/toolHandlers.ts, served by src/mcp/server.ts).
+// Every tool the chat can call must be listed in CHAT_TOOLS too, or the CLI refuses it.
+
 export const MCP_SERVER_NAME = 'mvmz';
-export const CHAT_TOOLS = ['project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last', 'glossary_search', 'glossary_set_term', 'list_decisions', 'set_decision'];
+/** Tools the chat may call, in the order they are allowed (a test checks the exact argument). */
+export const CHAT_TOOLS = [
+  'project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last', 'glossary_search', 'glossary_set_term', 'list_decisions', 'set_decision',
+  'image_sheet', 'image_view', 'image_set_recipe', 'image_set_status', 'image_list',
+  'event_files', 'event_list', 'event_read', 'usage_search', 'event_patch',
+  'update_summary',
+];
 export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;
-// plan 7: picture tools
-CHAT_TOOLS.push('image_sheet', 'image_view', 'image_set_recipe', 'image_set_status', 'image_list');
 
 /** Arguments for a headless, stream-json Claude CLI session limited to the app's MCP tools. */
 export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; systemPrompt: string; resumeSessionId?: string }): string[] {
@@ -10,6 +19,8 @@ export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; syste
     '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--model', o.model,
     '--mcp-config', o.mcpConfigPath, '--strict-mcp-config',
+    // No built-in tools (files, shell, web): the chat reaches the game only through the app's tools,
+    // and every built-in tool's description would be sent with each turn.
     '--tools', '',
     '--allowedTools', CHAT_TOOLS.map((t) => MCP_TOOL_PREFIX + t).join(','),
     '--permission-mode', 'dontAsk',
@@ -21,9 +32,3 @@ export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; syste
   if (o.resumeSessionId) args.push('--resume', o.resumeSessionId);
   return args;
 }
-
-// Plan 5: event and patch tools (appended so the list above stays as it was).
-CHAT_TOOLS.push('event_files', 'event_list', 'event_read', 'usage_search', 'event_patch');
-
-// Plan 6: game updates (appended).
-CHAT_TOOLS.push('update_summary');

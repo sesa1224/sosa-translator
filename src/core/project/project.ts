@@ -13,7 +13,7 @@ export interface ProjectMeta {
   contentPrefix: string;
   sourceLang: 'ja';
   targetLang: 'ko';
-  /** label and gameDir were added with game updates (plan 6); older projects have neither. */
+  /** label and gameDir were added with game updates; older projects have neither. */
   versions: { id: string; importedAt: string; label?: string; gameDir?: string }[];
   current: string;
 }

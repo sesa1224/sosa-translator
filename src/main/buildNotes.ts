@@ -12,6 +12,7 @@ import type { ImageService } from './images.js';
 import { lastImageBuild } from './images.js';
 import type { ProjectService } from './projectService.js';
 import { BatchJob, type JobOptions } from './translate/job.js';
+import { versionsOf } from '../core/update/importVersion.js';
 
 export const NOTES_FILE_IN_ZIP = '패치노트.txt';
 export const INSTALL_FILE_IN_ZIP = '설치 방법.txt';
@@ -115,7 +116,7 @@ export function registerNotesContributor(svc: ProjectService, o: { images: Image
     const prevNumber = (await finishedBuilds(ctx.projectDir)).find((n) => n < ctx.number);
     const prev = prevNumber === undefined ? null : await loadSnapshot(ctx.projectDir, prevNumber);
     const diff = diffSnapshots(prev, cur, svc.units());
-    // plan 6: the notes name the game version, and say so when it changed since the last build.
+    // The notes name the game version, and say so when it changed since the last build.
     const labels = new Map(versionsOf(svc.meta).map((v) => [v.id, v.label]));
     const label = labels.get(svc.meta.current) ?? svc.meta.current;
     const previousLabel = prev ? labels.get(prev.version) ?? prev.version : null;
@@ -192,5 +193,3 @@ export class NotesJob extends BatchJob<number> {
     }
   }
 }
-// ---- plan 6 (appended) ----
-import { versionsOf } from '../core/update/importVersion.js';

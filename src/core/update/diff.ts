@@ -139,14 +139,14 @@ export function diffUnits(oldUnits: TextUnit[], newUnits: TextUnit[]): UnitDiff 
     }
   }
   const simCands: Candidate[] = [];
-  const seen2 = new Set<string>();
+  const comparedPairs = new Set<string>();
   for (const n of restNew) {
     if (usedNew.has(n.id)) continue;
     for (const f of files(n)) {
       for (const o of byFileKind.get(`${n.kind}\u0000${f}`) ?? []) {
         const pair = `${o.id}\u0000${n.id}`;
-        if (seen2.has(pair)) continue;
-        seen2.add(pair);
+        if (comparedPairs.has(pair)) continue;
+        comparedPairs.add(pair);
         const short = [...stripControlCodes(o.source)].length < 2 && [...stripControlCodes(n.source)].length < 2;
         const sim = short ? similarity(o.source, n.source) : dice(gramsOf(o), gramsOf(n));
         if (sim >= SIMILAR_ENOUGH) simCands.push({ o, n, sim });

@@ -73,7 +73,7 @@ export function notesTitle(name: string, number: number): string {
 }
 
 /**
- * Notes for people, in Korean. Items that are zero get no line. label: the game version the patch is for (plan 6),
+ * Notes for people, in Korean. Items that are zero get no line. label: the game version the patch is for,
  * put in the title; previousLabel: the game version of the build compared with, when known.
  */
 export function formatNotes(diff: BuildDiff, meta: { name: string; version: string; label?: string; previousLabel?: string | null }): string {

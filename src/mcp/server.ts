@@ -25,7 +25,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: await bri
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   try {
     const r = await bridge('/call', { name: req.params.name, input: req.params.arguments ?? {} });
-    // Pictures (plan 7) go after the text block so the text still comes first.
+    // Pictures go after the text block so the text still comes first.
     if (r.ok && Array.isArray(r.images) && r.images.length > 0) return { content: [{ type: 'text', text: JSON.stringify(r.data) }, ...r.images.map((i: { mediaType: string; base64: string }) => ({ type: 'image' as const, data: i.base64, mimeType: i.mediaType }))] };
     if (r.ok) return { content: [{ type: 'text', text: JSON.stringify(r.data) }] };
     return { content: [{ type: 'text', text: JSON.stringify({ error: r.error }) }], isError: true };

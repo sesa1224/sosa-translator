@@ -1,4 +1,4 @@
-// Messages between the main process and the hidden render worker window (plan 7).
+// Messages between the main process and the hidden render worker window.
 import type { Region } from '../core/images/types.js';
 
 /**

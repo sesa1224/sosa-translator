@@ -34,9 +34,8 @@ function lineCount(s: string): number {
 /** Glossary consistency and line-width limit (optional part of the check). */
 export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null; speakerPattern?: string | null }
 
-/** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
 /**
- * The last argument is either a pixel-width check (dialogue shown in the message window) or a keep rule
+ * Checks one translation against the format rules. The last argument is either a pixel-width check (dialogue shown in the message window) or a keep rule
  * (a needs-decision value where only part is translated). A unit never needs both: keep rules apply to
  * plugin commands, scripts and the like, which are not laid out in the message window.
  */
@@ -138,7 +137,7 @@ export function checkAll(
   return out;
 }
 
-/** Lays out a message in the game's window with the chosen font (plan 4). withFace: the narrowest place it is shown. */
+/** Lays out a message in the game's window with the chosen font. withFace: the narrowest place it is shown. */
 export interface PxCheck { layout: (text: string, withFace: boolean) => Layout; withFace: boolean }
 
 /** Warning for the line that overflows the window the most, or null. */

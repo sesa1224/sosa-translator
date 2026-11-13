@@ -1,4 +1,7 @@
 import { EventEmitter } from 'node:events';
+import { existsSync, readFileSync } from 'node:fs';
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import nodePath from 'node:path';
 import {
   buildPatch,
   checkTranslation,
@@ -16,26 +19,37 @@ import {
   type ReviewNote,
   type TranslationStatus,
 } from '../core/index.js';
+import type { PathSeg } from '../core/types.js';
+import { readJsonFile } from '../core/util/json.js';
 import { loadGlossary, saveGlossary, termId } from '../core/glossary/store.js';
 import { termsIn } from '../core/glossary/match.js';
 import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, Term } from '../core/glossary/types.js';
-import type { ChangeEvent, Origin } from '../shared/api.js';
 import type { PxCheck } from '../core/check/format.js';
-import { existsSync, readFileSync } from 'node:fs';
-import nodePath from 'node:path';
 import { groupDecisions } from '../core/decisions/keys.js';
 import { mergeSuggestions } from '../core/decisions/auto.js';
-import { decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
-import type { Decision, DecisionGroup, Decisions, PluginMeta } from '../core/decisions/types.js';
+import { confirmedDecisionFor, decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
+import type { Decision, DecisionGroup, Decisions, KeepRule, PluginMeta } from '../core/decisions/types.js';
+import { getAtPath } from '../core/extract/plugins.js';
 import { pluginMetaFromDir } from '../core/extract/pluginMeta.js';
 import { ensureOriginals, FILES_LIST } from '../core/project/originals.js';
 import { originalDir } from '../core/project/project.js';
-import { readFile, writeFile } from 'node:fs/promises';
-import { confirmedDecisionFor } from '../core/decisions/store.js';
-import type { KeepRule } from '../core/decisions/types.js';
 import { buildPackage, planImport, type ImportPlan } from '../core/exchange/package.js';
+import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patches/types.js';
+import { listHash, sameContent } from '../core/patches/hash.js';
+import { validateOps } from '../core/patches/listOps.js';
+import { newPatchId, PATCHES_FILE, savePatches } from '../core/patches/store.js';
+import {
+  patchStatuses as corePatchStatuses, REASON_BAD_PLUGIN_NAME, REASON_CHANGED, REASON_NO_EVENT, REASON_NO_FILE, REASON_VALUE_CHANGED, validPluginName,
+} from '../core/patches/apply.js';
+import { loadNames } from '../core/events/names.js';
+import { describeCommand } from '../core/events/describe.js';
+import { listLabel } from '../core/events/browse.js';
+import { importVersion as coreImportVersion, readUpdateSummary, rollbackVersion as coreRollbackVersion, versionsOf } from '../core/update/importVersion.js';
+import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
+import type { ChangeEvent, Origin } from '../shared/api.js';
 import { rowDecisionOf, unitRowDecisions } from '../shared/rows.js';
+import { registerFontContributor } from './fontEmbed.js';
 
 const UNDO_LIMIT = 200;
 
@@ -44,16 +58,24 @@ interface UndoRecord { id: string; before: TranslationEntry; origin: Origin }
 /** Reason stored for terms the model brought up while translating. */
 export const NEW_TERM_REASON = '번역 중 새로 나옴';
 
+/** Events the service emits. The IPC layer turns them into push events for the screens. */
 export interface ProjectService {
   on(event: 'changed', listener: (e: ChangeEvent) => void): this;
   on(event: 'glossary-changed', listener: (g: Glossary) => void): this;
+  on(event: 'decisions-changed', listener: (d: Decisions) => void): this;
+  on(event: 'patches-changed', listener: (p: Patch[]) => void): this;
+  /** After a game update or a rollback replaced the project files. */
+  on(event: 'reloaded', listener: () => void): this;
   off(event: 'changed', listener: (e: ChangeEvent) => void): this;
   off(event: 'glossary-changed', listener: (g: Glossary) => void): this;
+  off(event: 'decisions-changed', listener: (d: Decisions) => void): this;
+  off(event: 'patches-changed', listener: (p: Patch[]) => void): this;
+  off(event: 'reloaded', listener: () => void): this;
   emit(event: 'changed', e: ChangeEvent): boolean;
   emit(event: 'glossary-changed', g: Glossary): boolean;
-  on(event: 'decisions-changed', listener: (d: Decisions) => void): this;
-  off(event: 'decisions-changed', listener: (d: Decisions) => void): this;
   emit(event: 'decisions-changed', d: Decisions): boolean;
+  emit(event: 'patches-changed', p: Patch[]): boolean;
+  emit(event: 'reloaded'): boolean;
 }
 
 /**
@@ -75,15 +97,15 @@ export class ProjectService extends EventEmitter {
     super();
     this.byId = new Map(unitList.map((u) => [u.id, u]));
     this.loadDecisionData();
-    registerFontContributor(this); // plan 5: font and plugin files of patches go into every build
-    // The patch notes (plan 7) list the fixes (plan 5) that went into each build.
+    registerFontContributor(this); // font and plugin files of patches go into every build
+    // The patch notes list the fixes that went into each build.
     this.buildSummaries.push(async () => {
       const applied = new Set((await this.patchStatuses()).filter((x) => x.state === 'applied').map((x) => x.id));
       return { patches: this.patches().filter((p) => applied.has(p.id)).map((p) => p.title) };
     });
   }
 
-  // ---- decisions (plan 3b) ----
+  // ---- decisions ----
   private dec: Decisions = {};
   private pluginMeta: Record<string, PluginMeta> = {};
   private gameFileNames = new Set<string>();
@@ -558,7 +580,7 @@ export class ProjectService extends EventEmitter {
     if (this.history.length > UNDO_LIMIT) this.history.shift();
   }
 
-  // ---- plan 4: pixel-width check ----
+  // ---- pixel-width check ----
   private pxChecker: PxChecker | null = null;
 
   /**
@@ -588,7 +610,7 @@ export class ProjectService extends EventEmitter {
     });
   }
 
-  // ---- plan 5: patches (bug fixes and additions recorded as changes against the original) ----
+  // ---- patches (bug fixes and additions recorded as changes against the original) ----
   private patchCache: Patch[] | null = null;
 
   /** The patch list, read from patches.json the first time. */
@@ -761,7 +783,8 @@ export class ProjectService extends EventEmitter {
     }
     return lines.join('\n');
   }
-  // ---- plan 6: game updates ----
+
+  // ---- game updates ----
   private busyCheck: () => boolean = () => false;
 
   /** Tells the service how to see that a job is running (the IPC layer owns the jobs). */
@@ -820,7 +843,7 @@ export class ProjectService extends EventEmitter {
     this.patchCache = null;
   }
 
-  // ---- plan 7: build notes ----
+  // ---- build notes ----
   /** Other parts of the app summarise what they put into each patch (key → lines) for the patch notes. Append only. */
   readonly buildSummaries: (() => Promise<Record<string, string[]>>)[] = [];
 }
@@ -828,47 +851,13 @@ export class ProjectService extends EventEmitter {
 /** Gives the pixel-width check for a unit (only dialogue is checked), or undefined to use the character count. */
 export type PxChecker = (unit: TextUnit) => PxCheck | undefined;
 
-// ---- plan 5: patches (imports and events; appended so the lines above stay as they were) ----
-import { getAtPath } from '../core/extract/plugins.js';
-import { readJsonFile } from '../core/util/json.js';
-import type { PathSeg } from '../core/types.js';
-import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patches/types.js';
-import { listHash, sameContent } from '../core/patches/hash.js';
-import { validateOps } from '../core/patches/listOps.js';
-import { newPatchId, PATCHES_FILE, savePatches } from '../core/patches/store.js';
-import {
-  patchStatuses as corePatchStatuses, REASON_BAD_PLUGIN_NAME, REASON_CHANGED, REASON_NO_EVENT, REASON_NO_FILE, REASON_VALUE_CHANGED, validPluginName,
-} from '../core/patches/apply.js';
-import { loadNames } from '../core/events/names.js';
-import { describeCommand } from '../core/events/describe.js';
-import { listLabel } from '../core/events/browse.js';
-import { registerFontContributor } from './fontEmbed.js';
-
-export interface ProjectService {
-  on(event: 'patches-changed', listener: (p: Patch[]) => void): this;
-  off(event: 'patches-changed', listener: (p: Patch[]) => void): this;
-  emit(event: 'patches-changed', p: Patch[]): boolean;
-}
-
-// ---- plan 6: game updates (appended) ----
-import { importVersion as coreImportVersion, readUpdateSummary, rollbackVersion as coreRollbackVersion, versionsOf } from '../core/update/importVersion.js';
-import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
-
 /** Same text as the IPC layer's busy error. */
 const UPDATE_BUSY = '다른 작업이 진행 중입니다';
-
-export interface ProjectService {
-  on(event: 'reloaded', listener: () => void): this;
-  off(event: 'reloaded', listener: () => void): this;
-  emit(event: 'reloaded'): boolean;
-}
-// ---- plan 6, task 8 (appended) ----
-import { readdir as readDir, rm } from 'node:fs/promises';
 
 /** Names of the numbered folders under builds/. */
 async function numberedBuildFolders(projectDir: string): Promise<Set<string>> {
   try {
-    return new Set((await readDir(nodePath.join(projectDir, 'builds'))).filter((n) => /^\d+$/.test(n)));
+    return new Set((await readdir(nodePath.join(projectDir, 'builds'))).filter((n) => /^\d+$/.test(n)));
   } catch {
     return new Set();
   }

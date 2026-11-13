@@ -5,12 +5,22 @@ import { computeStats, filterRows, toRow } from '../shared/rows.js';
 import type { ProjectService } from './projectService.js';
 import type { KeepRule } from '../core/decisions/types.js';
 import type { Region } from '../core/images/types.js';
+import type { PathSeg } from '../core/types.js';
+import type { ListOp, PatchBody } from '../core/patches/types.js';
+import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
+import { findUsage, type UsageTarget } from '../core/events/usage.js';
 import { imageServiceOf } from './images.js';
+
+// The chat's tools: their names, Korean descriptions and input schemas (TOOL_DEFS), and what each one does
+// (HANDLERS). The MCP server in src/mcp lists TOOL_DEFS to the Claude CLI and forwards each call here through
+// the local bridge (src/main/bridge.ts). Every write goes through ProjectService; translations are written
+// with origin 'chat' so the chat's undo takes back only the chat's changes. Names and descriptions are what
+// the model sees, and the system prompt (src/main/claude/prompt.ts) and --allowedTools (args.ts) name tools too.
 
 export interface ToolDef { name: string; description: string; inputSchema: z.ZodObject<any> }
 
 export type ToolResult = { ok: true; data: unknown; images?: ToolImage[] } | { ok: false; error: string };
-/** A picture a tool sends back to the model (plan 7). */
+/** A picture a tool sends back to the model. */
 export interface ToolImage { mediaType: 'image/png'; base64: string }
 
 const SEARCH_DEFAULT = 20;
@@ -193,7 +203,7 @@ export async function callTool(svc: ProjectService, name: string, input: unknown
   }
 }
 
-// ---- plan 5: events and patches (appended; the tools above are unchanged) ----
+// ---- events and patches ----
 const RAW_MAX = 30;
 const USAGE_MAX = 50;
 const pathSeg = z.union([z.string(), z.number().int()]);
@@ -247,7 +257,7 @@ TOOL_DEFS.push(
   },
 );
 
-// ---- plan 7: picture tools (added below; the lists above are unchanged) ----
+// ---- pictures ----
 
 /** A handler result that also carries pictures for the model. */
 export class WithImages {
@@ -354,10 +364,6 @@ HANDLERS.event_patch = async (svc, input: { title: string; file: string; listPat
   return { id: p.id, title: p.title, updated: !!existing, state: status?.state ?? 'applied', reason: status?.reason };
 };
 
-import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
-import { findUsage, type UsageTarget } from '../core/events/usage.js';
-import type { PathSeg } from '../core/types.js';
-import type { ListOp, PatchBody } from '../core/patches/types.js';
 function needImages(svc: ProjectService) {
   const images = imageServiceOf(svc);
   if (!images) throw new Error('그림 기능을 쓸 수 없습니다(게임 폴더를 찾을 수 없음)');
@@ -417,7 +423,7 @@ HANDLERS.image_list = async (svc, input: { status?: z.infer<typeof imageStatus>;
   };
 };
 
-// ---- plan 6: game updates (appended; the tools above are unchanged) ----
+// ---- game updates ----
 TOOL_DEFS.push({
   name: 'update_summary',
   description: '게임을 새 버전으로 가져온 뒤 무엇이 바뀌었는지(문장 수, 수정 옮기기 결과, 그림, 경고)와 충돌난 수정의 목록(제목, 이유, 파일, listPath)을 볼 때 쓴다.',

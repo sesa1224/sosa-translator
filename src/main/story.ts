@@ -16,7 +16,7 @@ const segKey = (s: PathSeg): string | number => (typeof s === 'object' ? s.key :
 function placeOf(ref: UnitRef): { listPath: PathSeg[]; order: number; group?: number } | null {
   if (ref.type === 'lines') return { listPath: ref.listPath, order: ref.start };
   if (ref.type === 'choice') return { listPath: ref.listPath, order: ref.index + (ref.choice + 1) / 1000, group: ref.index };
-  // Note tags and plugin-file strings (plan 3b) are not part of an event's command list.
+  // Note tags and plugin-file strings are not part of an event's command list.
   if (ref.type !== 'value') return null;
   const p = ref.path;
   for (let i = 0; i + 1 < p.length; i++) {

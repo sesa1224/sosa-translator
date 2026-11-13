@@ -6,7 +6,7 @@ import path from 'node:path';
 
 export const TESTPLAY_DIR = 'testplay';
 const PATCHED_LIST = '.patched.json';
-/** The project version the copy was made from (plan 6). */
+/** The project version the copy was made from. */
 export const VERSION_FILE = '.version';
 /** Folders of big files the game only reads: shared with the original through hard links. */
 const LINK_DIRS = new Set(['img', 'audio', 'movies', 'effects', 'locales', 'swiftshader']);
@@ -145,7 +145,7 @@ export class GameRunner extends EventEmitter {
     try {
       was = (await readFile(marker, 'utf8')).trim() || null;
     } catch {
-      was = null;   // a copy from before plan 6 is taken for the current version
+      was = null;   // a copy made before versions were recorded is taken for the current version
     }
     if (was !== null && was !== version && existsSync(this.dir)) {
       const save = ['www/save', 'save'].map((r) => path.join(this.dir, ...r.split('/'))).find((d) => existsSync(d));
