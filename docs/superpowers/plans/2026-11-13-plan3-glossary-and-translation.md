@@ -666,11 +666,11 @@ test('단계별 모델 설정', async () => {
 - Modify: `tests/e2e/app.e2e.test.ts`, `README.md`
 - Create: `tests/main/realFlow.test.ts`
 
-- [ ] **Step 1: 연기 시험 추가** — 가짜 JSON CLI(`MVMZ_CLAUDE_JSON_COMMAND`, `MVMZ_CLAUDE_JSON_PREFIX_ARGS` 가 있으면 묶음 호출에 그것을 쓴다)로: 가져오기 → 용어집 화면 → "초안 받기" → 후보 고르기 → "용어집 확정" → 텍스트 화면 → "새 문장 n개 번역 맡기기" → 진행 막대가 "끝났어요"가 될 때까지 → 표에 번역이 보이고 화자 줄이 붙어 있음 → "번역 전체 검수" → 검수 의견이 붙은 줄에서 "고친 안 받기" → "패치 빌드" 성공
-- [ ] **Step 2: `npm run build:app && npm run test:e2e` → FAIL 을 확인한 뒤, 빠진 연결을 채워 PASS**
-- [ ] **Step 3: 실제 CLI 흐름 확인(`MVMZ_REAL_CLI=1` 일 때만, 로그인 상태에서만)** — `tests/main/realFlow.test.ts`: `makeMiniGame` 게임에 대사 몇 줄(신음과 효과음이 든 줄, 제어문자가 든 줄, 화자 줄이 있는 줄 포함. 시험 파일 안에 직접 적는다)을 더해 `ProjectService` 를 만들고, 모델 `claude-haiku-5-5` 로 초안 → 확정 → 번역 → 검수를 한 번 돌린다. 확인: (1) 초안에 용어와 인물 카드가 들어온다, (2) 번역 뒤 대상 항목이 모두 `needs-review`·`declined`·`error` 중 하나이고 미번역이 없다, (3) 번역문에 일본어 글자가 없고 제어문자가 유지된다, (4) 화자 줄이 붙어 있다, (5) 호출마다 입력 토큰(캐시 포함)이 지침 길이에 비해 터무니없이 크지 않다(한 호출 15,000 미만). 결과 번역문 몇 줄과 호출별 토큰을 보고에 그대로 붙인다. 로그인돼 있지 않으면 건너뛰고 보고에 적는다
-- [ ] **Step 4: 전체 확인** — `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **Step 5: `README.md` 에 번역 흐름과 프로젝트 폴더의 새 파일(`glossary.json`)을 적고 `git commit -m "feat: 번역 한 바퀴 전체 흐름 시험"`**
+- [x] **Step 1: 연기 시험 추가** — 가짜 JSON CLI(`MVMZ_CLAUDE_JSON_COMMAND`, `MVMZ_CLAUDE_JSON_PREFIX_ARGS` 가 있으면 묶음 호출에 그것을 쓴다)로: 가져오기 → 용어집 화면 → "초안 받기" → 후보 고르기 → "용어집 확정" → 텍스트 화면 → "새 문장 n개 번역 맡기기" → 진행 막대가 "끝났어요"가 될 때까지 → 표에 번역이 보이고 화자 줄이 붙어 있음 → "번역 전체 검수" → 검수 의견이 붙은 줄에서 "고친 안 받기" → "패치 빌드" 성공
+- [x] **Step 2: `npm run build:app && npm run test:e2e` → FAIL 을 확인한 뒤, 빠진 연결을 채워 PASS**
+- [x] **Step 3: 실제 CLI 흐름 확인(`MVMZ_REAL_CLI=1` 일 때만, 로그인 상태에서만)** — `tests/main/realFlow.test.ts`: `makeMiniGame` 게임에 대사 몇 줄(신음과 효과음이 든 줄, 제어문자가 든 줄, 화자 줄이 있는 줄 포함. 시험 파일 안에 직접 적는다)을 더해 `ProjectService` 를 만들고, 모델 `claude-haiku-5-5` 로 초안 → 확정 → 번역 → 검수를 한 번 돌린다. 확인: (1) 초안에 용어와 인물 카드가 들어온다, (2) 번역 뒤 대상 항목이 모두 `needs-review`·`declined`·`error` 중 하나이고 미번역이 없다, (3) 번역문에 일본어 글자가 없고 제어문자가 유지된다, (4) 화자 줄이 붙어 있다, (5) 호출마다 입력 토큰(캐시 포함)이 지침 길이에 비해 터무니없이 크지 않다(한 호출 15,000 미만). 결과 번역문 몇 줄과 호출별 토큰을 보고에 그대로 붙인다. 로그인돼 있지 않으면 건너뛰고 보고에 적는다
+- [x] **Step 4: 전체 확인** — `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **Step 5: `README.md` 에 번역 흐름과 프로젝트 폴더의 새 파일(`glossary.json`)을 적고 `git commit -m "feat: 번역 한 바퀴 전체 흐름 시험"`**
 
 ---
 

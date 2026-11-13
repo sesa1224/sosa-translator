@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { _electron as electron, type ElectronApplication } from 'playwright-core';
@@ -7,6 +7,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { makeMiniGame } from '../helpers/miniGame.js';
 
 const fakeClaude = path.resolve(__dirname, '../fixtures/fake-claude.mjs');
+const fakeClaudeJson = path.resolve(__dirname, '../fixtures/fake-claude-json.mjs');
 let tmp: string, userData: string, projectsDir: string, game: string;
 
 beforeAll(async () => {
@@ -44,5 +45,46 @@ test('가져오기 → 손으로 번역 → 채팅 → 빌드', async () => {
   await expect(w.getByText('받음: 안녕')).toBeVisible();
   await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다 · 파일 1개/)).toBeVisible();
   expect(existsSync(path.join(projectsDir, '약초원/builds/001/약초원_patch_001.zip'))).toBe(true);
+  await app.close();
+});
+
+test('용어집 초안 → 확정 → 전체 번역 → 검수 → 빌드', async () => {
+  // The mini game plus an MV-style message whose first line is the speaker.
+  const game2 = path.join(tmp, 'game2');
+  await makeMiniGame(game2);
+  const mapFile = path.join(game2, 'data', 'Map001.json');
+  const map = JSON.parse(await readFile(mapFile, 'utf8'));
+  const list: unknown[] = map.events[1].pages[0].list;
+  list.splice(list.length - 1, 0, { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+    { code: 401, indent: 0, parameters: ['【アーテル】'] }, { code: 401, indent: 0, parameters: ['「え？」'] });
+  await writeFile(mapFile, JSON.stringify(map), 'utf8');
+
+  const app = await launch({ MVMZ_PICK_DIR: game2, MVMZ_CLAUDE_JSON_COMMAND: process.execPath, MVMZ_CLAUDE_JSON_PREFIX_ARGS: JSON.stringify([fakeClaudeJson]) });
+  const w = await app.firstWindow();
+  const nav = w.getByRole('navigation', { name: '작업 메뉴' });
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('한 바퀴'); await w.getByRole('button', { name: '만들기' }).click();
+  await nav.getByRole('button', { name: /^용어집/ }).click();
+  await w.getByRole('button', { name: '초안 받기' }).click();
+  await expect(w.getByText('을 어떻게 옮길까요?')).toBeVisible();
+  await w.getByRole('button', { name: /^린/ }).click();
+  await expect(w.getByText(/リナ → 린/)).toBeVisible();
+  await w.getByRole('button', { name: '용어집 확정' }).click();
+  await expect(w.getByRole('button', { name: /확정됨/ })).toBeVisible();
+
+  await nav.getByRole('button', { name: /^텍스트/ }).click();
+  await w.getByRole('button', { name: /새 문장 \d+개 번역 맡기기/ }).click();
+  await expect(w.getByText(/끝났어요 · \d+개 번역/)).toBeVisible();
+  await expect(w.getByRole('row', { name: /【アーテル】.*【아텔】/ })).toBeVisible();
+
+  await w.getByRole('button', { name: '번역 전체 검수' }).click();
+  await w.getByRole('button', { name: '검수 시작' }).click();
+  await expect(w.getByText(/검수 끝났어요/)).toBeVisible();
+  await w.getByText('月光草', { exact: true }).click();
+  await expect(w.getByText('용어가 어색함')).toBeVisible();
+  await w.getByRole('button', { name: '고친 안 받기' }).click();
+  await expect(w.getByRole('row', { name: /月光草.*월광초\(검수\)/ })).toBeVisible();
+
+  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
+  expect(existsSync(path.join(projectsDir, '한 바퀴/builds/001/한 바퀴_patch_001.zip'))).toBe(true);
   await app.close();
 });

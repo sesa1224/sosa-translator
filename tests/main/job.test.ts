@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, expect, test } from 'vitest';
 import { SPEAKER_PRESETS } from '../../src/core/text/speaker.js';
 import { termId } from '../../src/core/glossary/store.js';
 import { ProjectService } from '../../src/main/projectService.js';
-import { planBatches } from '../../src/main/translate/batches.js';
+import { fixLiteralBreaks, planBatches } from '../../src/main/translate/batches.js';
 import { TranslateJob } from '../../src/main/translate/job.js';
 import { cleanupTempDirs } from '../helpers/fs.js';
 import { idFinder } from './helpers.js';
@@ -102,4 +102,12 @@ test('일시정지 뒤 이어하기, 사용량 합계와 진행 알림', async (
   expect(job.progress).toMatchObject({ state: 'done', done: total, kind: 'translate' });
   expect(job.progress.usage.input).toBeGreaterThan(0); expect(seen).toContain('paused');
   expect(svc.units().filter(u => !u.needsDecision).every(u => svc.entry(u.id).target !== null)).toBe(true);
+});
+test('글자 \\n 으로 온 줄바꿈은 실제 줄바꿈으로 고친다', async () => {
+  // Seen with the real CLI: the model wrote a line break as backslash + n.
+  const id = idOf('あれ？\\N[1]じゃない！\nこんな夜に来るなんて');
+  await mk(answer(u => ({ items: u.items.map((x: any) => ({ i: x.i, t: '어라? \\N[1] 아니잖아!\\n이런 밤에 오다니' })) })), { ids: [id] }).start();
+  expect(svc.entry(id)).toMatchObject({ target: '어라? \\N[1] 아니잖아!\n이런 밤에 오다니', status: 'needs-review' });
+  expect(fixLiteralBreaks('가\\n나 \\n[1] \\n<x>', 'あ')).toBe('가\n나 \\n[1] \\n<x>');
+  expect(fixLiteralBreaks('a\\nb', 'あ\\nい')).toBe('a\\nb');
 });

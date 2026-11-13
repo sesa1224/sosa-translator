@@ -117,12 +117,22 @@ export function isTranslateAnswer(v: unknown): v is TranslateAnswer {
     && (x.newTerms === undefined || (Array.isArray(x.newTerms) && x.newTerms.every((n: any) => n && typeof n.source === 'string' && typeof n.target === 'string'))));
 }
 
+/**
+ * Models sometimes write a line break as the two characters backslash + n. RPG Maker has no such code
+ * (\n[1] and \n<name> are names), so a lone one becomes a real line break unless the source itself has one.
+ */
+export function fixLiteralBreaks(t: string, source: string): string {
+  const lone = /\\n(?![[<A-Za-z])/g;
+  if (/\\n(?![[<A-Za-z])/.test(source)) return t;
+  return t.replace(lone, '\n');
+}
+
 /** The format rules written out for the model. */
 export function formatRulesText(rules: ProjectRules): string[] {
   const out: string[] = [];
   if (rules.controlCodes) out.push('- 제어문자(\\C[2], \\N[1], \\V[3], \\{, \\. 같은 것)와 %1 같은 자리표시는 종류와 개수를 원문 그대로 둔다. 색 코드는 원문에서 감싸던 말과 같은 말을 감싸게 한다.');
   if (rules.noLeftoverJapanese) out.push('- 번역문에 일본어 글자(가나, 한자)를 남기지 않는다.');
-  out.push('- 줄바꿈은 \\n 이다.');
+  out.push('- text 안의 줄바꿈은 번역에서도 실제 줄바꿈으로 둔다. 역슬래시와 n 두 글자로 바꿔 쓰지 않는다.');
   if (rules.sameLineCount) out.push('- 줄 수를 원문과 똑같이 맞춘다.');
   if (rules.maxLines !== null) out.push(`- 대사(kind 가 dialogue)는 ${rules.maxLines}줄을 넘기지 않는다.`);
   if (rules.maxLineWidthChars !== null) out.push(`- 한 줄은 한글 ${rules.maxLineWidthChars}자를 넘기지 않는다(영문, 숫자, 공백은 0.5자로 센다). 넘치면 줄을 나눈다.`);

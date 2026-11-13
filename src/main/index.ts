@@ -30,6 +30,22 @@ function prefixArgs(): string[] {
   }
 }
 
+/** CLI for one-shot JSON calls: MVMZ_CLAUDE_JSON_COMMAND (+ MVMZ_CLAUDE_JSON_PREFIX_ARGS) in tests, else the real CLI. */
+function jsonClaude(configured: string | null): { command: string; prefixArgs: string[] } | null {
+  if (process.env.MVMZ_CLAUDE_JSON_COMMAND) {
+    let prefix: string[] = [];
+    try {
+      const v: unknown = JSON.parse(process.env.MVMZ_CLAUDE_JSON_PREFIX_ARGS ?? '[]');
+      if (Array.isArray(v)) prefix = v.map(String);
+    } catch {
+      // ignore a broken test value
+    }
+    return { command: process.env.MVMZ_CLAUDE_JSON_COMMAND, prefixArgs: prefix };
+  }
+  const command = findClaude(configured);
+  return command ? { command, prefixArgs: [] } : null;
+}
+
 function broadcast<C extends PushChannel>(channel: C, payload: PushEvents[C]): void {
   for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload);
 }
@@ -77,6 +93,7 @@ app.whenReady().then(async () => {
       return new ClaudeChat({ command, prefixArgs: prefixArgs(), cwd, mcpConfigPath, systemPrompt, model });
     },
     claudePath: resolveClaude,
+    jsonClaude,
     showItemInFolder: (file) => shell.showItemInFolder(file),
   });
 

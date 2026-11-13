@@ -6,7 +6,7 @@ import type { ChatUsage, JobKind, JobProgress } from '../../shared/api.js';
 import { NEED_LOGIN } from '../claude/chat.js';
 import type { JsonCallResult, runClaudeJson } from '../claude/json.js';
 import type { ProjectService } from '../projectService.js';
-import { buildTranslatePrompt, isTranslateAnswer, planBatches, TRANSLATE_SCHEMA, type Batch, type BatchItem, type TranslateAnswer } from './batches.js';
+import { buildTranslatePrompt, fixLiteralBreaks, isTranslateAnswer, planBatches, TRANSLATE_SCHEMA, type Batch, type BatchItem, type TranslateAnswer } from './batches.js';
 
 export const REFUSED_REASON = '모델이 번역을 거절했습니다';
 export const NO_REASON = '이유 없음';
@@ -244,9 +244,10 @@ export class TranslateJob extends BatchJob<Batch> {
         this.p.declined++;
         continue;
       }
+      const body = fixLiteralBreaks(a.t, item.text);
       const full = item.speakerLine !== null && item.speaker !== null
-        ? composeSpeaker(item.speakerLine, item.speaker, this.speakerTarget(item.speaker, g), a.t)
-        : a.t;
+        ? composeSpeaker(item.speakerLine, item.speaker, this.speakerTarget(item.speaker, g), body)
+        : body;
       const issues = await svc.setTranslation(item.id, full, 'batch');
       const errors = issues.filter((i) => i.severity === 'error').map((i) => i.message);
       if (errors.length > 0) bad.push({ item, info: { previous: a.t, problems: errors } });
