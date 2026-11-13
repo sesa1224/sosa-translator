@@ -6,6 +6,7 @@ import {
   DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type GameDirCheck, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
 import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, WindowMetrics } from '../../src/shared/api';
+import type { SceneInfo } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
@@ -149,6 +150,9 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       bytes: rec('fonts.bytes', () => new Uint8Array([0, 1, 0, 0])),
       pickFile: rec('fonts.pickFile', () => pv.picked),
     },
+    story: {
+      scenes: rec('story.scenes', (file: string) => pv.scenes[file] ?? []),
+    },
   };
   const pv = defaultPreviewFake();
   previewFakes.set(fake, pv);
@@ -181,6 +185,8 @@ export interface PreviewFake {
   overflow: (path?: string | null) => OverflowCount;
   fontList: FontList;
   picked: FontInfo | null;
+  /** Scenes per file for story.scenes. */
+  scenes: Record<string, SceneInfo[]>;
 }
 function defaultPreviewFake(): PreviewFake {
   return {
@@ -189,6 +195,7 @@ function defaultPreviewFake(): PreviewFake {
     overflow: () => ({ overflowing: 0, checked: 0, missingGlyphs: 0 }),
     fontList: { fonts: [], skippedCollections: 0 },
     picked: null,
+    scenes: {},
   };
 }
 const previewFakes = new WeakMap<FakeApi, PreviewFake>();

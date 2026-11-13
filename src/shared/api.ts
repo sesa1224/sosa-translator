@@ -182,6 +182,7 @@ export interface Api {
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
   preview: PreviewApi;
   fonts: FontsApi;
+  story: StoryApi;
 }
 
 // ---- plan 4: preview and fonts ----
@@ -209,6 +210,7 @@ export interface PreviewInvokeChannels {
   'fonts:list': () => FontList;
   'fonts:bytes': (path: string) => Uint8Array;
   'fonts:pickFile': () => FontInfo | null;
+  'story:scenes': (file: string) => SceneInfo[];
 }
 export type PreviewInvokeChannel = keyof PreviewInvokeChannels;
 type AsyncP<F> = F extends (...a: infer A) => infer R ? (...a: A) => Promise<R> : never;
@@ -220,3 +222,8 @@ export interface PreviewApi {
 export interface FontsApi {
   list: AsyncP<PreviewInvokeChannels['fonts:list']>; bytes: AsyncP<PreviewInvokeChannels['fonts:bytes']>; pickFile: AsyncP<PreviewInvokeChannels['fonts:pickFile']>;
 }
+/** One line of a scene in the story view (order: position in the event's command list). */
+export interface SceneLine { id: string; kind: UnitKind; order: number; speaker: string | null; choiceGroup?: number }
+/** One event page (or common event, or troop page) read as a scene. */
+export interface SceneInfo { key: string; file: string; label: string; condition: string | null; lines: SceneLine[] }
+export interface StoryApi { scenes(file: string): Promise<SceneInfo[]> }

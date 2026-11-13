@@ -6,6 +6,7 @@ import { num, STATUS_LABEL } from '../format';
 import { jobActive, orderedRows, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { ReviewDialog } from './ReviewDialog';
+import { StoryView } from './StoryView';
 
 const SEARCH_DELAY = 200;
 
@@ -113,6 +114,7 @@ export function TextTable() {
     <div className="text-view">
       <div className="text-head">
         <h1 className="page-title">텍스트</h1>
+        <TextModeSwitch />
         {scopeLabel && (
           <button type="button" className="pill on" onClick={() => useApp.setQuery({ file: undefined })} aria-label="범위 필터 해제" title={`범위 ${scopeLabel} 해제`}>
             {scopeLabel} ×
@@ -127,6 +129,7 @@ export function TextTable() {
       </div>
       <JobActions />
       <FilterBar />
+      {app.textMode === 'story' ? <StoryView /> : (
       <div className="table card" role="table" aria-label="텍스트 표" aria-rowcount={rows.length + 1}>
         <div className="tr th" role="row">
           <span role="columnheader">위치</span><span role="columnheader">화자</span><span role="columnheader">원문</span>
@@ -157,6 +160,18 @@ export function TextTable() {
           </div>
         </div>
       </div>
+      )}
+    </div>
+  );
+}
+
+/** "표 | 스토리" switch above the text view. */
+function TextModeSwitch() {
+  const { textMode } = useApp();
+  return (
+    <div className="seg" role="group" aria-label="보기 방식">
+      <button type="button" aria-pressed={textMode === 'table'} className={textMode === 'table' ? 'on' : ''} onClick={() => useApp.setTextMode('table')}>표</button>
+      <button type="button" aria-pressed={textMode === 'story'} className={textMode === 'story' ? 'on' : ''} onClick={() => useApp.setTextMode('story')}>스토리</button>
     </div>
   );
 }

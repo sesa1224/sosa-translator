@@ -26,6 +26,7 @@ import type { FontInfo, PreviewInvokeChannel, PreviewState } from '../shared/api
 import { listFonts, systemFontDirs } from './fonts/catalog.js';
 import { readFontInfo } from './fonts/fontFile.js';
 import { PreviewService } from './preview.js';
+import { buildScenes } from './story.js';
 
 // Compile-time check that the renderer-side copies in shared/api.ts match the core types.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -477,6 +478,11 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     else userFonts.push(picked);
     if (!listedFonts.some((f) => fontKey(f.path) === fontKey(file))) listedFonts.push(picked);
     return picked;
+  });
+
+  handleP('story:scenes', (file: string) => {
+    const s = svc();
+    return buildScenes(s.projectDir, s.units(), String(file ?? ''), s.glossary().rules.speakerPattern);
   });
 
   return { dispose: () => closeProject() };

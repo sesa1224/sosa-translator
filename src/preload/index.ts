@@ -91,6 +91,9 @@ const api: Api = {
     bytes: (path) => callP('fonts:bytes', path),
     pickFile: () => callP('fonts:pickFile'),
   },
+  story: {
+    scenes: (file) => callP('story:scenes', file),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

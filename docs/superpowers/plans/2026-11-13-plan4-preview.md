@@ -279,7 +279,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - "장면 승인"이 번역이 있고 오류가 아닌 항목들에 대해서만 `unit.setStatus(id, 'approved')` 를 부른다. "이 장면 다시 번역"이 그 장면의 id 들로 `job.translate` 를 부른다
 - 상태 필터를 "미번역"으로 하면 미번역 줄이 없는 장면이 사라진다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 스토리 보기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 스토리 보기"`
 
 ### Task 9: 전체 흐름 시험과 화면 확인
 
