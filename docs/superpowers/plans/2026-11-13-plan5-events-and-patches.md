@@ -116,7 +116,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `{ code: 999, parameters: ['x', 1] }` → `코드 999 ["x",1]`. 인자가 배열이 아니어도 예외가 없다
 - 이름이 빈 글이면 대괄호를 붙이지 않는다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 풀어쓰기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이벤트 풀어쓰기"`
 
 ### Task 2: 수정 저장과 목록 연산
 
