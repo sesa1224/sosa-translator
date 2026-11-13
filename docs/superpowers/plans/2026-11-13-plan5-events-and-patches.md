@@ -187,7 +187,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - `listEvents('data/Map001.json')` 이 페이지마다 한 줄, `readEvent` 의 `hash` 가 `listHash(raw)` 와 같다
 - `null` 이벤트와 빈 목록에서 예외가 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 사용처 검색과 이벤트 읽기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 사용처 검색과 이벤트 읽기"`
 
 ### Task 5: 폰트 내장
 
