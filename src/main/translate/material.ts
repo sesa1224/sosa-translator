@@ -6,7 +6,7 @@ export interface Material {
   names: { name: string; count: number }[];                 // speakers + actor names (count = lines spoken, 0 for actors only)
   properNouns: { text: string; count: number }[];           // katakana runs or words inside 【】『』, 3+ times, most first, up to 80
   sfx: { text: string; count: number }[];                   // a 2-4 kana chunk repeated back to back, 2+ times, most first, up to 60
-  samples: { speaker: string; lines: string[] }[];          // up to 12 most talkative speakers, up to 8 lines each
+  samples: { speaker: string; lines: string[]; moans: string[] }[]; // up to 12 most talkative speakers, up to 8 lines and 4 moan/exclamation lines each
   menuTerms: string[];                                      // sources of kind 'system'
   narrationSamples: string[];                               // up to 10 lines with no speaker
 }
@@ -20,6 +20,23 @@ const SAMPLE_LINES = 8;
 const SAMPLE_MIN_LEN = 10;
 const SAMPLE_MAX_LEN = 80;
 const NARRATION_MAX = 10;
+const MOAN_MAX = 4;
+const MOAN_RATIO = 0.7;
+/** Kana, long-vowel marks, small tsu, punctuation, hearts and ellipses: what moans and exclamations are made of. */
+const MOAN_CHAR = /[ぁ-ゖァ-ヺー〜～…‥・、。，．！？!?♥❤♡♪「」『』（）()〝〟"'ｰ\-—―~]/;
+
+/** Marks that show a sound rather than plain speech: ellipses, hearts, small kana, long-vowel marks. */
+const MOAN_MARK = /[…‥♥❤♡っッぁぃぅぇぉァィゥェォゃャー〜～]/;
+
+/**
+ * A line made (70%+) of kana, long marks, punctuation, hearts and ellipses: mostly moans or exclamations.
+ * It must also carry a sound mark, so plain kana-only speech ("ちゃんと払うわ") does not count.
+ */
+export function isMoanLine(body: string): boolean {
+  const chars = [...body.replace(/\s+/g, '')];
+  if (chars.length === 0 || !MOAN_MARK.test(body)) return false;
+  return chars.filter((c) => MOAN_CHAR.test(c)).length / chars.length >= MOAN_RATIO;
+}
 
 const KATAKANA_RUN = /[ァ-ヺ][ァ-ヺー]+/g;
 const BRACKETED = /[【『]([^【】『』\n]+)[】』]/g;
@@ -66,6 +83,7 @@ export function collectMaterial(units: TextUnit[], pattern: string | null): Mate
   const nouns = new Map<string, number>();
   const sfx = new Map<string, number>();
   const linesBySpeaker = new Map<string, string[]>();
+  const moansBySpeaker = new Map<string, string[]>();
   const narration: string[] = [];
   const menuTerms: string[] = [];
 
@@ -87,6 +105,11 @@ export function collectMaterial(units: TextUnit[], pattern: string | null): Mate
     const speaker = u.speaker ? u.speaker : split.speaker;
     const body = u.speaker ? s : split.body;
     if (speaker) {
+      if (isMoanLine(body)) {
+        const list = moansBySpeaker.get(speaker) ?? [];
+        list.push(body);
+        moansBySpeaker.set(speaker, list);
+      }
       if (body.length >= SAMPLE_MIN_LEN && body.length <= SAMPLE_MAX_LEN) {
         const list = linesBySpeaker.get(speaker) ?? [];
         list.push(body);
@@ -96,9 +119,9 @@ export function collectMaterial(units: TextUnit[], pattern: string | null): Mate
   }
 
   const samples = spoken
-    .filter((s) => (linesBySpeaker.get(s.name)?.length ?? 0) > 0)
+    .filter((s) => (linesBySpeaker.get(s.name)?.length ?? 0) > 0 || (moansBySpeaker.get(s.name)?.length ?? 0) > 0)
     .slice(0, SAMPLE_SPEAKERS)
-    .map((s) => ({ speaker: s.name, lines: spread(linesBySpeaker.get(s.name)!, SAMPLE_LINES) }));
+    .map((s) => ({ speaker: s.name, lines: spread(linesBySpeaker.get(s.name) ?? [], SAMPLE_LINES), moans: spread(moansBySpeaker.get(s.name) ?? [], MOAN_MAX) }));
 
   return {
     names,

@@ -261,7 +261,7 @@ export class ProjectService extends EventEmitter {
 
   private check(unit: TextUnit, target: string): Issue[] {
     const g = this.gloss;
-    return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars });
+    return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern });
   }
 
   setTranslation(id: string, target: string, origin: Origin): Promise<Issue[]> {

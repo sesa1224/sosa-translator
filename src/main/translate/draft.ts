@@ -6,7 +6,7 @@ import { collectMaterial, type Material } from './material.js';
 
 export interface DraftResult {
   terms: { source: string; category: TermCategory; candidates: { target: string; reason: string }[] }[];
-  characters: { source: string; target: string; speech: string; firstPerson?: string; addressing?: string }[];
+  characters: { source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }[];
   styleNotes: string;
 }
 
@@ -39,7 +39,7 @@ export const DRAFT_SCHEMA = {
         type: 'object',
         properties: {
           source: { type: 'string' }, target: { type: 'string' }, speech: { type: 'string' },
-          firstPerson: { type: 'string' }, addressing: { type: 'string' },
+          firstPerson: { type: 'string' }, addressing: { type: 'string' }, moanStyle: { type: 'string' },
         },
         required: ['source', 'target', 'speech'],
       },
@@ -58,7 +58,7 @@ export function isDraftResult(v: unknown): v is DraftResult {
   return Array.isArray(d.terms) && Array.isArray(d.characters) && isStr(d.styleNotes)
     && d.terms.every((t: any) => t && isStr(t.source) && CATEGORIES.includes(t.category) && Array.isArray(t.candidates)
       && t.candidates.every((c: any) => c && isStr(c.target) && optStr(c.reason)))
-    && d.characters.every((c: any) => c && isStr(c.source) && isStr(c.target) && isStr(c.speech) && optStr(c.firstPerson) && optStr(c.addressing));
+    && d.characters.every((c: any) => c && isStr(c.source) && isStr(c.target) && isStr(c.speech) && optStr(c.firstPerson) && optStr(c.addressing) && optStr(c.moanStyle));
 }
 
 export function buildDraftPrompt(material: Material, styleGuide: string): { system: string; user: string } {
@@ -73,7 +73,7 @@ export function buildDraftPrompt(material: Material, styleGuide: string): { syst
     '- names: 화자와 인물 이름. count 는 그 인물의 대사 수',
     '- properNouns: 여러 번 나온 고유명사 후보와 나온 횟수',
     '- sfx: 효과음·의성어 후보와 나온 횟수',
-    '- samples: 인물별 대사 표본',
+    '- samples: 인물별 대사 표본(lines)과 신음·감탄 위주 대사(moans)',
     '- menuTerms: 메뉴와 시스템 용어',
     '- narrationSamples: 화자 없는 지문 표본',
     '',
@@ -84,6 +84,7 @@ export function buildDraftPrompt(material: Material, styleGuide: string): { syst
     '- 효과음은 지침의 원칙대로 한국어 소리말로 정한다.',
     '- properNouns 에 섞여 들어온 일반 낱말(흔한 외래어 등)은 terms 에 넣지 않아도 된다.',
     '- 대사 표본을 보고 인물마다 말투를 한두 문장으로 적어 characters 에 넣는다. source 는 원문 이름, target 은 번역 이름, speech 는 말투, firstPerson 은 1인칭, addressing 은 남을 부르는 말이다. 알 수 없는 칸은 비워 둔다.',
+    '- 인물마다 성격에 맞는 신음·감탄 소리의 결을 moanStyle 에 한두 문장으로 적는다(예: 참다가 새는 짧은 소리, 받침으로 끊는다). 표본에 그런 대사가 없으면 성격에서 미루어 적는다.',
     '- 게임 전체의 분위기와 문체에서 지침에 더할 점을 styleNotes 에 적는다. 지침에 이미 있는 내용은 되풀이하지 않는다.',
     '- menuTerms 는 지침의 메뉴 용어 기준을 따르면 되므로 terms 에 넣지 않아도 된다.',
   ].join('\n');
@@ -132,6 +133,7 @@ export function mergeDraft(g: Glossary, draft: DraftResult, pattern: string | nu
     const card: CharacterCard = { id: termId(source), source, target: c.target.trim(), speech: c.speech.trim() };
     if (c.firstPerson?.trim()) card.firstPerson = c.firstPerson.trim();
     if (c.addressing?.trim()) card.addressing = c.addressing.trim();
+    if (c.moanStyle?.trim()) card.moanStyle = c.moanStyle.trim();
     characters.push(card);
   }
 

@@ -45,6 +45,7 @@ function readCharacter(v: any): CharacterCard | null {
   const c: CharacterCard = { id: str(v.id) && v.id ? v.id : termId(v.source), source: v.source, target: str(v.target) ? v.target : '', speech: str(v.speech) ? v.speech : '' };
   if (str(v.firstPerson) && v.firstPerson) c.firstPerson = v.firstPerson;
   if (str(v.addressing) && v.addressing) c.addressing = v.addressing;
+  if (str(v.moanStyle) && v.moanStyle) c.moanStyle = v.moanStyle;
   return c;
 }
 

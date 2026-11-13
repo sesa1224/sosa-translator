@@ -103,7 +103,7 @@ export function buildReviewPrompt(batch: ReviewBatch, glossary: Glossary): { sys
     '',
     '할 일:',
     '- 문제가 있는 항목만 돌려준다. 문제가 없으면 problems 를 빈 배열로 둔다.',
-    '- 오역, 빠진 내용, 어색한 한국어, 인물 말투와 맞지 않는 어미, 지침의 의성어·신음 원칙에 어긋난 표기, 용어집과 다른 용어가 대상이다.',
+    '- 오역, 빠진 내용, 어색한 한국어, 인물 말투와 맞지 않는 어미, 지침의 의성어·신음 원칙에 어긋난 표기, 인물의 성격·신음 스타일과 맞지 않는 신음 표기, 용어집과 다른 용어가 대상이다.',
     '- 취향 차이만 있는 것은 돌려주지 않는다.',
     '- problem 에 무엇이 문제인지 한 문장으로 적는다.',
     '- suggestion 은 고친 번역문 전체이고 제어문자를 그대로 유지한다. 화자 이름은 넣지 않고 target 과 같은 범위만 쓴다.',
@@ -111,7 +111,7 @@ export function buildReviewPrompt(batch: ReviewBatch, glossary: Glossary): { sys
   const speakers = new Set(batch.items.map((i) => i.speaker).filter((s): s is string => s !== null));
   const user = {
     terms: batchTerms(batch, glossary.terms).map((t) => ({ source: t.source, target: t.target })),
-    characters: glossary.characters.filter((c) => speakers.has(c.source)).map((c) => ({ name: c.source, target: c.target, speech: c.speech })),
+    characters: glossary.characters.filter((c) => speakers.has(c.source)).map((c) => ({ name: c.source, target: c.target, speech: c.speech, ...(c.moanStyle ? { moanStyle: c.moanStyle } : {}) })),
     items: batch.items.map((i) => ({ i: i.i, kind: i.kind, speaker: i.speaker, source: i.source, target: i.target })),
   };
   return { system, user: JSON.stringify(user) };

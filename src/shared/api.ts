@@ -63,7 +63,7 @@ export interface Term {
   id: string; source: string; target: string; category: TermCategory;
   status: 'confirmed' | 'provisional'; candidates: TermCandidate[]; note?: string;
 }
-export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string }
+export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }
 export interface ProjectRules {
   controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
   maxLineWidthChars: number | null; speakerPattern: string | null;

@@ -147,13 +147,14 @@ function TermList({ terms }: { terms: Term[] }) {
   );
 }
 
-type CardField = 'target' | 'speech' | 'firstPerson' | 'addressing';
-const CARD_FIELDS: [CardField, string][] = [['target', '번역 이름'], ['speech', '말투'], ['firstPerson', '1인칭'], ['addressing', '호칭']];
+type CardField = 'target' | 'speech' | 'firstPerson' | 'addressing' | 'moanStyle';
+const CARD_FIELDS: [CardField, string][] = [['target', '번역 이름'], ['speech', '말투'], ['firstPerson', '1인칭'], ['addressing', '호칭'], ['moanStyle', '신음·감탄 스타일']];
 
 function cleanCard(c: CharacterCard): CharacterCard {
   const out: CharacterCard = { id: c.id, source: c.source, target: c.target.trim(), speech: c.speech.trim() };
   if (c.firstPerson?.trim()) out.firstPerson = c.firstPerson.trim();
   if (c.addressing?.trim()) out.addressing = c.addressing.trim();
+  if (c.moanStyle?.trim()) out.moanStyle = c.moanStyle.trim();
   return out;
 }
 
@@ -184,7 +185,7 @@ function Characters({ cards }: { cards: CharacterCard[] }) {
             {CARD_FIELDS.map(([f, label]) => (
               <div key={f} className="field">
                 <label htmlFor={`ch-${i}-${f}`} className="label">{label}</label>
-                {f === 'speech'
+                {f === 'speech' || f === 'moanStyle'
                   ? <textarea id={`ch-${i}-${f}`} aria-label={`${c.source} ${label}`} className="textbox edit" rows={2} value={c[f] ?? ''}
                       onChange={(e) => edit(i, f, e.target.value)} onBlur={commit} />
                   : <input id={`ch-${i}-${f}`} aria-label={`${c.source} ${label}`} className="input" value={c[f] ?? ''}

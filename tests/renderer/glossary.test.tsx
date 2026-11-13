@@ -103,3 +103,8 @@ test('말투 지침, 인물 카드, 형식 규칙', async () => {
     vi.useRealTimers();
   }
 });
+test('인물 카드의 신음·감탄 스타일', async () => {
+  await openGlossary({ characters: [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말' }] });
+  await user.type(screen.getByLabelText('リナ 신음·감탄 스타일'), '참다가 새는 짧은 소리'); await user.tab();
+  expect(api.calls).toContainEqual(['glossary.setCharacters', [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말', moanStyle: '참다가 새는 짧은 소리' }]]);
+});

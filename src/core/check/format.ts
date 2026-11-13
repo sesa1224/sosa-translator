@@ -1,4 +1,5 @@
 import { checkGlossary, lineWidthChars } from '../glossary/match.js';
+import { splitSpeaker } from '../text/speaker.js';
 import type { Term } from '../glossary/types.js';
 import type { TranslationStore } from '../store/translations.js';
 import { controlCodes } from '../text/controlCodes.js';
@@ -26,7 +27,7 @@ function lineCount(s: string): number {
 }
 
 /** Glossary consistency and line-width limit (optional part of the check). */
-export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null }
+export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null; speakerPattern?: string | null }
 
 /** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
 export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck): Issue[] {
@@ -61,7 +62,9 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
     issues.push({ rule: 'line-count', severity: 'warning', message: `대사가 ${rules.maxLines}줄을 넘습니다: ${dstLines}줄` });
   }
   if (glossary) {
-    issues.push(...checkGlossary(unit.source, target, glossary.terms));
+    // Moans in a character's line follow that character's style, so sound-effect terms are not enforced there.
+    const spoken = unit.kind === 'dialogue' && (!!unit.speaker || splitSpeaker(unit.source, glossary.speakerPattern ?? null).speaker !== null);
+    issues.push(...checkGlossary(unit.source, target, spoken ? glossary.terms.filter((t) => t.category !== 'sfx') : glossary.terms));
     const max = glossary.maxLineWidthChars;
     if (max !== null) {
       const srcLines = unit.source.split('\n');

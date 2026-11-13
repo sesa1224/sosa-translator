@@ -9,7 +9,7 @@ export interface Term {
   candidates: TermCandidate[];           // 2-3 when provisional; candidates[0].target === target
   note?: string;
 }
-export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string }
+export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }
 export interface ProjectRules extends FormatRules {
   maxLineWidthChars: number | null;   // width in Korean characters (half-width counts 0.5). Pixel widths come in plan 4
   speakerPattern: string | null;      // regex source; the first group is the speaker name

@@ -162,7 +162,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
     '',
     '입력(JSON):',
     '- terms: 이 묶음에 나오는 용어. 원문에 source 가 있으면 반드시 target 으로 옮긴다.',
-    '- characters: 이 묶음에 나오는 인물. name 은 원문 이름, target 은 번역 이름, speech 는 말투다. 그 인물의 대사는 이 말투를 따른다.',
+    '- characters: 이 묶음에 나오는 인물. name 은 원문 이름, target 은 번역 이름, speech 는 말투다. 그 인물의 대사는 이 말투를 따른다. moanStyle 이 있으면 그 인물의 신음·감탄 소리는 그 결을 따른다.',
     '- context: 이 묶음 바로 앞의 대사(참고만 하고 번역해서 돌려주지 않는다). target 이 있으면 이미 번역된 것이다.',
     '- items: 번역할 항목. speaker 는 그 대사를 말하는 인물이다.',
     '- 항목에 previous 와 problems 가 있으면 직전 번역이 검사에 걸린 것이다. problems 를 고쳐 다시 옮긴다.',
@@ -181,6 +181,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
       const out: Record<string, string> = { name: c.source, target: c.target, speech: c.speech };
       if (c.firstPerson) out.firstPerson = c.firstPerson;
       if (c.addressing) out.addressing = c.addressing;
+      if (c.moanStyle) out.moanStyle = c.moanStyle;
       return out;
     }),
     context: batch.context,
