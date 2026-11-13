@@ -129,7 +129,7 @@ export const DEFAULT_MODELS: ModelOption[] = [
 - Produces: 창 제목 `MV/MZ 번역 작업실`, `contextIsolation: true`, `nodeIntegration: false`, 최소 크기 1100×700. `theme.css` 에 위 표의 변수(`:root[data-theme="dark"]`, `:root[data-theme="light"]`).
 - Produces: 환경 변수 `MVMZ_USER_DATA` 가 있으면 `app.setPath('userData', …)` (시험이 설정과 프로젝트 폴더를 격리하는 데 쓴다)
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('앱이 뜨고 프로젝트 고르기 화면이 보인다', async () => {
@@ -142,10 +142,10 @@ test('앱이 뜨고 프로젝트 고르기 화면이 보인다', async () => {
 });
 ```
 
-- [ ] **Step 2: `npm run build:app && npm run test:e2e` → FAIL**
-- [ ] **Step 3: 구현** — `App.tsx` 는 지금은 `<h1>프로젝트</h1>` 만 그린다
-- [ ] **Step 4: PASS, 그리고 `npx vitest run` 으로 계획 1 시험 61개 통과 확인**
-- [ ] **Step 5: `git commit -m "feat: Electron 뼈대와 연기 시험"`**
+- [x] **Step 2: `npm run build:app && npm run test:e2e` → FAIL**
+- [x] **Step 3: 구현** — `App.tsx` 는 지금은 `<h1>프로젝트</h1>` 만 그린다
+- [x] **Step 4: PASS, 그리고 `npx vitest run` 으로 계획 1 시험 61개 통과 확인**
+- [x] **Step 5: `git commit -m "feat: Electron 뼈대와 연기 시험"`**
 
 ### Task 2: ProjectService
 

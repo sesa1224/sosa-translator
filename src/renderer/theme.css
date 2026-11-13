@@ -1,0 +1,24 @@
+:root[data-theme="dark"] {
+  --bg: #121418; --panel: #181B20; --card: #1F232A; --line: #2A2F38;
+  --text: #E9E7E2; --sub: #A9ADB5; --mute: #8B909A;
+  --accent: #5CC8B5; --accent-bg: #17342F; --accent-text: #8ADBCC; --on-accent: #0E1513;
+  --warn: #E3AD55; --warn-bg: #3A2D14; --err: #F2A093; --err-bg: #3D1F1C;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #F6F5F1; --panel: #FFFFFF; --card: #F0EFEA; --line: #DDDAD2;
+  --text: #1B1D21; --sub: #555A63; --mute: #6B7079;
+  --accent: #0F7A6B; --accent-bg: #DDF1ED; --accent-text: #0B5F53; --on-accent: #FFFFFF;
+  --warn: #8A5A00; --warn-bg: #F8EBCB; --err: #A8322A; --err-bg: #F9DEDA;
+  color-scheme: light;
+}
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'IBM Plex Sans KR', system-ui, sans-serif; font-size: 14px; line-height: 1.55;
+}
+button { font-family: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+input, select, textarea { font-family: inherit; }
+.mono { font-family: 'IBM Plex Mono', monospace; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
