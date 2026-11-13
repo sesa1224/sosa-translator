@@ -269,7 +269,7 @@ test('상태 필터와 통계', () => {
 
 입력이 스키마에 맞지 않거나 모르는 도구면 `ok: false`. 설명글(description)은 한국어로, 언제 쓰는지 한 문장. `search_units` 의 설명에는 "원문, 번역, 화자에서 글자 그대로 찾는다"를 적는다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('검색하고 번역을 쓴다', async () => {
@@ -293,10 +293,10 @@ test('되돌리기는 채팅 변경만', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/toolHandlers.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 채팅용 도구 처리기"`**
+- [x] **Step 2: `npx vitest run tests/main/toolHandlers.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 채팅용 도구 처리기"`**
 
 ### Task 5: 브리지와 MCP 서버
 
