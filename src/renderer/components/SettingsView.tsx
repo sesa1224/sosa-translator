@@ -3,6 +3,7 @@ import type { AppSettings, StageModels } from '../../shared/api';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 import { useApp } from '../state';
+import { FontPicker } from './FontPicker';
 
 export function SettingsView() {
   const { settings, claudePath } = useApp();
@@ -135,6 +136,7 @@ export function SettingsView() {
         <span className="hint">새 프로젝트가 이 폴더 아래에 만들어져요. 이미 있는 프로젝트는 옮기지 않아요.</span>
       </section>
 
+      <FontPicker />
       {error && <span className="err-text" role="alert">{error}</span>}
     </div>
   );

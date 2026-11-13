@@ -137,14 +137,14 @@ export function GamePreview({ unitId, text }: { unitId: string; text: string }) 
     body = (
       <div className="gp-empty">
         <span className="sub small">게임 폰트를 고르면 실제 폭으로 볼 수 있어요</span>
-        <button type="button" className="btn small-btn" onClick={() => useApp.setView('settings')}>폰트 고르기</button>
+        <button type="button" className="btn small-btn" onClick={() => useApp.openFontPicker()}>폰트 고르기</button>
       </div>
     );
   } else if (state?.fontMissing) {
     body = (
       <div className="gp-empty">
         <span className="warn-text small">고른 폰트 파일을 찾을 수 없어요</span>
-        <button type="button" className="btn small-btn" onClick={() => useApp.setView('settings')}>폰트 고르기</button>
+        <button type="button" className="btn small-btn" onClick={() => useApp.openFontPicker()}>폰트 고르기</button>
       </div>
     );
   } else if (state && layout) {

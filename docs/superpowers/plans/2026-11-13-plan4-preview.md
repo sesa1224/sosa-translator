@@ -252,7 +252,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - `skippedCollections: 3` 이면 "모음 파일(.ttc) 3개는 아직 쓸 수 없어요"
 - 치수 칸을 고치면 `preview.setOverrides({ fontSize: 24 })`, 되돌리기는 `preview.setOverrides({})`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 고르기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 고르기"`
 
 ### Task 8: 스토리 보기
 
