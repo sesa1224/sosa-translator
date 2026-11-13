@@ -115,7 +115,7 @@ export interface ImageEntry {
 - `isBuildable`: `todo` 는 false, `done` + 문제없음은 true, `done` + `base-changed` 는 false, `manual` + `manualFile` 은 true, `skip` 은 false
 - 저장하고 다시 읽으면 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 지시서 저장"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 지시서 저장"`
 
 ### Task 3: 그리기 계획 (순수 계산)
 
