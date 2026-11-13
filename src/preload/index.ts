@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { Api, InvokeChannel, PushChannel } from '../shared/api.js';
-import type { PreviewInvokeChannel } from '../shared/api.js';
-import type { ImagesInvokeChannel } from '../shared/api.js';
 
-/** ipcRenderer.invoke with the "Error invoking remote method 'x': Error: " prefix removed. */
+// Builds window.api from the channel list in src/shared/api.ts. Each method is a thin ipcRenderer.invoke;
+// the renderer has no Node access and reaches files only through these channels.
+
+/** ipcRenderer.invoke with the "Error invoking remote method 'x': Error: " prefix removed, so screens can show the Korean message as is. */
 async function call(channel: InvokeChannel, ...args: unknown[]): Promise<any> {
   try {
     return await ipcRenderer.invoke(channel, ...args);
@@ -11,16 +12,6 @@ async function call(channel: InvokeChannel, ...args: unknown[]): Promise<any> {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(msg.replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, ''));
   }
-}
-
-/** call() for the plan 4 channels. */
-function callP(channel: PreviewInvokeChannel, ...args: unknown[]): Promise<any> {
-  return call(channel as unknown as InvokeChannel, ...args);
-}
-
-/** call() for the plan 7 channels. */
-function callI(channel: ImagesInvokeChannel, ...args: unknown[]): Promise<any> {
-  return call(channel as unknown as InvokeChannel, ...args);
 }
 
 const api: Api = {
@@ -99,87 +90,72 @@ const api: Api = {
     return () => { ipcRenderer.removeListener(channel, listener); };
   },
   preview: {
-    get: () => callP('preview:get'),
-    layout: (id, text) => callP('preview:layout', id, text),
-    setFont: (path) => callP('preview:setFont', path),
-    setOverrides: (o) => callP('preview:setOverrides', o),
-    countOverflow: (path) => callP('preview:countOverflow', path),
-    windowSkin: () => callP('preview:windowSkin'),
+    get: () => call('preview:get'),
+    layout: (id, text) => call('preview:layout', id, text),
+    setFont: (path) => call('preview:setFont', path),
+    setOverrides: (o) => call('preview:setOverrides', o),
+    countOverflow: (path) => call('preview:countOverflow', path),
+    windowSkin: () => call('preview:windowSkin'),
   },
   fonts: {
-    list: () => callP('fonts:list'),
-    bytes: (path) => callP('fonts:bytes', path),
-    pickFile: () => callP('fonts:pickFile'),
+    list: () => call('fonts:list'),
+    bytes: (path) => call('fonts:bytes', path),
+    pickFile: () => call('fonts:pickFile'),
   },
   story: {
-    scenes: (file) => callP('story:scenes', file),
+    scenes: (file) => call('story:scenes', file),
   },
-  // ---- plan 5: events, patches, game ----
   events: {
-    files: () => callE('events:files'),
-    list: (file) => callE('events:list', file),
-    read: (file, listPath, version) => callE('events:read', file, listPath, version),
-    usage: (target) => callE('events:usage', target),
+    files: () => call('events:files'),
+    list: (file) => call('events:list', file),
+    read: (file, listPath, version) => call('events:read', file, listPath, version),
+    usage: (target) => call('events:usage', target),
   },
   patches: {
-    list: () => callE('patches:list'),
-    add: (p) => callE('patches:add', p),
-    update: (id, p) => callE('patches:update', id, p),
-    remove: (id) => callE('patches:remove', id),
-    setGameFont: (fontPath, subset) => callE('patches:setGameFont', fontPath, subset),
-    creatorReport: () => callE('patches:creatorReport'),
-    lastFontEmbed: () => callE('patches:lastFontEmbed'),
+    list: () => call('patches:list'),
+    add: (p) => call('patches:add', p),
+    update: (id, p) => call('patches:update', id, p),
+    remove: (id) => call('patches:remove', id),
+    setGameFont: (fontPath, subset) => call('patches:setGameFont', fontPath, subset),
+    creatorReport: () => call('patches:creatorReport'),
+    lastFontEmbed: () => call('patches:lastFontEmbed'),
   },
   game: {
-    run: () => callE('game:run'),
-    stop: () => callE('game:stop'),
+    run: () => call('game:run'),
+    stop: () => call('game:stop'),
   },
-  // ---- plan 7: pictures and build history ----
   images: {
-    list: () => callI('images:list'),
-    recipe: (file) => callI('images:recipe', file),
-    thumb: (file, which) => callI('images:thumb', file, which),
-    full: (file, which) => callI('images:full', file, which),
-    setRecipe: (file, regions) => callI('images:setRecipe', file, regions),
-    setStatus: (file, status) => callI('images:setStatus', file, status),
-    pickManual: (file) => callI('images:pickManual', file),
-    clearManual: (file) => callI('images:clearManual', file),
-    acceptBase: (file) => callI('images:acceptBase', file),
-    setDefaultFont: (path) => callI('images:setDefaultFont', path),
-    rerenderAll: () => callI('images:rerenderAll'),
-    defaultFont: () => callI('images:defaultFont'),
-    overflow: (file) => callI('images:overflow', file),
-    failure: (file) => callI('images:failure', file),
-    folders: () => callI('images:folders'),
-    setFolders: (folders) => callI('images:setFolders', folders),
+    list: () => call('images:list'),
+    recipe: (file) => call('images:recipe', file),
+    thumb: (file, which) => call('images:thumb', file, which),
+    full: (file, which) => call('images:full', file, which),
+    setRecipe: (file, regions) => call('images:setRecipe', file, regions),
+    setStatus: (file, status) => call('images:setStatus', file, status),
+    pickManual: (file) => call('images:pickManual', file),
+    clearManual: (file) => call('images:clearManual', file),
+    acceptBase: (file) => call('images:acceptBase', file),
+    setDefaultFont: (path) => call('images:setDefaultFont', path),
+    rerenderAll: () => call('images:rerenderAll'),
+    defaultFont: () => call('images:defaultFont'),
+    overflow: (file) => call('images:overflow', file),
+    failure: (file) => call('images:failure', file),
+    folders: () => call('images:folders'),
+    setFolders: (folders) => call('images:setFolders', folders),
   },
   builds: {
-    list: () => callI('builds:list'),
-    setNotes: (number, text) => callI('builds:setNotes', number, text),
-    polishNotes: (number) => callI('builds:polishNotes', number),
-    openFolder: (number) => callI('builds:openFolder', number),
+    list: () => call('builds:list'),
+    setNotes: (number, text) => call('builds:setNotes', number, text),
+    polishNotes: (number) => call('builds:polishNotes', number),
+    openFolder: (number) => call('builds:openFolder', number),
   },
-  // ---- plan 6: game updates ----
   update: {
-    inspect: (gameDir) => callU('update:inspect', gameDir),
-    pickGameDir: () => callU('update:pickGameDir'),
-    import: (gameDir, label) => callU('update:import', gameDir, label),
-    rollback: () => callU('update:rollback'),
-    summary: () => callU('update:summary'),
-    versions: () => callU('update:versions'),
+    inspect: (gameDir) => call('update:inspect', gameDir),
+    pickGameDir: () => call('update:pickGameDir'),
+    import: (gameDir, label) => call('update:import', gameDir, label),
+    rollback: () => call('update:rollback'),
+    summary: () => call('update:summary'),
+    versions: () => call('update:versions'),
   },
 };
 
 contextBridge.exposeInMainWorld('api', api);
-
-/** call() for the plan 5 channels (a function declaration, so the api object above can use it). */
-function callE(channel: EventInvokeChannel, ...args: unknown[]): Promise<any> {
-  return call(channel as unknown as InvokeChannel, ...args);
-}
-import type { EventInvokeChannel } from '../shared/api.js';
-
-/** call() for the plan 6 channels. */
-function callU(channel: UpdateInvokeChannel, ...args: unknown[]): Promise<any> {
-  return call(channel as unknown as InvokeChannel, ...args);
-}
-import type { UpdateInvokeChannel } from '../shared/api.js';

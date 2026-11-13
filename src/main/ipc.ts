@@ -1,52 +1,60 @@
+import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
-import { readdir, rm, stat } from 'node:fs/promises';
+import { readdir, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { detectGame, openProject, originalDir, readJsonFile, type TextUnit, type TranslationStatus } from '../core/index.js';
 import type * as core from '../core/index.js';
 import type * as shared from '../shared/api.js';
-import type {
-  AppSettings, ChatEvent, ChatImage, InvokeChannel, JobProgress, ProjectChanged, ProjectListItem, PushChannel, PushEvents, ReviewPlan,
-  ReviewScopeArg, Row, Snapshot, UnitDetail,
+import {
+  DEFAULT_DECIDE_MODEL,
+  type AppSettings, type ChatEvent, type ChatImage, type DecisionInput, type FontInfo, type InvokeChannel, type JobProgress,
+  type PreviewState, type ProjectChanged, type ProjectListItem, type PushChannel, type PushEvents, type ReviewPlan,
+  type ReviewScopeArg, type Row, type Snapshot, type UnitDetail,
 } from '../shared/api.js';
 import type * as glossaryTypes from '../core/glossary/types.js';
 import { DEFAULT_STYLE_GUIDE } from '../core/glossary/store.js';
 import { detectSpeakerPattern } from '../core/text/speaker.js';
-import { runClaudeJson } from './claude/json.js';
-import { DraftJob, planDraft, type DraftMode, type DraftOptions } from './translate/draft.js';
-import type { JobLike, JobOptions } from './translate/job.js';
-import { TranslateJob } from './translate/job.js';
-import { planReview, ReviewJob } from './translate/review.js';
-import { computeScopes, computeStats, locationLabel, toRow } from '../shared/rows.js';
-import { buildSystemPrompt } from './claude/prompt.js';
 import type { ImportPlan as ExchangeImportPlan } from '../core/exchange/package.js';
-import { DEFAULT_DECIDE_MODEL, type DecisionInput } from '../shared/api.js';
+import { decryptAsset } from '../core/engine/crypto.js';
+import type { BuildDiff as CoreBuildDiff } from '../core/notes/diff.js';
+import { buildFolder, finishedBuilds } from '../core/notes/snapshot.js';
+import { IMAGE_FOLDERS } from '../core/images/catalog.js';
+import { inspectNewVersion } from '../core/update/importVersion.js';
+import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
+import type * as browseTypes from '../core/events/browse.js';
+import { findUsage } from '../core/events/usage.js';
+import type * as usageTypes from '../core/events/usage.js';
+import type * as describeTypes from '../core/events/describe.js';
+import { computeScopes, computeStats, locationLabel, toRow } from '../shared/rows.js';
+import { claudeLoggedIn } from './claude/auth.js';
+import { runClaudeJson } from './claude/json.js';
+import { buildSystemPrompt } from './claude/prompt.js';
+import { DraftJob, planDraft, type DraftMode, type DraftOptions } from './translate/draft.js';
+import { TranslateJob, type JobLike, type JobOptions } from './translate/job.js';
+import { planReview, ReviewJob } from './translate/review.js';
 import { DecideJob } from './translate/decide.js';
 import { ProjectService } from './projectService.js';
 import { loadSettings, saveSettings } from './settings.js';
-import { readFile } from 'node:fs/promises';
-import { decryptAsset } from '../core/engine/crypto.js';
-import type { FontInfo, PreviewInvokeChannel, PreviewState } from '../shared/api.js';
 import { listFonts, systemFontDirs } from './fonts/catalog.js';
 import { readFontInfo } from './fonts/fontFile.js';
+import { lastFontEmbed } from './fontEmbed.js';
+import { GameRunner } from './gameRun.js';
 import { PreviewService } from './preview.js';
 import { buildScenes } from './story.js';
 import type { RenderService } from './render/renderService.js';
-import type { ImagesInvokeChannel } from '../shared/api.js';
-import type { BuildDiff as CoreBuildDiff } from '../core/notes/diff.js';
 import { ImageService, registerImageContributor, RerenderJob } from './images.js';
 import { NotesJob, readBuildDiff, readBuildNotes, registerNotesContributor, setBuildNotes } from './buildNotes.js';
-import { buildFolder, finishedBuilds } from '../core/notes/snapshot.js';
-import { IMAGE_FOLDERS } from '../core/images/catalog.js';
 
 // Compile-time check that the renderer-side copies in shared/api.ts match the core types.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 export const sharedTypesMatch: [
   Same<core.ProjectMeta, shared.ProjectMeta>, Same<core.BuildResult, shared.BuildResult>,
   Same<glossaryTypes.Glossary, shared.Glossary>, Same<glossaryTypes.Term, shared.Term>,
-] = [true, true, true, true];
-
-export const sharedTypesMatch3b: [Same<ExchangeImportPlan, shared.ImportPlan>] = [true];
-export const sharedTypesMatch7: [Same<CoreBuildDiff, shared.BuildDiff>] = [true];
+  Same<ExchangeImportPlan, shared.ImportPlan>, Same<CoreBuildDiff, shared.BuildDiff>,
+  Same<browseTypes.EventFileInfo, shared.EventFileInfo>, Same<browseTypes.EventListInfo, shared.EventListInfo>,
+  Same<browseTypes.EventDetail, shared.EventDetail>, Same<usageTypes.EventRef, shared.EventRef>,
+  Same<describeTypes.DescribedLine, shared.EventLine>, Same<usageTypes.UsageTarget, shared.UsageTarget>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true];
 
 export const JOB_BUSY = '다른 작업이 진행 중입니다';
 export const CONFIRM_FIRST = '용어집을 먼저 확정하세요';
@@ -92,12 +100,12 @@ export interface IpcDeps {
   pickOpenFile?(): Promise<string | null>;
   /** Starts the test-play game (tests give a fake; MVMZ_GAME_SPAWN_FAKE=1 uses one too). */
   spawnGame?: typeof import('node:child_process').spawn;
-  // ---- plan 7 ----
+  // Pictures
   /** Draws pictures (the hidden worker window in the app, a fake in tests). */
   render?: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'>;
   /** Open dialog for a hand-fixed PNG (null = cancelled). */
   pickPngFile?(): Promise<string | null>;
-  // ---- plan 6 ----
+  // Game updates and the Claude CLI check
   /** Folder dialog for the game's new version (null = cancelled; default: pickDirectory). */
   pickNewVersionDir?(): Promise<string | null>;
   /** The CLI command for `claude auth status` (default: claudePath(configured) with no prefix arguments). */
@@ -147,6 +155,12 @@ function attachedPrefix(row: Row): string {
   return `[붙은 항목] id=${row.id} 위치=${row.location}\n원문: ${row.source}\n번역: ${row.target ?? '(번역 없음)'}\n\n`;
 }
 
+/** A game process that only pretends to run (end-to-end tests): it ends when stopped. */
+const fakeGameSpawn = ((): unknown => {
+  const child = Object.assign(new EventEmitter(), { kill: () => { child.emit('exit', 0); return true; } });
+  return child;
+}) as unknown as typeof import('node:child_process').spawn;
+
 /** Registers every window.api handler. Returns a disposer used on app quit. */
 export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   let rows = new Map<string, Row>();
@@ -172,7 +186,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   async function closeProject(): Promise<void> {
     stopPreview();
-    closePlan5();
+    stopGame();
     stopImages();
     disposeChat();
     job?.stop();
@@ -227,7 +241,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       if (deps.holder.svc !== s) return;
       deps.broadcast('decisions:changed', s.decisionGroups());
     });
-    adoptPlan5(s);
+    watchPatches(s);
     await startImages(s);
     s.setBusyCheck(() => busy());
   }
@@ -416,14 +430,11 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('app:claudePath', async () => deps.claudePath((await settings()).claudePath));
   handle('app:showItemInFolder', (file: string) => { deps.showItemInFolder(file); });
 
-  // ---- plan 4: preview and fonts ----
+  // ---- preview and fonts ----
   let preview: PreviewService | null = null;
   /** Fonts the renderer may read: the last listed ones and the ones the user picked. */
   let listedFonts: FontInfo[] = [];
   const userFonts: FontInfo[] = [];
-  const handleP = (channel: PreviewInvokeChannel, fn: (...args: any[]) => unknown) => {
-    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
-  };
   const needPreview = (): PreviewService => {
     if (!preview) throw new Error('열린 프로젝트가 없습니다');
     return preview;
@@ -462,18 +473,18 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     }
   }
 
-  handleP('preview:get', () => previewState(needPreview()));
-  handleP('preview:layout', (id: string, text?: string) => needPreview().layoutFor(String(id), typeof text === 'string' ? text : undefined));
-  handleP('preview:setFont', async (p: string | null) => {
+  handle('preview:get', () => previewState(needPreview()));
+  handle('preview:layout', (id: string, text?: string) => needPreview().layoutFor(String(id), typeof text === 'string' ? text : undefined));
+  handle('preview:setFont', async (p: string | null) => {
     await needPreview().setFont(typeof p === 'string' && p ? p : null);
     announcePreview();
   });
-  handleP('preview:setOverrides', async (o: Partial<core.WindowMetrics>) => {
+  handle('preview:setOverrides', async (o: Partial<core.WindowMetrics>) => {
     await needPreview().setOverrides(o && typeof o === 'object' ? o : {});
     announcePreview();
   });
-  handleP('preview:countOverflow', (p?: string | null) => needPreview().countOverflow(typeof p === 'string' && p ? p : undefined));
-  handleP('preview:windowSkin', async (): Promise<Uint8Array | null> => {
+  handle('preview:countOverflow', (p?: string | null) => needPreview().countOverflow(typeof p === 'string' && p ? p : undefined));
+  handle('preview:windowSkin', async (): Promise<Uint8Array | null> => {
     const game = await gameContent(svc());
     if (!game) return null;
     const dir = path.join(game.contentDir, 'img', 'system');
@@ -490,7 +501,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return null;
   });
 
-  handleP('fonts:list', async (): Promise<shared.FontList> => {
+  handle('fonts:list', async (): Promise<shared.FontList> => {
     const s = deps.holder.svc;
     const game = s ? await gameContent(s) : null;
     const r = await listFonts({
@@ -503,7 +514,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     listedFonts = [...r.fonts, ...userFonts.filter((f) => !seen.has(fontKey(f.path)))];
     return { fonts: listedFonts, skippedCollections: r.skippedCollections };
   });
-  handleP('fonts:bytes', async (p: string): Promise<Uint8Array> => {
+  handle('fonts:bytes', async (p: string): Promise<Uint8Array> => {
     const key = fontKey(String(p ?? ''));
     const chosen = preview?.settings().fontPath;
     const allowed = listedFonts.some((f) => fontKey(f.path) === key) || userFonts.some((f) => fontKey(f.path) === key)
@@ -511,7 +522,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     if (!allowed) throw new Error('목록에 없는 폰트입니다');
     return new Uint8Array(await readFile(String(p)));
   });
-  handleP('fonts:pickFile', async (): Promise<FontInfo | null> => {
+  handle('fonts:pickFile', async (): Promise<FontInfo | null> => {
     const file = deps.pickFontFile ? await deps.pickFontFile() : null;
     if (!file) return null;
     const info = await readFontInfo(file);
@@ -524,12 +535,12 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return picked;
   });
 
-  handleP('story:scenes', (file: string) => {
+  handle('story:scenes', (file: string) => {
     const s = svc();
     return buildScenes(s.projectDir, s.units(), String(file ?? ''), s.glossary().rules.speakerPattern);
   });
 
-  // ---- decisions, game title, exchange (plan 3b) ----
+  // ---- decisions, game title, exchange ----
   let importPlan: ExchangeImportPlan | null = null;
   handle('decisions:groups', () => svc().decisionGroups());
   handle('decisions:set', (key: string, d: DecisionInput) => svc().setDecision(String(key), { translate: !!d?.translate, keep: d?.keep ?? { mode: 'whole' }, ...(d?.reason !== undefined ? { reason: d.reason } : {}) }, 'user'));
@@ -567,22 +578,19 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return svc().applyImport(plan, overwrite === true);
   });
 
-  // ---- plan 5: events, patches, game run ----
-  const handleE = (channel: EventInvokeChannel, fn: (...args: any[]) => unknown) => {
-    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
-  };
+  // ---- events, patches, test play ----
   let runner: GameRunner | null = null;
   const patchList = async (s: ProjectService): Promise<shared.PatchList> => ({ patches: s.patches(), statuses: await s.patchStatuses() });
 
   /** Called when a project is opened: patch changes (from the screen or the chat) reach every window. */
-  function adoptPlan5(s: ProjectService): void {
+  function watchPatches(s: ProjectService): void {
     s.on('patches-changed', () => {
       if (deps.holder.svc !== s) return;
       void patchList(s).then((l) => { if (deps.holder.svc === s) deps.broadcast('patches:changed', l); }).catch(() => undefined);
     });
   }
 
-  function closePlan5(): void {
+  function stopGame(): void {
     runner?.stop();
     runner = null;
   }
@@ -599,18 +607,18 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return null;
   }
 
-  handleE('events:files', () => eventFiles(svc().projectDir));
-  handleE('events:list', (file: string) => listEvents(svc().projectDir, String(file ?? '')));
-  handleE('events:read', (file: string, listPath: core.PathSeg[], version?: string) =>
+  handle('events:files', () => eventFiles(svc().projectDir));
+  handle('events:list', (file: string) => listEvents(svc().projectDir, String(file ?? '')));
+  handle('events:read', (file: string, listPath: core.PathSeg[], version?: string) =>
     readEvent(svc().projectDir, String(file ?? ''), Array.isArray(listPath) ? listPath : [], typeof version === 'string' && version ? version : undefined));
-  handleE('events:usage', (target: shared.UsageTarget) => findUsage(svc().projectDir, target));
-  handleE('patches:list', () => patchList(svc()));
-  handleE('patches:add', (p: shared.NewPatch) => svc().addPatch(p, 'user'));
-  handleE('patches:update', (id: string, p: shared.PatchChange) => svc().updatePatch(String(id), p ?? {}));
-  handleE('patches:remove', (id: string) => svc().removePatch(String(id)));
-  handleE('patches:setGameFont', (fontPath: string | null, subset: boolean) => svc().setGameFontPatch(typeof fontPath === 'string' && fontPath ? fontPath : null, subset !== false));
-  handleE('patches:creatorReport', () => svc().creatorReport());
-  handleE('game:run', async () => {
+  handle('events:usage', (target: shared.UsageTarget) => findUsage(svc().projectDir, target));
+  handle('patches:list', () => patchList(svc()));
+  handle('patches:add', (p: shared.NewPatch) => svc().addPatch(p, 'user'));
+  handle('patches:update', (id: string, p: shared.PatchChange) => svc().updatePatch(String(id), p ?? {}));
+  handle('patches:remove', (id: string) => svc().removePatch(String(id)));
+  handle('patches:setGameFont', (fontPath: string | null, subset: boolean) => svc().setGameFontPatch(typeof fontPath === 'string' && fontPath ? fontPath : null, subset !== false));
+  handle('patches:creatorReport', () => svc().creatorReport());
+  handle('game:run', async () => {
     const s = svc();
     const patchDir = await latestPatchDir(s.projectDir);
     if (!patchDir) throw new Error('먼저 패치를 빌드하세요');
@@ -640,12 +648,9 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     }
     deps.broadcast('game:state', { state: 'running' });
   });
-  handleE('game:stop', () => { runner?.stop(); });
-  // ---- plan 7: pictures and build history ----
+  handle('game:stop', () => { runner?.stop(); });
+  // ---- pictures and build history ----
   let images: ImageService | null = null;
-  const handleI = (channel: ImagesInvokeChannel, fn: (...args: any[]) => unknown) => {
-    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
-  };
   const noRender: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'> = {
     render: () => Promise.reject(new Error('그림을 찍을 수 없습니다')),
     sheet: () => Promise.reject(new Error('그림을 찍을 수 없습니다')),
@@ -685,33 +690,33 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   const fileArg = (f: unknown) => String(f ?? '');
   const whichArg = (w: unknown): 'original' | 'rendered' => (w === 'rendered' ? 'rendered' : 'original');
-  handleI('images:list', () => (images ? images.list() : []));
-  handleI('images:recipe', (file: string) => needImages().recipe(fileArg(file)));
-  handleI('images:thumb', (file: string, which: string) => needImages().thumbnail(fileArg(file), whichArg(which)));
-  handleI('images:full', (file: string, which: string) => (whichArg(which) === 'rendered' ? needImages().rendered(fileArg(file)) : needImages().original(fileArg(file))));
-  handleI('images:setRecipe', (file: string, regions: unknown) => needImages().setRecipe(fileArg(file), Array.isArray(regions) ? regions : [], 'user'));
-  handleI('images:setStatus', (file: string, status: core.ImageStatus) => needImages().setStatus(fileArg(file), status));
-  handleI('images:pickManual', async (file: string) => {
+  handle('images:list', () => (images ? images.list() : []));
+  handle('images:recipe', (file: string) => needImages().recipe(fileArg(file)));
+  handle('images:thumb', (file: string, which: string) => needImages().thumbnail(fileArg(file), whichArg(which)));
+  handle('images:full', (file: string, which: string) => (whichArg(which) === 'rendered' ? needImages().rendered(fileArg(file)) : needImages().original(fileArg(file))));
+  handle('images:setRecipe', (file: string, regions: unknown) => needImages().setRecipe(fileArg(file), Array.isArray(regions) ? regions : [], 'user'));
+  handle('images:setStatus', (file: string, status: core.ImageStatus) => needImages().setStatus(fileArg(file), status));
+  handle('images:pickManual', async (file: string) => {
     const im = needImages();
     const picked = deps.pickPngFile ? await deps.pickPngFile() : null;
     if (!picked) return false;
     await im.setManual(fileArg(file), picked);
     return true;
   });
-  handleI('images:clearManual', (file: string) => needImages().setManual(fileArg(file), null));
-  handleI('images:acceptBase', (file: string) => needImages().acceptBase(fileArg(file)));
-  handleI('images:setDefaultFont', (p: string | null) => needImages().setDefaultFont(typeof p === 'string' && p ? p : null));
-  handleI('images:defaultFont', () => images?.defaultFontPath ?? null);
-  handleI('images:overflow', (file: string) => needImages().overflow(fileArg(file)));
-  handleI('images:failure', (file: string) => needImages().failure(fileArg(file)) ?? null);
-  handleI('images:folders', () => ({ folders: images ? images.folders() : [...IMAGE_FOLDERS], defaults: [...IMAGE_FOLDERS] }));
-  handleI('images:setFolders', (folders: string[] | null) => needImages().setFolders(Array.isArray(folders) ? folders.map(String) : null));
-  handleI('images:rerenderAll', () => {
+  handle('images:clearManual', (file: string) => needImages().setManual(fileArg(file), null));
+  handle('images:acceptBase', (file: string) => needImages().acceptBase(fileArg(file)));
+  handle('images:setDefaultFont', (p: string | null) => needImages().setDefaultFont(typeof p === 'string' && p ? p : null));
+  handle('images:defaultFont', () => images?.defaultFontPath ?? null);
+  handle('images:overflow', (file: string) => needImages().overflow(fileArg(file)));
+  handle('images:failure', (file: string) => needImages().failure(fileArg(file)) ?? null);
+  handle('images:folders', () => ({ folders: images ? images.folders() : [...IMAGE_FOLDERS], defaults: [...IMAGE_FOLDERS] }));
+  handle('images:setFolders', (folders: string[] | null) => needImages().setFolders(Array.isArray(folders) ? folders.map(String) : null));
+  handle('images:rerenderAll', () => {
     if (busy()) throw new Error(JOB_BUSY);
     void launch(new RerenderJob(needImages()));
   });
 
-  handleI('builds:list', async (): Promise<shared.BuildRecord[]> => {
+  handle('builds:list', async (): Promise<shared.BuildRecord[]> => {
     const s = svc();
     const out: shared.BuildRecord[] = [];
     for (const n of await finishedBuilds(s.projectDir)) {
@@ -726,23 +731,20 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     }
     return out;
   });
-  handleI('builds:setNotes', (number: number, text: string) => setBuildNotes(svc().projectDir, Number(number), String(text ?? '')));
-  handleI('builds:polishNotes', async (number: number) => {
+  handle('builds:setNotes', (number: number, text: string) => setBuildNotes(svc().projectDir, Number(number), String(text ?? '')));
+  handle('builds:polishNotes', async (number: number) => {
     if (busy()) throw new Error(JOB_BUSY);
     const o = await jobOptions('review');
     const model = (await settings()).stageModels.patchNotes;
     void launch(new NotesJob({ ...o, model, number: Number(number) }));
   });
-  handleI('builds:openFolder', async (number: number) => {
+  handle('builds:openFolder', async (number: number) => {
     const dir = buildFolder(svc().projectDir, Number(number));
     const zipName = (await readdir(dir)).find((x) => x.toLowerCase().endsWith('.zip'));
     deps.showItemInFolder(zipName ? path.join(dir, zipName) : dir);
   });
 
-  // ---- plan 6: game updates ----
-  const handleU = (channel: UpdateInvokeChannel, fn: (...args: any[]) => unknown) => {
-    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
-  };
+  // ---- game updates ----
 
   /**
    * After an update or a rollback the project is closed and opened again, the same way as opening it from the list:
@@ -754,7 +756,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     deps.broadcast('project:reloaded', snapshotOf(next));
   }
 
-  handleU('update:inspect', async (gameDir: string) => {
+  handle('update:inspect', async (gameDir: string) => {
     const s = svc();
     let dir = path.resolve(String(gameDir ?? ''));
     try {
@@ -764,8 +766,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     }
     return inspectNewVersion(s.projectDir, dir);
   });
-  handleU('update:pickGameDir', () => (deps.pickNewVersionDir ?? deps.pickDirectory)());
-  handleU('update:import', async (gameDir: string, label: string) => {
+  handle('update:pickGameDir', () => (deps.pickNewVersionDir ?? deps.pickDirectory)());
+  handle('update:import', async (gameDir: string, label: string) => {
     if (busy()) throw new Error(JOB_BUSY);
     const s = svc();
     let dir = path.resolve(String(gameDir ?? ''));
@@ -774,15 +776,17 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     await reopen(s);
     return summary;
   });
-  handleU('update:rollback', async () => {
+  handle('update:rollback', async () => {
     if (busy()) throw new Error(JOB_BUSY);
     const s = svc();
     const r = await s.rollbackVersion();
     await reopen(s);
     return r;
   });
-  handleU('update:summary', () => svc().updateSummary());
-  // ---- plan 6, task 8: Claude CLI guide and the last font embedding ----
+  handle('update:summary', () => svc().updateSummary());
+  handle('update:versions', () => svc().versions());
+
+  // ---- Claude CLI status and the last font embedding ----
   handle('app:claudeStatus', async (): Promise<shared.ClaudeStatus> => {
     const configured = (await settings()).claudePath;
     const found = deps.claudePath(configured);
@@ -791,40 +795,11 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     const loggedIn = cmd ? await (deps.claudeLoggedIn ?? claudeLoggedIn)(cmd) : null;
     return { found: true, path: found, loggedIn };
   });
-  handleE('patches:lastFontEmbed', () => {
+  handle('patches:lastFontEmbed', () => {
     const s = deps.holder.svc;
     const r = s ? lastFontEmbed.get(s) : undefined;
     return r ? { bytes: r.bytes, missing: r.missing } : null;
   });
-  handleU('update:versions', () => svc().versions());
 
   return { dispose: () => closeProject() };
 }
-
-// ---- plan 6 (appended) ----
-import type { UpdateInvokeChannel } from '../shared/api.js';
-import { inspectNewVersion } from '../core/update/importVersion.js';
-
-// ---- plan 5 (appended) ----
-import { EventEmitter as GameEmitter } from 'node:events';
-import type { EventInvokeChannel } from '../shared/api.js';
-import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
-import { findUsage } from '../core/events/usage.js';
-import { GameRunner } from './gameRun.js';
-import type * as browseTypes from '../core/events/browse.js';
-import type * as usageTypes from '../core/events/usage.js';
-import type * as describeTypes from '../core/events/describe.js';
-
-export const sharedTypesMatch5: [
-  Same<browseTypes.EventFileInfo, shared.EventFileInfo>, Same<browseTypes.EventListInfo, shared.EventListInfo>,
-  Same<browseTypes.EventDetail, shared.EventDetail>, Same<usageTypes.EventRef, shared.EventRef>,
-  Same<describeTypes.DescribedLine, shared.EventLine>, Same<usageTypes.UsageTarget, shared.UsageTarget>,
-] = [true, true, true, true, true, true];
-
-/** A game process that only pretends to run (end-to-end tests): it ends when stopped. */
-const fakeGameSpawn = ((): unknown => {
-  const child = Object.assign(new GameEmitter(), { kill: () => { child.emit('exit', 0); return true; } });
-  return child;
-}) as unknown as typeof import('node:child_process').spawn;
-import { claudeLoggedIn } from './claude/auth.js';
-import { lastFontEmbed } from './fontEmbed.js';
