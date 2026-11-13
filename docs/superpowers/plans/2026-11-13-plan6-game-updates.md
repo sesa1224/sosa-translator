@@ -124,7 +124,7 @@ export interface UpdateSummary {
 - `json` 수정: 값이 그대로면 `unchanged`, 바뀌었으면 `conflict`
 - 같은 커맨드가 목록에 여러 번 나와도(같은 대사 반복) 순서를 지켜 맞춘다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 수정 옮기기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 수정 옮기기"`
 
 ### Task 4: 새 버전 가져오기와 되돌리기
 
