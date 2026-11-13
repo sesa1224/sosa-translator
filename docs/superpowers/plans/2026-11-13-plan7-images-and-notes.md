@@ -198,7 +198,7 @@ buildFiles(contentPrefix: string): Promise<{ files: Map<string, Uint8Array>; ski
 - `sheet` 가 20개씩 나누고 `pages` 를 준다. `view` 가 3000×1000 그림에 `scale` 약 0.52 를 준다
 - 기여자를 등록한 빌드의 zip 에 그 그림이 들어 있다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 서비스"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 서비스"`
 
 ### Task 6: 채팅 도구에 그림 보내기
 
