@@ -119,7 +119,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - `groupDecisions`: 같은 키의 항목이 한 묶음, `samples` 는 최대 5개, 표본 값이 `fileNames` 에 있으면 `hints.fileNames` 가 센다
 - `isTranslatable`: 결정 없음 → false, `translate: true` → true, `unit:<id>` 의 `translate: false` 가 묶음의 true 를 이긴다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 키와 뼈대 검사"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 키와 뼈대 검사"`
 
 ### Task 3: 플러그인 주석 읽기와 자동 결정
 

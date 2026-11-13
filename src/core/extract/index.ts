@@ -24,6 +24,7 @@ export function mergeUnits(raw: RawUnit[]): TextUnit[] {
     if (!u) {
       u = { id, kind: r.kind, source: r.source, needsDecision: r.needsDecision, refs: [] };
       if (r.speaker !== undefined) u.speaker = r.speaker;
+      if (r.decisionKey !== undefined) u.decisionKey = r.decisionKey;
       byId.set(id, u);
     }
     u.needsDecision ||= r.needsDecision;

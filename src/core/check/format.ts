@@ -7,6 +7,9 @@ import { hasJapanese } from '../text/japanese.js';
 import type { Issue, TextUnit } from '../types.js';
 
 import { DEFAULT_RULES, type FormatRules } from './rules.js';
+import { keepPieces } from '../decisions/keys.js';
+import { checkSkeleton, translatedParts } from '../decisions/skeleton.js';
+import type { KeepRule } from '../decisions/types.js';
 
 export { DEFAULT_RULES, type FormatRules };
 
@@ -30,15 +33,29 @@ function lineCount(s: string): number {
 export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null; speakerPattern?: string | null }
 
 /** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
-export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck): Issue[] {
+export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck, keep?: KeepRule): Issue[] {
   if (target.trim() === '') {
     return [{ rule: 'empty', severity: 'error', message: '번역이 비어 있습니다' }];
   }
   const issues: Issue[] = [];
+  // With a keep rule, the kept pieces must be unchanged, and the code and Japanese checks look at the translated parts only.
+  let srcText = unit.source;
+  let dstText = target;
+  if (keep) {
+    const skeleton = checkSkeleton(unit.source, target, keep);
+    issues.push(...skeleton);
+    const pieces = keepPieces(unit.source, keep);
+    const srcParts = pieces && translatedParts(unit.source, pieces);
+    const dstParts = pieces && translatedParts(target, pieces);
+    if (skeleton.length === 0 && srcParts && dstParts) {
+      srcText = srcParts.join(' ');
+      dstText = dstParts.join(' ');
+    }
+  }
 
   if (rules.controlCodes) {
-    const src = controlCodes(unit.source);
-    const dst = controlCodes(target);
+    const src = controlCodes(srcText);
+    const dst = controlCodes(dstText);
     const missing = minus(src, dst);
     const added = minus(dst, src);
     if (missing.length > 0 || added.length > 0) {
@@ -49,7 +66,7 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
     }
   }
 
-  if (rules.noLeftoverJapanese && hasJapanese(target)) {
+  if (rules.noLeftoverJapanese && hasJapanese(dstText)) {
     issues.push({ rule: 'leftover-japanese', severity: 'error', message: '번역에 일본어 글자가 남아 있습니다' });
   }
 

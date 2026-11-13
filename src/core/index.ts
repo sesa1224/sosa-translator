@@ -19,3 +19,7 @@ export * from './glossary/josa.js';
 export * from './glossary/rename.js';
 export * from './text/speaker.js';
 export * from './project/originals.js';
+export * from './decisions/types.js';
+export * from './decisions/keys.js';
+export * from './decisions/skeleton.js';
+export * from './decisions/store.js';
