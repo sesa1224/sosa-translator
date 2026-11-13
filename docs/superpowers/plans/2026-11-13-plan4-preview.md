@@ -98,7 +98,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - `availableWidth(DEFAULT_METRICS.MV, false)` → `768`, `true` → `600`. MZ → `768`, `604`
 - `effectiveMetrics` 가 `overrides` 의 값만 덮는다. 설정 저장 후 다시 읽으면 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사창 치수"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사창 치수"`
 
 ### Task 2: 글 배치
 
@@ -138,7 +138,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 색은 다음 줄로 이어진다: `'\\C[3]첫\n둘'` 의 둘째 줄 run 의 color 가 3
 - `measure` 가 `missing: 2` 를 주면 `missingGlyphs 2`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사 배치"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 대사 배치"`
 
 ### Task 3: 폰트 읽기와 목록
 
@@ -160,7 +160,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 두 번째 호출은 파일을 다시 읽지 않는다(읽기 함수를 감싼 횟수로 확인). 파일 하나의 수정 시각을 바꾸면 그것만 다시 읽는다
 - `source` 가 폴더에 따라 `system`/`game`/`project` 로 나온다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 읽기와 목록"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 읽기와 목록"`
 
 ### Task 4: 폭 검사와 넘침 세기
 
@@ -181,7 +181,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 7,000개 대사(시험에서 만들어 낸다)에 대해 `countOverflow` 가 1초 안에 끝난다
 - 폰트 파일을 지운 뒤 `init()` → `fontMissing` 이 참이고 검사는 글자 수 방식으로 돌아간다. 예외가 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 픽셀 폭 검사와 넘침 세기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 픽셀 폭 검사와 넘침 세기"`
 
 ### Task 5: IPC 연결
 
@@ -201,7 +201,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - `fonts.bytes` 가 목록에 없는 경로를 거절한다
 - `preview.windowSkin` 이 암호화된 시험용 게임(`makeMiniGame({ encrypted: true })` 에 `Window.png_` 를 `encryptAsset` 으로 만들어 넣는다)에서 PNG 머리 바이트로 시작하는 값을 준다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 미리보기 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 미리보기 연결"`
 
 ### Task 6: 게임 화면 미리보기
 
@@ -231,7 +231,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 편집 칸의 글을 바꾸면 그 글로 `preview.layout` 을 다시 부른다(150ms 뒤 한 번)
 - 흉내 안내 글이 항상 보인다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 화면 미리보기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 화면 미리보기"`
 
 ### Task 7: 폰트 고르기
 
@@ -252,7 +252,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - `skippedCollections: 3` 이면 "모음 파일(.ttc) 3개는 아직 쓸 수 없어요"
 - 치수 칸을 고치면 `preview.setOverrides({ fontSize: 24 })`, 되돌리기는 `preview.setOverrides({})`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 고르기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 폰트 고르기"`
 
 ### Task 8: 스토리 보기
 
@@ -279,17 +279,17 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - "장면 승인"이 번역이 있고 오류가 아닌 항목들에 대해서만 `unit.setStatus(id, 'approved')` 를 부른다. "이 장면 다시 번역"이 그 장면의 id 들로 `job.translate` 를 부른다
 - 상태 필터를 "미번역"으로 하면 미번역 줄이 없는 장면이 사라진다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 스토리 보기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 스토리 보기"`
 
 ### Task 9: 전체 흐름 시험과 화면 확인
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`, `README.md`
 
-- [ ] **연기 시험 추가**: 시험 안에서 `opentype.js` 로 한글 몇 글자가 든 시험 폰트를 만들어 임시 폴더에 두고(`MVMZ_FONT_DIRS` 환경 변수가 있으면 `systemFontDirs` 대신 그 폴더들을 쓴다), 가져오기 → 설정의 게임 폰트에서 그 폰트 고르기 → 텍스트 화면에서 긴 번역 쓰기 → 항목 탭 미리보기에 넘침 표시와 `px` 수치가 보임 → 검사 결과에 "창을 …px 넘어요" → 스토리로 전환 → 장면과 선택지가 보임
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 폰트로 눈 확인**: 앱을 띄워 이 컴퓨터에 설치된 한글 폰트 하나(예: 맑은 고딕 `malgun.ttf`)를 고르고, 미리보기 화면과 폰트 고르기 화면, 스토리 보기 화면을 캡처해 공유 노트 폴더에 저장한다. 미리보기의 글자 폭이 폭 수치와 눈으로 맞는지(막대가 100%일 때 글이 창 끝에 닿는지) 확인하고, 어긋나면 원인을 찾아 고친다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`README.md` 에 미리보기와 폰트, 새 파일(`preview.json`)을 적고 `git commit -m "feat: 미리보기 전체 흐름 시험"`**
+- [x] **연기 시험 추가**: 시험 안에서 `opentype.js` 로 한글 몇 글자가 든 시험 폰트를 만들어 임시 폴더에 두고(`MVMZ_FONT_DIRS` 환경 변수가 있으면 `systemFontDirs` 대신 그 폴더들을 쓴다), 가져오기 → 설정의 게임 폰트에서 그 폰트 고르기 → 텍스트 화면에서 긴 번역 쓰기 → 항목 탭 미리보기에 넘침 표시와 `px` 수치가 보임 → 검사 결과에 "창을 …px 넘어요" → 스토리로 전환 → 장면과 선택지가 보임
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 폰트로 눈 확인**: 앱을 띄워 이 컴퓨터에 설치된 한글 폰트 하나(예: 맑은 고딕 `malgun.ttf`)를 고르고, 미리보기 화면과 폰트 고르기 화면, 스토리 보기 화면을 캡처해 공유 노트 폴더에 저장한다. 미리보기의 글자 폭이 폭 수치와 눈으로 맞는지(막대가 100%일 때 글이 창 끝에 닿는지) 확인하고, 어긋나면 원인을 찾아 고친다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`README.md` 에 미리보기와 폰트, 새 파일(`preview.json`)을 적고 `git commit -m "feat: 미리보기 전체 흐름 시험"`**
 
 ---
 

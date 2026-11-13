@@ -20,6 +20,13 @@ import { computeScopes, computeStats, locationLabel, toRow } from '../shared/row
 import { buildSystemPrompt } from './claude/prompt.js';
 import { ProjectService } from './projectService.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { readFile } from 'node:fs/promises';
+import { decryptAsset } from '../core/engine/crypto.js';
+import type { FontInfo, PreviewInvokeChannel, PreviewState } from '../shared/api.js';
+import { listFonts, systemFontDirs } from './fonts/catalog.js';
+import { readFontInfo } from './fonts/fontFile.js';
+import { PreviewService } from './preview.js';
+import { buildScenes } from './story.js';
 
 // Compile-time check that the renderer-side copies in shared/api.ts match the core types.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -62,6 +69,10 @@ export interface IpcDeps {
   runJson?: typeof runClaudeJson;
   /** The CLI for one-shot JSON calls (default: claudePath(configured) with no prefix arguments). */
   jsonClaude?(configured: string | null): { command: string; prefixArgs?: string[] } | null;
+  /** Folders with installed fonts (default: the Windows font folders). */
+  fontDirs?(): string[];
+  /** Opens a file dialog for one .ttf/.otf font; null when cancelled. */
+  pickFontFile?(): Promise<string | null>;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -129,6 +140,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   }
 
   async function closeProject(): Promise<void> {
+    stopPreview();
     disposeChat();
     job?.stop();
     job = null;
@@ -177,6 +189,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
         deps.broadcast('project:changed', { rows: changed, stats: computeStats(all), scopes: computeScopes(all), origin: 'user' });
       }
     });
+    await startPreview(s);
   }
 
   async function ensureChat(): Promise<ChatLike | null> {
@@ -358,6 +371,119 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   handle('app:claudePath', async () => deps.claudePath((await settings()).claudePath));
   handle('app:showItemInFolder', (file: string) => { deps.showItemInFolder(file); });
+
+  // ---- plan 4: preview and fonts ----
+  let preview: PreviewService | null = null;
+  /** Fonts the renderer may read: the last listed ones and the ones the user picked. */
+  let listedFonts: FontInfo[] = [];
+  const userFonts: FontInfo[] = [];
+  const handleP = (channel: PreviewInvokeChannel, fn: (...args: any[]) => unknown) => {
+    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
+  };
+  const needPreview = (): PreviewService => {
+    if (!preview) throw new Error('열린 프로젝트가 없습니다');
+    return preview;
+  };
+  const previewState = (p: PreviewService): PreviewState => ({
+    settings: p.settings(), metrics: p.metrics(), detected: p.detectedMetrics(), fontMissing: p.fontMissing, context: p.context(),
+  });
+  const announcePreview = () => { if (preview) deps.broadcast('preview:changed', previewState(preview)); };
+  const fontKey = (p: string) => path.resolve(p).toLowerCase();
+
+  async function startPreview(s: ProjectService): Promise<void> {
+    const p = new PreviewService(s);
+    try {
+      await p.init();
+    } catch {
+      // the preview is optional; the project still opens
+    }
+    if (deps.holder.svc !== s) {
+      p.dispose();
+      return;
+    }
+    preview = p;
+  }
+
+  function stopPreview(): void {
+    preview?.dispose();
+    preview = null;
+  }
+
+  /** Content folder of the open project's game (where img/ and fonts/ live). */
+  async function gameContent(s: ProjectService) {
+    try {
+      return await detectGame(s.meta.gameDir);
+    } catch {
+      return null;
+    }
+  }
+
+  handleP('preview:get', () => previewState(needPreview()));
+  handleP('preview:layout', (id: string, text?: string) => needPreview().layoutFor(String(id), typeof text === 'string' ? text : undefined));
+  handleP('preview:setFont', async (p: string | null) => {
+    await needPreview().setFont(typeof p === 'string' && p ? p : null);
+    announcePreview();
+  });
+  handleP('preview:setOverrides', async (o: Partial<core.WindowMetrics>) => {
+    await needPreview().setOverrides(o && typeof o === 'object' ? o : {});
+    announcePreview();
+  });
+  handleP('preview:countOverflow', (p?: string | null) => needPreview().countOverflow(typeof p === 'string' && p ? p : undefined));
+  handleP('preview:windowSkin', async (): Promise<Uint8Array | null> => {
+    const game = await gameContent(svc());
+    if (!game) return null;
+    const dir = path.join(game.contentDir, 'img', 'system');
+    const plain = path.join(dir, 'Window.png');
+    try {
+      if (existsSync(plain)) return new Uint8Array(await readFile(plain));
+      for (const name of ['Window.png_', 'Window.rpgmvp']) {
+        const f = path.join(dir, name);
+        if (existsSync(f) && game.encryptionKey) return decryptAsset(new Uint8Array(await readFile(f)), game.encryptionKey);
+      }
+    } catch {
+      // a broken skin means the default colors
+    }
+    return null;
+  });
+
+  handleP('fonts:list', async (): Promise<shared.FontList> => {
+    const s = deps.holder.svc;
+    const game = s ? await gameContent(s) : null;
+    const r = await listFonts({
+      systemDirs: deps.fontDirs?.() ?? systemFontDirs(),
+      gameContentDir: game?.contentDir,
+      projectFontsDir: s ? path.join(s.projectDir, 'fonts') : undefined,
+      cacheFile: path.join(deps.settingsDir, 'fonts-cache.json'),
+    });
+    const seen = new Set(r.fonts.map((f) => fontKey(f.path)));
+    listedFonts = [...r.fonts, ...userFonts.filter((f) => !seen.has(fontKey(f.path)))];
+    return { fonts: listedFonts, skippedCollections: r.skippedCollections };
+  });
+  handleP('fonts:bytes', async (p: string): Promise<Uint8Array> => {
+    const key = fontKey(String(p ?? ''));
+    const chosen = preview?.settings().fontPath;
+    const allowed = listedFonts.some((f) => fontKey(f.path) === key) || userFonts.some((f) => fontKey(f.path) === key)
+      || (chosen ? fontKey(chosen) === key : false);
+    if (!allowed) throw new Error('목록에 없는 폰트입니다');
+    return new Uint8Array(await readFile(String(p)));
+  });
+  handleP('fonts:pickFile', async (): Promise<FontInfo | null> => {
+    const file = deps.pickFontFile ? await deps.pickFontFile() : null;
+    if (!file) return null;
+    const info = await readFontInfo(file);
+    if (!info) throw new Error('폰트 파일을 읽을 수 없습니다');
+    const picked: FontInfo = { ...info, source: 'user' };
+    const i = userFonts.findIndex((f) => fontKey(f.path) === fontKey(file));
+    if (i >= 0) userFonts.splice(i, 1, picked);
+    else userFonts.push(picked);
+    if (!listedFonts.some((f) => fontKey(f.path) === fontKey(file))) listedFonts.push(picked);
+    return picked;
+  });
+
+  handleP('story:scenes', (file: string) => {
+    const s = svc();
+    return buildScenes(s.projectDir, s.units(), String(file ?? ''), s.glossary().rules.speakerPattern);
+  });
 
   return { dispose: () => closeProject() };
 }

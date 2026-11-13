@@ -3,6 +3,7 @@ import { controlCodes } from '../../core/text/controlCodes';
 import type { Issue } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
+import { GamePreview } from './GamePreview';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
   'control-codes': '제어 코드',
@@ -11,6 +12,7 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
   empty: '빈 번역',
   glossary: '용어집',
   'line-width': '줄 폭',
+  'line-width-px': '창 폭',
 };
 
 export function ItemPanel() {
@@ -132,6 +134,7 @@ export function ItemPanel() {
           </div>
         ))}
       </div>
+      {row.kind === 'dialogue' && <GamePreview unitId={row.id} text={draft} />}
       {error && <span className="err-text small" role="alert">{error}</span>}
       <div className="grow" />
       {approveBlock && <span className="sub small">{approveBlock}</span>}

@@ -39,5 +39,5 @@ export interface TranslationEntry {
   reviewedAt?: string;       // last time a review looked at it
 }
 
-export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width'; severity: 'error' | 'warning'; message: string }
+export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width' | 'line-width-px'; severity: 'error' | 'warning'; message: string }
 export interface Warning { file: string; message: string }

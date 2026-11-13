@@ -46,6 +46,10 @@ export interface AppState {
   claudePath: string | null;
   lastSaved: Date | null;
   build: BuildState;
+  /** Bumped when something asks to show the game font picker (it scrolls into view). */
+  fontPickerRequest: number;
+  /** How the text view shows lines: the table, or scenes read in order. */
+  textMode: 'table' | 'story';
 }
 
 const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
@@ -56,6 +60,8 @@ function initial(): AppState {
     query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, lastSaved: null, build: { kind: 'idle' },
+    fontPickerRequest: 0,
+    textMode: 'table',
   };
 }
 
@@ -332,6 +338,13 @@ const actions = {
     applyTheme(s);
     set({ settings: s });
     if ('claudePath' in patch) set({ claudePath: await need().app.claudePath().catch(() => null) });
+  },
+  /** Opens the settings at the game font picker. */
+  openFontPicker(): void {
+    set((s) => ({ view: 'settings', fontPickerRequest: s.fontPickerRequest + 1 }));
+  },
+  setTextMode(textMode: AppState['textMode']): void {
+    set({ textMode });
   },
 };
 

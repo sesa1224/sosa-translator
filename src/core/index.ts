@@ -18,3 +18,6 @@ export * from './glossary/match.js';
 export * from './glossary/josa.js';
 export * from './glossary/rename.js';
 export * from './text/speaker.js';
+export * from './preview/types.js';
+export * from './preview/metrics.js';
+export * from './preview/layout.js';

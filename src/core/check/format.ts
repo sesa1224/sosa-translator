@@ -7,6 +7,7 @@ import { hasJapanese } from '../text/japanese.js';
 import type { Issue, TextUnit } from '../types.js';
 
 import { DEFAULT_RULES, type FormatRules } from './rules.js';
+import type { Layout } from '../preview/types.js';
 
 export { DEFAULT_RULES, type FormatRules };
 
@@ -30,7 +31,7 @@ function lineCount(s: string): number {
 export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null; speakerPattern?: string | null }
 
 /** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
-export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck): Issue[] {
+export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck, px?: PxCheck): Issue[] {
   if (target.trim() === '') {
     return [{ rule: 'empty', severity: 'error', message: '번역이 비어 있습니다' }];
   }
@@ -78,6 +79,12 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
       });
     }
   }
+  if (px && unit.kind === 'dialogue') {
+    // The pixel check replaces the character count. The whole text is laid out, so an MV speaker line counts as a line too.
+    for (let i = issues.length - 1; i >= 0; i--) if (issues[i].rule === 'line-width') issues.splice(i, 1);
+    const pxIssue = pixelWidthIssue(px.layout(target, px.withFace));
+    if (pxIssue) issues.push(pxIssue);
+  }
   return issues;
 }
 
@@ -101,4 +108,17 @@ export function checkAll(
     if (issues.length > 0) out.push({ id: u.id, issues });
   }
   return out;
+}
+
+/** Lays out a message in the game's window with the chosen font (plan 4). withFace: the narrowest place it is shown. */
+export interface PxCheck { layout: (text: string, withFace: boolean) => Layout; withFace: boolean }
+
+/** Warning for the line that overflows the window the most, or null. */
+export function pixelWidthIssue(l: Layout): Issue | null {
+  let worst = -1;
+  l.lines.forEach((line, i) => {
+    if (line.overflow > 0 && (worst < 0 || line.overflow > l.lines[worst].overflow)) worst = i;
+  });
+  if (worst < 0) return null;
+  return { rule: 'line-width-px', severity: 'warning', message: `${worst + 1}번째 줄이 창을 ${Math.ceil(l.lines[worst].overflow)}px 넘어요` };
 }
