@@ -217,3 +217,23 @@ select.input { padding: 0 12px; }
 .picker-page { min-height: 100vh; position: relative; border: 2px dashed transparent; }
 .picker-page.drop-on { border-color: var(--accent); background: var(--accent-bg); }
 .drop-hint { position: absolute; top: 12px; left: 0; right: 0; text-align: center; color: var(--accent-text); font-weight: 600; pointer-events: none; }
+
+/* ---- plan 4: game screen preview ---- */
+.game-preview { gap: 8px; }
+.gp-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gp-frame { position: relative; width: 100%; overflow: visible; }
+.gp-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.gp-box { position: relative; box-sizing: border-box; border-radius: 8px; border: 2px solid #C9CED8; background: #141A33; overflow: visible; }
+.gp-face { position: absolute; border-radius: 4px; background: #3A3F4B; }
+.gp-line { position: absolute; white-space: pre; color: #ffffff; }
+.gp-run { white-space: pre; }
+.gp-icon { display: inline-block; box-sizing: border-box; width: 32px; height: 32px; margin: 0 2px; vertical-align: middle; border: 2px solid #C9CED8; border-radius: 3px; }
+.gp-overflow { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 3px dashed var(--err); }
+.gp-rest { position: relative; }
+.gp-rest-note { position: absolute; top: 0; left: 0; font-size: 16px; color: var(--mute); }
+.gp-line-rest { color: var(--mute); }
+.gp-stats { display: flex; flex-direction: column; gap: 4px; }
+.gp-bar-row { display: flex; align-items: center; gap: 8px; }
+.gp-bar { flex: 1 1 auto; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.gp-bar-fill { height: 100%; background: var(--accent); }
+.gp-bar-fill.over { background: var(--warn); }

@@ -231,7 +231,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 편집 칸의 글을 바꾸면 그 글로 `preview.layout` 을 다시 부른다(150ms 뒤 한 번)
 - 흉내 안내 글이 항상 보인다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 화면 미리보기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 게임 화면 미리보기"`
 
 ### Task 7: 폰트 고르기
 
