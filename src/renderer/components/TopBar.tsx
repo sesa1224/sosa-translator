@@ -1,5 +1,6 @@
 import { num, pct } from '../format';
-import { useApp } from '../state';
+import { updateActions, useApp } from '../state';
+import { GameRunButton } from './PatchView';
 import { TitleField } from './TitleField';
 
 export function TopBar() {
@@ -28,9 +29,7 @@ export function TopBar() {
       </div>
       <div className="top-actions">
         <button type="button" className="btn" onClick={() => void useApp.closeProject()}>프로젝트 닫기</button>
-        {/* plan 6: game updates */}
         <button type="button" className="btn" onClick={() => updateActions.open()}>새 버전 가져오기</button>
-        {/* plan 5: game run */}
         <GameRunButton />
         <button type="button" className="btn primary" disabled={build.kind === 'running'} onClick={() => void useApp.build()}>패치 빌드</button>
       </div>
@@ -64,12 +63,7 @@ export function BuildBanner() {
   );
 }
 
-// ---- plan 5 ----
-import { GameRunButton } from './PatchView';
-// ---- plan 7 ----
 /** Opens the build history, where the notes of the build just made are. */
 function NotesLink() {
   return <button type="button" className="btn ghost small-btn" onClick={() => useApp.setView('builds')}>패치노트 보기</button>;
 }
-// ---- plan 6 ----
-import { updateActions } from '../state';

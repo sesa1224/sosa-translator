@@ -1,19 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, type ComponentType } from 'react';
 import type { Api } from '../shared/api';
+import { BuildsView } from './components/BuildsView';
 import { ChatPanel } from './components/ChatPanel';
+import { DecisionView } from './components/DecisionView';
+import { EventView } from './components/EventView';
 import { GlossaryView } from './components/GlossaryView';
-import { JobBar } from './components/JobBar';
+import { ImageView } from './components/ImageView';
 import { ItemPanel } from './components/ItemPanel';
+import { JobBar } from './components/JobBar';
+import { PatchView } from './components/PatchView';
 import { ProjectPicker } from './components/ProjectPicker';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
 import { TextTable } from './components/TextTable';
 import { BuildBanner, TopBar } from './components/TopBar';
-import { useApp } from './state';
-import { DecisionView } from './components/DecisionView';
-import { ImageView } from './components/ImageView';
-import { BuildsView } from './components/BuildsView';
+import { UpdateDialog } from './components/UpdateDialog';
+import { UpdateView } from './components/UpdateView';
+import { useApp, type AppState } from './state';
 
 declare global {
   interface Window { api: Api }
@@ -38,10 +42,22 @@ function RightPanel() {
   );
 }
 
+/** The screen shown in the middle for each AppState.view. A new screen needs an entry here and in the view union. */
+const SCREENS: Record<AppState['view'], ComponentType> = {
+  text: TextTable,
+  glossary: GlossaryView,
+  settings: SettingsView,
+  decisions: DecisionView,
+  images: ImageView,
+  builds: BuildsView,
+  events: EventView,
+  patches: PatchView,
+  update: UpdateView,
+};
 
 function Workspace() {
   const { view, updateOpen } = useApp();
-  const mainView5 = mainView(useApp());
+  const Screen = SCREENS[view];
   return (
     <div className="shell">
       <TopBar />
@@ -50,15 +66,7 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
-          {(view as string) === 'update' ? <UpdateView /> : mainView5 === 'events' ? <EventView /> : mainView5 === 'patches' ? <PatchView5 /> : <>
-          {view === 'builds' ? <BuildsView /> : <>
-          {view === 'images' ? <ImageView /> : <>
-          {view === 'decisions' ? <DecisionView /> : <>
-          {view === 'text' ? <TextTable /> : view === 'glossary' ? <GlossaryView /> : <SettingsView />}
-          </>}
-          </>}
-          </>}
-          </>}
+          <Screen />
         </main>
         <RightPanel />
       </div>
@@ -86,12 +94,3 @@ export function App() {
   return snapshot ? <Workspace /> : <ProjectPicker />;
 }
 
-// ---- plan 5: events and patches screens ----
-import { EventView } from './components/EventView';
-import { mainView } from './state';
-/** The patches screen (plan 5). */
-const PatchView5 = PatchView;
-import { PatchView } from './components/PatchView';
-// ---- plan 6: game updates ----
-import { UpdateDialog } from './components/UpdateDialog';
-import { UpdateView } from './components/UpdateView';

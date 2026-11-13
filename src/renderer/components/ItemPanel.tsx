@@ -1,11 +1,11 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
-import type { Issue } from '../../shared/api';
+import { keyLabel } from '../../core/decisions/keys';
+import { changedWords, type WordPiece } from '../../core/update/carry';
+import type { Issue, KeepRule, Row } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { GamePreview } from './GamePreview';
-import type { KeepRule, Row } from '../../shared/api';
-import { keyLabel } from '../../core/decisions/keys';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
   'control-codes': '제어 코드',
@@ -213,8 +213,7 @@ function DecisionBox({ row }: { row: Row }) {
   );
 }
 
-// ---- plan 6: the sentence in the older version ----
-import { changedWords, type WordPiece } from '../../core/update/carry';
+// ---- the sentence in the older version ----
 
 function Pieces({ pieces, kind }: { pieces: WordPiece[]; kind: 'old' | 'new' }) {
   return (

@@ -218,7 +218,7 @@ select.input { padding: 0 12px; }
 .picker-page.drop-on { border-color: var(--accent); background: var(--accent-bg); }
 .drop-hint { position: absolute; top: 12px; left: 0; right: 0; text-align: center; color: var(--accent-text); font-weight: 600; pointer-events: none; }
 
-/* ---- plan 4: game screen preview ---- */
+/* ---- game screen preview ---- */
 .game-preview { gap: 8px; }
 .gp-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .gp-frame { position: relative; width: 100%; overflow: hidden; }
@@ -238,7 +238,7 @@ select.input { padding: 0 12px; }
 .gp-bar-fill { height: 100%; background: var(--accent); }
 .gp-bar-fill.over { background: var(--warn); }
 
-/* ---- plan 4: game font picker ---- */
+/* ---- game font picker ---- */
 .fp-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
 .fp-left, .fp-right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .fp-check { display: flex; align-items: center; gap: 8px; }
@@ -259,7 +259,7 @@ select.input { padding: 0 12px; }
 .fp-metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
 .fp-metric-grid .input::placeholder { color: var(--mute); }
 
-/* ---- plan 4: story view ---- */
+/* ---- story view ---- */
 .story { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .story-empty { padding: 24px 4px; }
 .story-slot { padding-bottom: 16px; }
@@ -277,7 +277,7 @@ select.input { padding: 0 12px; }
 .story-choices { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 60px; }
 .story-choice { padding: 8px 14px; border-radius: 8px; border: 1px dashed var(--accent); background: transparent; color: var(--text); display: flex; flex-direction: column; align-items: flex-start; text-align: left; font-size: 14px; }
 .story-foot { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-/* ---- decisions screen (plan 3b) ---- */
+/* ---- decisions screen ---- */
 .decision-view { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; overflow: auto; height: 100%; }
 .decision-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .decision-top h2 { margin: 0 0 4px; font-size: 18px; }
@@ -302,7 +302,7 @@ select.input { padding: 0 12px; }
 .js-string { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
 .js-string .grow { flex: 1; }
 
-/* ---- game title field, exchange, item decision box (plan 3b) ---- */
+/* ---- game title field, exchange, item decision box ---- */
 .title-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
 .title-field .icon-btn { width: 28px; height: 28px; font-size: 13px; }
 .title-input { height: 30px; min-width: 200px; }
@@ -311,7 +311,7 @@ select.input { padding: 0 12px; }
 .exchange-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .decision-box .row-gap { margin-top: 4px; }
 
-/* ---- plan 5: events screen ---- */
+/* ---- events screen ---- */
 .ev-page { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
 .ev-cols { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
 .ev-left { flex: 1 1 220px; max-width: 320px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -344,7 +344,7 @@ select.input { padding: 0 12px; }
 .ev-num-input { width: 110px; }
 .ev-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
 
-/* ---- plan 5: patches screen, font into the game, game run ---- */
+/* ---- patches screen, font into the game, game run ---- */
 .patch-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .patch-row:last-child { border-bottom: 0; }
 .patch-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
@@ -357,7 +357,7 @@ select.input { padding: 0 12px; }
 .report-text { margin: 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
 .game-run { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
 .game-state { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; }
-/* ---- plan 7: image screen ---- */
+/* ---- image screen ---- */
 .image-view { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1 1 auto; }
 .iv-head { align-items: center; }
 .iv-default-font { display: flex; align-items: center; gap: 6px; color: var(--sub); }
@@ -404,7 +404,7 @@ select.input { padding: 0 12px; }
 .iv-font:hover { background: var(--card); }
 @media (max-width: 1500px) { .iv-pane { flex-basis: 100%; } }
 
-/* ---- plan 7: build history ---- */
+/* ---- build history ---- */
 .builds-view { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
 .bv-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
 .bv-notes { height: auto; min-height: 96px; resize: vertical; padding: 8px 10px; line-height: 1.6; }
@@ -415,7 +415,7 @@ select.input { padding: 0 12px; }
 .bv-table th { color: var(--sub); font-weight: 500; }
 .bv-list { margin: 0; padding-left: 18px; }
 .iv-folders { height: auto; padding: 8px 10px; resize: vertical; }
-/* ---- plan 6: game updates ---- */
+/* ---- game updates ---- */
 .update-view { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
 .update-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .update-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 16px; }

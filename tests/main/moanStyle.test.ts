@@ -1,4 +1,4 @@
-// 인물별 신음 스타일 (계획 3 추가 요구)
+// 인물별 신음 스타일
 import { expect, test } from 'vitest';
 import { checkTranslation } from '../../src/core/check/format.js';
 import { defaultGlossary, normalizeGlossary, termId } from '../../src/core/glossary/store.js';

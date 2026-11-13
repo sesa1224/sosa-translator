@@ -10,6 +10,8 @@ import type { SceneInfo } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 import type { DecisionGroup, ImportPlan } from '../../src/shared/api';
 import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } from '../../src/shared/api';
+import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
+import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
 
@@ -173,7 +175,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     story: {
       scenes: rec('story.scenes', (file: string) => pv.scenes[file] ?? []),
     },
-    // ---- plan 5: events, patches, game ----
+    // events, patches, game
     events: {
       files: rec('events.files', () => ev().files),
       list: rec('events.list', (file: string) => ev().lists[file] ?? []),
@@ -196,7 +198,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       run: rec('game.run', () => { if (ev().runError) throw new Error(ev().runError!); }),
       stop: rec('game.stop', () => undefined),
     },
-    // ---- plan 7 ----
+    // pictures and build history
     images: {
       list: rec('images.list', () => im.entries),
       recipe: rec('images.recipe', (file: string) => im.recipes[file] ?? null),
@@ -265,7 +267,7 @@ export async function openFakeWith(api: FakeApi, o: { select?: string; rightTab?
   return user;
 }
 
-// ---- plan 4: preview and fonts ----
+// ---- preview and fonts ----
 export const MZ_METRICS: WindowMetrics = { engine: 'MZ', boxWidth: 808, padding: 12, textPadding: 8, fontSize: 26, lineHeight: 36, maxLines: 4, faceIndent: 164, iconWidth: 36, sizeStep: 12 };
 /** What the fake's preview and fonts calls give back; tests change these. */
 export interface PreviewFake {
@@ -293,8 +295,7 @@ export function previewFake(api: FakeApi): PreviewFake {
   return previewFakes.get(api)!;
 }
 
-// ---- plan 5: events, patches, game ----
-import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
+// ---- events, patches, game ----
 /** What the fake's events, patches and game calls give back; tests change these. */
 export interface EventsFake {
   files: EventFileInfo[];
@@ -319,7 +320,7 @@ const eventsFakes = new WeakMap<FakeApi, EventsFake>();
 export function eventsFake(api: FakeApi): EventsFake {
   return eventsFakes.get(api)!;
 }
-// ---- plan 7: pictures and build history ----
+// ---- pictures and build history ----
 /** What the fake's images and builds calls give back; tests change these. */
 export interface ImagesFake {
   entries: ImageEntry[]; recipes: Record<string, ImageRecipe>; overflow: Record<string, Record<string, RegionOverflow>>;
@@ -337,8 +338,7 @@ export function imagesFake(api: FakeApi): ImagesFake {
   return imagesFakes.get(api)!;
 }
 
-// ---- plan 6: game updates ----
-import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
+// ---- game updates ----
 /** What the fake's update calls give back; tests change these. */
 export interface UpdateFake {
   inspect: (dir: string) => UpdateInspect;
@@ -346,7 +346,7 @@ export interface UpdateFake {
   summary: UpdateSummary | null;
   importError: string | null;
   versions: VersionInfo[];
-  /** app.claudeStatus and patches.lastFontEmbed (plan 6, task 8). */
+  /** app.claudeStatus and patches.lastFontEmbed. */
   claude: ClaudeStatus;
   fontEmbed: FontEmbedInfo | null;
 }

@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { clock, num, pct } from '../format';
-import { plan6Actions, useApp } from '../state';
+import { useApp } from '../state';
 
 export function StatusBar() {
   const { claudePath, chat, lastSaved, claudeStatus } = useApp();
   const u = chat.usage;
   const input = u.input + u.cacheRead + u.cacheCreate;
-  useEffect(() => { void plan6Actions.checkClaude(); }, [claudePath]);
+  useEffect(() => { void useApp.checkClaude(); }, [claudePath]);
   // Until the check answers, the path alone tells whether the CLI is there.
   const found = claudeStatus ? claudeStatus.found : !!claudePath;
   return (

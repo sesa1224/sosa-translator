@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { num, pct } from '../format';
-import { useApp } from '../state';
+import { eventActions, updateActions, useApp } from '../state';
+import { PatchNavButton } from './PatchView';
 
 export function Sidebar() {
   const { snapshot, view, query, glossary } = useApp();
   if (!snapshot) return null;
   const undecided = glossary ? glossary.terms.filter((t) => t.status === 'provisional').length : 0;
-  // plan 7: the picture list is read once per opened project (for the count below).
+  // The picture list is read once per opened project (for the count below).
   const meta = snapshot?.meta;
   useEffect(() => { if (meta) void useApp.loadImages(); }, [meta]);
   return (
@@ -28,12 +29,10 @@ export function Sidebar() {
         onClick={() => useApp.openDecisions()}>
         <span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
       </button>
-      {/* plan 5: events */}
-      <button type="button" className={`nav-btn${mainView(useApp.get()) === 'events' ? ' on' : ''}`} aria-current={mainView(useApp.get()) === 'events' ? 'page' : undefined}
+      <button type="button" className={`nav-btn${view === 'events' ? ' on' : ''}`} aria-current={view === 'events' ? 'page' : undefined}
         onClick={() => eventActions.openEvents()}>
         <span>이벤트</span>
       </button>
-      {/* plan 5: patches */}
       <PatchNavButton />
       <ImagesNavButton />
       <BuildsNavButton />
@@ -61,10 +60,6 @@ export function Sidebar() {
   );
 }
 
-// ---- plan 5 ----
-import { eventActions, mainView } from '../state';
-import { PatchNavButton } from './PatchView';
-// ---- plan 7 ----
 function ImagesNavButton() {
   const { view, images } = useApp();
   const todo = images ? images.filter((e) => e.status === 'todo').length : 0;
@@ -85,14 +80,14 @@ function BuildsNavButton() {
     </button>
   );
 }
-// ---- plan 6 ----
+
 /** Shown when the current version came from an update: opens its result again. */
 function UpdateNavButton() {
   const app = useApp();
   const meta = app.snapshot?.meta;
   useEffect(() => { if (meta) void updateActions.loadSummary(); }, [meta]);
   if (!app.updateSummary) return null;
-  const on = app.view === ('update' as typeof app.view);
+  const on = app.view === 'update';
   return (
     <button type="button" className={`nav-btn${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined}
       onClick={() => updateActions.openResult()}>
@@ -100,4 +95,3 @@ function UpdateNavButton() {
     </button>
   );
 }
-import { updateActions } from '../state';

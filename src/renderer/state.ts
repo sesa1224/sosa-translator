@@ -3,8 +3,14 @@ import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
-import type { DecisionGroup, DecisionInput, ImportPlan } from '../shared/api';
-import type { BuildRecord, ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../shared/api';
+import type {
+  BuildRecord, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
+  NewPatch, Patch, PatchChange, PatchList, PathSeg, Rect, Region, StatusFilter, UpdateInspect, UpdateSummary, VersionInfo, UsageTarget,
+} from '../shared/api';
+
+// The renderer's single store: AppState plus the actions that change it. Screens read it with useApp() and
+// call actions as useApp.x(), eventActions.x() or updateActions.x(). Actions call window.api; the main
+// process pushes changes back through api.on(...) and the listeners in start() fold them into the state.
 
 export type ChatMessage =
   | { kind: 'user'; text: string; images: ChatImage[]; attached: string | null }
@@ -32,7 +38,8 @@ export interface AppState {
   selectedId: string | null;
   detail: UnitDetail | null;
   query: RowQuery;
-  view: 'text' | 'settings' | 'glossary' | 'decisions' | 'images' | 'builds';
+  /** The main screen. 'update' is the result of the last game update. */
+  view: 'text' | 'settings' | 'glossary' | 'decisions' | 'images' | 'builds' | 'events' | 'patches' | 'update';
   glossary: Glossary | null;
   /** The glossary was edited after it was confirmed (this session). */
   glossaryDirty: boolean;
@@ -56,7 +63,6 @@ export interface AppState {
   decisionGroups: DecisionGroup[];
   /** The card the decisions screen should scroll to (from an item's "묶음 보기"). */
   decisionFocus: string | null;
-  // ---- plan 7 ----
   /** The game's pictures (null until loaded for the open project). */
   images: ImageEntry[] | null;
   /** The picture open on the image screen. */
@@ -65,7 +71,30 @@ export interface AppState {
   attachedImage: string | null;
   /** Finished builds, newest first (null until the build history opens). */
   builds: BuildRecord[] | null;
+  /** Patches and their state (loaded when needed, then pushed on change). */
+  patchList?: PatchList;
+  game?: GameState;
+  gameError?: string | null;
+  attachedEvent?: AttachedEvent | null;
+  eventFocus?: EventFocus | null;
+  /** Text the chat box should take (from "Claude에게 맡기기"). */
+  chatDraft?: string | null;
+  /** The "new version" dialog is open. */
+  updateOpen?: boolean;
+  /** The summary of the update that brought the current version (null = none; undefined = not loaded yet). */
+  updateSummary?: UpdateSummary | null;
+  /** The filter the image screen opens with (from the update result's "보기"). */
+  imageFilter?: string | null;
+  /** Whether the Claude CLI is there and logged in (undefined until checked). */
+  claudeStatus?: ClaudeStatus | null;
+  /** The last build's font embedding (null = none this session). */
+  fontEmbed?: FontEmbedInfo | null;
 }
+
+/** An event the chat message will carry. */
+export interface AttachedEvent { file: string; listPath: PathSeg[]; label: string }
+/** Where the event screen should open (from a usage result, a patch, or the patches screen). */
+export interface EventFocus { file: string; listPath: PathSeg[]; line: number | null; seq: number }
 
 const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
 
@@ -155,7 +184,7 @@ function finalizeStreaming(messages: ChatMessage[]): ChatMessage[] {
   return messages;
 }
 
-/** Folds one chat event into the chat state (exported for tests). */
+/** Folds one chat event into the chat state. */
 export function reduceChat(c: ChatState, ev: ChatEvent): ChatState {
   const msgs = c.messages;
   const last = msgs.at(-1);
@@ -198,7 +227,7 @@ async function refreshDetail(id: string): Promise<void> {
 
 let unsubscribe: (() => void)[] = [];
 
-/** Connects the store to window.api and loads the first state. Returns a disposer. Resets everything. */
+/** Connects the store to window.api and loads the first state. Resets everything; stop() disconnects. */
 async function start(a: Api): Promise<void> {
   for (const u of unsubscribe) u();
   api = a;
@@ -210,10 +239,11 @@ async function start(a: Api): Promise<void> {
     a.on('glossary:changed', onGlossaryChanged),
     a.on('job:progress', (p) => set({ job: p, jobDismissed: false })),
     a.on('decisions:changed', (g) => set({ decisionGroups: g })),
-    ...plan5Listeners(a),
+    a.on('patches:changed', (l) => set({ patchList: l })),
+    a.on('game:state', (g) => set({ game: g })),
     a.on('images:changed', onImagesChanged),
-    a.on('job:progress', onJobForPlan7),
-    ...plan6Listeners(a),
+    a.on('job:progress', reloadBuildsAfterNotes),
+    a.on('project:reloaded', onReloaded),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -340,7 +370,7 @@ const actions = {
     const attached = state.attachedId;
     const attachedLabel = attached ? state.rowsById[attached]?.location ?? null : null;
     set((s) => ({ chat: { ...s.chat, busy: true, messages: [...s.chat.messages, { kind: 'user', text, images, attached: attachedLabel }] } }));
-    // plan 7: a picture attached from the image screen goes in front of the message.
+    // A picture attached from the image screen goes in front of the message.
     if (state.attachedImage) {
       text = `[이미지] file=${state.attachedImage}\n\n${text}`;
       set({ attachedImage: null });
@@ -373,8 +403,15 @@ const actions = {
   setTextMode(textMode: AppState['textMode']): void {
     set({ textMode });
   },
+  async checkClaude(): Promise<void> {
+    try {
+      set({ claudeStatus: await need().app.claudeStatus() });
+    } catch {
+      set({ claudeStatus: null });
+    }
+  },
 
-  // ---- decisions, game title, exchange (plan 3b) ----
+  // ---- decisions, game title, exchange ----
   async loadDecisionGroups(): Promise<void> {
     set({ decisionGroups: await need().decisions.groups() });
   },
@@ -395,7 +432,7 @@ const actions = {
   planImport: (): Promise<ImportPlan | null> => need().exchange.planImport(),
   applyImport: (overwrite: boolean): Promise<{ written: number }> => need().exchange.applyImport(overwrite),
 
-  // ---- plan 7: pictures and build history ----
+  // ---- pictures and build history ----
   async loadImages(): Promise<void> {
     try {
       set({ images: await need().images.list() });
@@ -458,37 +495,7 @@ export function orderedRows(s: AppState): Row[] {
   return s.rowOrder.map((id) => s.rowsById[id]);
 }
 
-// ---- plan 5: events, patches, game run (appended; the lines above are unchanged except one listener line in start) ----
-import type { EventRef, GameState, NewPatch, Patch, PatchChange, PatchList, PathSeg, UsageTarget } from '../shared/api';
-
-/** The main screens plan 5 adds; AppState.view holds them too (its declared union is left as it was). */
-export type MainView = AppState['view'] | 'events' | 'patches';
-/** An event the chat message will carry. */
-export interface AttachedEvent { file: string; listPath: PathSeg[]; label: string }
-/** Where the event screen should open (from a usage result, a patch, or the patches screen). */
-export interface EventFocus { file: string; listPath: PathSeg[]; line: number | null; seq: number }
-
-export interface AppState {
-  /** Patches and their state (loaded when needed, then pushed on change). */
-  patchList?: PatchList;
-  game?: GameState;
-  gameError?: string | null;
-  attachedEvent?: AttachedEvent | null;
-  eventFocus?: EventFocus | null;
-  /** Text the chat box should take (from "Claude에게 맡기기"). */
-  chatDraft?: string | null;
-}
-
-export function mainView(s: AppState): MainView {
-  return s.view as MainView;
-}
-
-function plan5Listeners(a: Api): (() => void)[] {
-  return [
-    a.on('patches:changed', (l) => set({ patchList: l })),
-    a.on('game:state', (g) => set({ game: g })),
-  ];
-}
+// ---- events, patches, test play ----
 
 /** The chat text with the attached event's line in front. */
 export function withEventPrefix(text: string, ev: AttachedEvent | null | undefined): string {
@@ -500,13 +507,13 @@ ${text}`;
 
 let focusSeq = 0;
 
-/** Plan 5 actions (kept apart from useApp's so that object stays as it was). */
+/** Actions of the events and patches screens and test play. */
 export const eventActions = {
   openEvents(focus: Omit<EventFocus, 'seq'> | null = null): void {
-    set({ view: 'events' as AppState['view'], eventFocus: focus ? { ...focus, seq: ++focusSeq } : state.eventFocus ?? null });
+    set({ view: 'events', eventFocus: focus ? { ...focus, seq: ++focusSeq } : state.eventFocus ?? null });
   },
   openPatches(): void {
-    set({ view: 'patches' as AppState['view'] });
+    set({ view: 'patches' });
   },
   async loadPatches(): Promise<void> {
     try {
@@ -575,8 +582,17 @@ export const eventActions = {
     if (d !== null) set({ chatDraft: null });
     return d;
   },
+  async loadFontEmbed(): Promise<void> {
+    try {
+      set({ fontEmbed: await need().patches.lastFontEmbed() });
+    } catch {
+      set({ fontEmbed: null });
+    }
+  },
 };
-// ---- plan 7 ----
+
+// ---- pictures and build history ----
+
 /** Merges changed pictures into the list (new ones are added). */
 function onImagesChanged(changed: ImageEntry[]): void {
   set((s) => {
@@ -589,38 +605,25 @@ function onImagesChanged(changed: ImageEntry[]): void {
 }
 
 /** A finished build or polished notes changes the build history; reload it when it is on screen. */
-function onJobForPlan7(p: JobProgress): void {
+function reloadBuildsAfterNotes(p: JobProgress): void {
   if (p.kind === 'notes' && p.state === 'done' && state.builds !== null) void actions.loadBuilds();
 }
-// ---- plan 6: game updates ----
-import type { UpdateInspect, UpdateSummary, VersionInfo } from '../shared/api';
 
-export interface AppState {
-  /** The "new version" dialog is open. */
-  updateOpen?: boolean;
-  /** The summary of the update that brought the current version (null = none; undefined = not loaded yet). */
-  updateSummary?: UpdateSummary | null;
-  /** The filter the image screen opens with (from the update result's "보기"). */
-  imageFilter?: string | null;
-}
-
-function plan6Listeners(a: Api): (() => void)[] {
-  return [a.on('project:reloaded', onReloaded)];
-}
+// ---- game updates ----
 
 /**
  * After an update or a rollback the main process opened the project again: the whole state follows the new snapshot,
  * the selection and filters are cleared, and lists read from the old version are dropped to load again.
  */
 function onReloaded(snap: Snapshot): void {
-  const onResult = state.view === ('update' as AppState['view']);
+  const onResult = state.view === 'update';
   adoptSnapshot(snap);
-  set({ images: null, builds: null, decisionGroups: [], patchList: undefined, idFilter: null, imageFilter: null, ...(onResult ? { view: 'update' as AppState['view'] } : {}) });
+  set({ images: null, builds: null, decisionGroups: [], patchList: undefined, idFilter: null, imageFilter: null, ...(onResult ? { view: 'update' } : {}) });
   void loadGlossary();
   void updateActions.loadSummary();
 }
 
-/** Plan 6 actions (kept apart from useApp's so that object stays as it was). */
+/** Actions of the game update dialog and its result screen. */
 export const updateActions = {
   open(): void {
     set({ updateOpen: true });
@@ -635,7 +638,7 @@ export const updateActions = {
   /** Takes the new version and shows its result. */
   async importVersion(gameDir: string, label: string): Promise<void> {
     const summary = await need().update.import(gameDir, label);
-    set({ updateSummary: summary, updateOpen: false, view: 'update' as AppState['view'], selectedId: null, detail: null });
+    set({ updateSummary: summary, updateOpen: false, view: 'update', selectedId: null, detail: null });
   },
   async rollback(): Promise<void> {
     await need().update.rollback();
@@ -650,7 +653,7 @@ export const updateActions = {
     }
   },
   openResult(): void {
-    set({ view: 'update' as AppState['view'] });
+    set({ view: 'update' });
   },
   /** The text table with one status filter (untranslated for new lines, changed for changed ones). */
   showStatus(status: StatusFilter): void {
@@ -658,32 +661,5 @@ export const updateActions = {
   },
   showImageProblems(): void {
     set({ view: 'images', imageFilter: 'problem' });
-  },
-};
-import type { StatusFilter } from '../shared/api';
-// ---- plan 6, task 8: Claude CLI guide and the last font embedding ----
-import type { ClaudeStatus, FontEmbedInfo } from '../shared/api';
-
-export interface AppState {
-  /** Whether the Claude CLI is there and logged in (undefined until checked). */
-  claudeStatus?: ClaudeStatus | null;
-  /** The last build's font embedding (null = none this session). */
-  fontEmbed?: FontEmbedInfo | null;
-}
-
-export const plan6Actions = {
-  async checkClaude(): Promise<void> {
-    try {
-      set({ claudeStatus: await need().app.claudeStatus() });
-    } catch {
-      set({ claudeStatus: null });
-    }
-  },
-  async loadFontEmbed(): Promise<void> {
-    try {
-      set({ fontEmbed: await need().patches.lastFontEmbed() });
-    } catch {
-      set({ fontEmbed: null });
-    }
   },
 };

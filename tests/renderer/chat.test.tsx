@@ -3,6 +3,7 @@ import { type UserEvent } from '@testing-library/user-event';
 import { beforeEach, expect, test } from 'vitest';
 import { useApp } from '../../src/renderer/state';
 import { fakeApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
+import { act } from '@testing-library/react';
 
 let api: FakeApi;
 let user: UserEvent;
@@ -97,5 +98,4 @@ test('멈추기와 4장 제한, 실패한 도구 줄', async () => {
   expect(screen.getAllByAltText(/첨부 \d/)).toHaveLength(4);
 });
 
-import { act } from '@testing-library/react';
 function act0(fn: () => void) { act(fn); }

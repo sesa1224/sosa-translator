@@ -223,7 +223,7 @@ test('이벤트: 줄 끼워 넣기 → 수정 내역 → 빌드 → 게임 실�
   await app.close();
 });
 
-// ---- plan 7: one picture by hand, then a build with notes ----
+// ---- one picture by hand, then a build with notes ----
 test('이미지: 영역 만들기 → 문장 → 기본 폰트 → 끝남 → 빌드에 그림과 패치노트', async () => {
   const game7 = path.join(tmp, 'game7');
   await makeMiniGame(game7);
@@ -279,7 +279,7 @@ test('이미지: 영역 만들기 → 문장 → 기본 폰트 → 끝남 → �
   await app.close();
 });
 
-// ---- plan 6: a new version of the game ----
+// ---- a new version of the game ----
 test('게임 업데이트: 번역과 수정 → 빌드 → 새 버전 가져오기 → 결과 → 빌드 → 되돌리기', async () => {
   const game8 = path.join(tmp, 'game8');
   const game9 = path.join(tmp, 'game9');

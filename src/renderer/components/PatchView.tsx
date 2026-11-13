@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ListOp, Patch, PatchStatus, PathSeg } from '../../shared/api';
 import { usePreviewState } from '../preview/usePreview';
-import { eventActions, mainView, useApp, type AttachedEvent } from '../state';
+import { eventActions, useApp, type AttachedEvent } from '../state';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const seg = (s: PathSeg | undefined): unknown => (typeof s === 'object' && s !== null ? s.key : s);
@@ -161,7 +161,7 @@ export function PatchView() {
 export function PatchNavButton() {
   const app = useApp();
   const count = app.patchList?.patches.length ?? 0;
-  const on = mainView(app) === 'patches';
+  const on = app.view === 'patches';
   useEffect(() => { void eventActions.loadPatches(); }, [app.snapshot?.meta.name]);
   return (
     <button type="button" className={`nav-btn${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => eventActions.openPatches()}>
@@ -241,13 +241,10 @@ export function GameRunButton() {
   );
 }
 
-// ---- plan 6, task 8: what the last build's font embedding found ----
-import { plan6Actions } from '../state';
-
 /** "지난 빌드: 폰트 n KB · 이 폰트에 없는 글자 k개" (warned when the font lacks characters). */
 function LastFontEmbed() {
   const { fontEmbed, build } = useApp();
-  useEffect(() => { void plan6Actions.loadFontEmbed(); }, [build.kind]);
+  useEffect(() => { void eventActions.loadFontEmbed(); }, [build.kind]);
   if (!fontEmbed) return null;
   return (
     <span className="small">

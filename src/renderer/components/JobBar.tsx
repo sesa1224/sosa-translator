@@ -37,7 +37,7 @@ export function JobBar() {
       </div>
     );
   }
-  // plan 7: patch notes and re-rendering pictures
+  // Patch notes and re-rendering pictures
   if (job.state === 'done' && (job.kind === 'notes' || job.kind === 'images')) {
     return (
       <div className="banner ok job" role="status">

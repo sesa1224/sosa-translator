@@ -1,4 +1,4 @@
-// 새 버전 가져오기 화면 (계획 6)
+// 새 버전 가져오기 화면
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
 import { useApp } from '../../src/renderer/state';

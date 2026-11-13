@@ -11,6 +11,7 @@ import { computeStats } from '../../src/shared/rows.js';
 import type { Row } from '../../src/shared/api.js';
 import { cleanupTempDirs, makeTempDir } from '../helpers/fs.js';
 import { makeMiniGame, miniMap } from '../helpers/miniGame.js';
+import { parseLoggedIn } from '../../src/main/claude/auth.js';
 
 const handlers = new Map<string, (e: unknown, ...a: any[]) => any>();
 const broadcasts: { channel: string; payload: any }[] = [];
@@ -103,8 +104,7 @@ test('채팅 도구 목록과 시스템 프롬프트', () => {
   expect(path.isAbsolute(v2)).toBe(true);
 });
 
-// ---- plan 6, task 8: Claude CLI status ----
-import { parseLoggedIn } from '../../src/main/claude/auth.js';
+// ---- Claude CLI status ----
 
 test('claude auth status 의 JSON 에서 loggedIn 을 읽는다', () => {
   expect(parseLoggedIn('{\n  "loggedIn": true,\n  "authMethod": "claude.ai"\n}\n')).toBe(true);

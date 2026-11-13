@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import type { ChatImage, Row } from '../../shared/api';
 import { num } from '../format';
-import { useApp, type ChatMessage } from '../state';
+import { eventActions, useApp, type ChatMessage } from '../state';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGES = 4;
@@ -226,9 +226,7 @@ export function ChatPanel() {
   );
 }
 
-// ---- plan 5 ----
-import { eventActions } from '../state';
-// ---- plan 7: a picture attached from the image screen ----
+/** A picture attached from the image screen. */
 function AttachedImage() {
   const { attachedImage } = useApp();
   if (!attachedImage) return null;
@@ -240,13 +238,10 @@ function AttachedImage() {
   );
 }
 
-// ---- plan 6: Claude CLI guide (for people who got the app without the CLI) ----
-import { plan6Actions } from '../state';
-
-/** How to install and log in to the Claude CLI, shown while the chat cannot work. */
+/** How to install and log in to the Claude CLI, shown while the chat cannot work (for people who got the app without the CLI). */
 function ClaudeGuide() {
   const { claudeStatus } = useApp();
-  useEffect(() => { if (claudeStatus === undefined) void plan6Actions.checkClaude(); }, [claudeStatus]);
+  useEffect(() => { if (claudeStatus === undefined) void useApp.checkClaude(); }, [claudeStatus]);
   if (!claudeStatus || (claudeStatus.found && claudeStatus.loggedIn !== false)) return null;
   return (
     <section className="cli-guide" aria-label="Claude CLI 안내">
@@ -257,7 +252,7 @@ function ClaudeGuide() {
       </ol>
       <span className="sub small">추출, 손 번역, 빌드는 CLI 없이도 돼요.</span>
       <div className="row-gap">
-        <button type="button" className="btn small-btn" onClick={() => void plan6Actions.checkClaude()}>다시 확인</button>
+        <button type="button" className="btn small-btn" onClick={() => void useApp.checkClaude()}>다시 확인</button>
       </div>
     </section>
   );

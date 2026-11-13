@@ -90,7 +90,7 @@ test('MV www 게임의 설치 방법에는 www 가 나온다', async () => {
   expect(strFromU8((await zipOf(b.zipPath))['설치 방법.txt'])).toContain('www');
 });
 
-// ---- plan 6, task 8 ----
+// ---- failed builds and the game version in the notes ----
 test('빌드가 실패하면 기여자가 먼저 쓴 폴더가 지워지고 다음 빌드가 같은 번호를 쓴다', async () => {
   const { svc, proj, idOf } = await project();
   await svc.setTranslation(idOf('月光草'), '월광초', 'user');

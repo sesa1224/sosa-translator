@@ -53,7 +53,7 @@ export function miniMap(engine: Engine = 'MZ') {
 
 export const INDEX_HTML_TEXT = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>霧の薬草園</title>\n</head>\n<body></body>\n</html>\n';
 
-/** Header-commented plugin file of the decisions extras (plan 3b): one display string, one file argument. */
+/** Header-commented plugin file of the decisions extras: one display string, one file argument. */
 export const MENU_PLUGIN_JS =
   '/*:\n * @target MZ\n * @plugindesc メニュー\n *\n * @command SET_DESTINATION\n * @text 目標設定\n *\n * @arg destination\n * @type multiline_string\n * @text 行動目標\n *\n' +
   ' * @command SHOW_PIC\n *\n * @arg picture\n * @type file\n * @dir img/pictures\n */\n' +
@@ -67,7 +67,7 @@ export function decisionCommands(): unknown[] {
   ];
 }
 
-/** Writes a tiny MV/MZ game into dir (test only). decisions: adds the plan 3b extras (note tag, MZ commands, plugin JS file). */
+/** Writes a tiny MV/MZ game into dir (test only). decisions: adds the decisions extras (note tag, MZ commands, plugin JS file). */
 export async function makeMiniGame(
   dir: string,
   opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean; variant?: 'v2' } = {},
@@ -118,7 +118,7 @@ export async function makeMiniGame(
 }
 
 /**
- * The next version of the mini game (plan 6): one line of the first message rewritten, 'やった！' → 'やった！！', a wait
+ * The next version of the mini game: one line of the first message rewritten, 'やった！' → 'やった！！', a wait
  * command added at the front of the map event, a new item, the common event's scroll text removed and a new title.
  */
 async function writeV2(data: string, engine: Engine): Promise<void> {

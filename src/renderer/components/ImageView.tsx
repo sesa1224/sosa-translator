@@ -512,7 +512,7 @@ function ImageEditor({ entry }: { entry: ImageEntry }) {
 
 export function ImageView() {
   const { images, imageFile } = useApp();
-  // plan 6: the update result opens this screen on the pictures with a problem.
+  // The update result opens this screen on the pictures with a problem.
   const [filter, setFilter] = useState<Filter>(() => (FILTERS.some(([f]) => f === useApp.get().imageFilter) ? (useApp.get().imageFilter as Filter) : 'all'));
   const [folder, setFolder] = useState('');
   useEffect(() => { void useApp.loadImages(); }, []);

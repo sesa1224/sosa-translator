@@ -1,4 +1,4 @@
-// Claude CLI 안내, 상태 줄, 폰트에 없는 글자 수 (계획 6 작업 8)
+// Claude CLI 안내, 상태 줄, 폰트에 없는 글자 수
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
 import { fakeApi, openFakeWith, updateFake, type FakeApi } from './fakeApi';

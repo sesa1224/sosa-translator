@@ -1,4 +1,4 @@
-// 대본을 읽고 만드는 용어집 초안 (계획 3 추가 요구)
+// 대본을 읽고 만드는 용어집 초안
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
