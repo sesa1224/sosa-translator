@@ -7,6 +7,8 @@ import { registerIpc } from './ipc.js';
 import { systemFontDirs } from './fonts/catalog.js';
 import type { ProjectService } from './projectService.js';
 import type { PushChannel, PushEvents } from '../shared/api.js';
+import { RenderService } from './render/renderService.js';
+import { createRenderWindow, renderWindows } from './render/renderWindow.js';
 
 if (process.env.MVMZ_USER_DATA) app.setPath('userData', process.env.MVMZ_USER_DATA);
 
@@ -135,3 +137,21 @@ app.on('before-quit', (e) => {
   e.preventDefault();
   void Promise.allSettled([ipc?.dispose(), bridge?.close()]).finally(() => app.quit());
 });
+
+// ---- plan 7: hidden render worker window (made on first use) ----
+const renderService = new RenderService({
+  createWindow: () => createRenderWindow({
+    preload: path.join(here, '../preload/render.cjs'),
+    url: process.env.ELECTRON_RENDERER_URL ? `${process.env.ELECTRON_RENDERER_URL}/render-worker/index.html` : undefined,
+    file: path.join(here, '../renderer/render-worker/index.html'),
+  }),
+});
+// The hidden worker window would keep the app alive after the last real window closes.
+app.on('browser-window-created', (_e, w) => {
+  w.on('closed', () => {
+    if (BrowserWindow.getAllWindows().every((x) => renderWindows.has(x))) renderService.dispose();
+  });
+});
+app.on('will-quit', () => renderService.dispose());
+// e2e tests reach the service through app.evaluate().
+if (process.env.MVMZ_TEST_HOOKS === '1') (globalThis as { __mvmzTest?: unknown }).__mvmzTest = { render: renderService };

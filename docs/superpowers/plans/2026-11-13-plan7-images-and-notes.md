@@ -157,7 +157,7 @@ export interface ImageEntry {
 - (e2e) 모음판: 그림 5장, 3열 → 가로 3칸 세로 2줄 크기의 PNG, 긴 변이 1,568 이하
 - e2e 는 결과 PNG 를 `zlib` 로 풀어 픽셀을 읽는다(`tests/helpers/png.ts` 에 `readPng`)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 렌더 작업 창"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 렌더 작업 창"`
 
 ### Task 5: 이미지 서비스
 
