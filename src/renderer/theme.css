@@ -212,3 +212,8 @@ select.input { padding: 0 12px; }
 .review-box { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--warn); background: var(--warn-bg); }
 .conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .stage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+
+/* ---- dropping a game folder ---- */
+.picker-page { min-height: 100vh; position: relative; border: 2px dashed transparent; }
+.picker-page.drop-on { border-color: var(--accent); background: var(--accent-bg); }
+.drop-hint { position: absolute; top: 12px; left: 0; right: 0; text-align: center; color: var(--accent-text); font-weight: 600; pointer-events: none; }

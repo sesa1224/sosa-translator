@@ -1,10 +1,10 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { ProjectService } from '../../src/main/projectService.js';
-import { registerIpc, type ChatLike, type IpcDeps } from '../../src/main/ipc.js';
+import { nameFromTitle, registerIpc, type ChatLike, type IpcDeps } from '../../src/main/ipc.js';
 import { saveSettings, loadSettings } from '../../src/main/settings.js';
 import type { ChatImage, Row } from '../../src/shared/api.js';
 import { cleanupTempDirs, makeTempDir } from '../helpers/fs.js';
@@ -98,4 +98,17 @@ test('만들기가 중간에 실패하면 만들던 폴더를 지운다', async 
   await expect(invoke('project:create', game, '깨진 게임')).rejects.toThrow('복사 실패');
   spy.mockRestore();
   expect(existsSync(path.join((await invoke('settings:get')).projectsDir, '깨진 게임'))).toBe(false);
+});
+test('게임 폴더 확인: 제목, 이름 다듬기, 파일이면 그 폴더, 게임이 아니면 오류', async () => {
+  const titled = await makeTempDir();
+  await makeMiniGame(titled);
+  const sys = path.join(titled, 'data', 'System.json');
+  const json = JSON.parse(readFileSync(sys, 'utf8')); json.gameTitle = ' A/B: C? '; writeFileSync(sys, JSON.stringify(json));
+  expect(await invoke('project:inspectGameDir', titled)).toEqual({ ok: true, dir: path.resolve(titled), engine: 'MZ', title: 'A/B: C?', suggestedName: 'AB C' });
+  expect(await invoke('project:inspectGameDir', path.join(game, 'data', 'System.json'))).toMatchObject({ ok: false });
+  writeFileSync(path.join(titled, 'Game.exe'), '');
+  expect(await invoke('project:inspectGameDir', path.join(titled, 'Game.exe'))).toMatchObject({ ok: true, dir: path.resolve(titled), suggestedName: 'AB C' });
+  const notGame = await makeTempDir();
+  expect(await invoke('project:inspectGameDir', notGame)).toMatchObject({ ok: false, error: expect.stringContaining('rmmz_core.js') });
+  expect(nameFromTitle(' ...', 'folder.')).toBe('folder');
 });

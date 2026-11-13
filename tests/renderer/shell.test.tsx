@@ -13,7 +13,7 @@ beforeEach(() => { api = fakeApi(); installApi(api); user = userEvent.setup(); }
 
 test('프로젝트가 없으면 고르기 화면, 만들면 본 화면', async () => {
   render(<App />); expect(await screen.findByRole('heading', { name: '프로젝트' })).toBeVisible();
-  await user.click(screen.getByRole('button', { name: '게임 폴더 고르기' })); await user.type(screen.getByLabelText('프로젝트 이름'), '약초원');
+  await user.click(screen.getByRole('button', { name: '게임 폴더 고르기' })); await user.clear(await screen.findByLabelText('프로젝트 이름')); await user.type(screen.getByLabelText('프로젝트 이름'), '약초원');
   await user.click(screen.getByRole('button', { name: '만들기' }));
   expect(await screen.findByText('霧の薬草園')).toBeVisible(); expect(api.calls).toContainEqual(['project.create', 'C:/game', '약초원']);
 });

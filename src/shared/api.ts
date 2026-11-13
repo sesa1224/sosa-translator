@@ -49,6 +49,10 @@ export const DEFAULT_MODELS: ModelOption[] = [
 
 
 export interface ProjectListItem { dir: string; name: string; engine: string }
+/** A checked game folder (dir is the folder actually used: a dropped file's folder). */
+export type GameDirCheck =
+  | { ok: true; dir: string; engine: 'MV' | 'MZ'; title: string; suggestedName: string }
+  | { ok: false; error: string };
 export interface Snapshot { meta: ProjectMeta; gameTitle: string | null; rows: Row[]; stats: Stats; scopes: Scope[] }
 export interface UnitDetail { row: Row; issues: Issue[]; refs: string[] }
 export interface ProjectChanged { rows: Row[]; stats: Stats; scopes: Scope[]; origin: Origin }
@@ -96,6 +100,7 @@ export interface InvokeChannels {
   'settings:set': (patch: Partial<AppSettings>) => AppSettings;
   'project:list': () => ProjectListItem[];
   'project:pickGameDir': () => string | null;
+  'project:inspectGameDir': (dir: string) => GameDirCheck;
   'project:create': (gameDir: string, name: string) => void;
   'project:open': (dir: string) => void;
   'project:close': () => void;
@@ -143,6 +148,9 @@ export interface Api {
   settings: { get: Async<InvokeChannels['settings:get']>; set: Async<InvokeChannels['settings:set']> };
   project: {
     list: Async<InvokeChannels['project:list']>; pickGameDir: Async<InvokeChannels['project:pickGameDir']>;
+    inspectGameDir: Async<InvokeChannels['project:inspectGameDir']>;
+    /** Path of a dropped file or folder (Electron webUtils; not an IPC call). */
+    pathForDrop(file: File): string;
     create: Async<InvokeChannels['project:create']>; open: Async<InvokeChannels['project:open']>;
     close: Async<InvokeChannels['project:close']>; snapshot: Async<InvokeChannels['project:snapshot']>;
     undo: Async<InvokeChannels['project:undo']>; build: Async<InvokeChannels['project:build']>;

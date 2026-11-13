@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { App } from '../../src/renderer/App';
 import { useApp } from '../../src/renderer/state';
 import {
-  DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
+  DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type GameDirCheck, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 
@@ -46,6 +46,7 @@ export const defaultFakeGlossary = (): Glossary => ({
 
 export type FakeApi = Api & {
   calls: unknown[][]; emit(channel: PushChannel, payload: unknown): void; opened: boolean; rows: Row[];
+  inspect(dir: string): GameDirCheck;
   glossaryValue: Glossary; chooseResult: ChooseResult; speakerDetection: SpeakerDetection | null; reviewPlanValue: ReviewPlan;
 };
 
@@ -73,6 +74,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     chooseResult: { changed: [], uncertain: [] },
     speakerDetection: null,
     reviewPlanValue: { items: 0, estimatedInputTokens: 0, model: 'claude-fable-5-2' },
+    inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
     },
@@ -80,6 +82,8 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     project: {
       list: rec('project.list', () => []),
       pickGameDir: rec('project.pickGameDir', () => 'C:/game'),
+      inspectGameDir: rec('project.inspectGameDir', (dir: string) => fake.inspect(dir)),
+      pathForDrop: (file: File) => { calls.push(['project.pathForDrop', file.name]); return (file as File & { path?: string }).path ?? `C:/dropped/${file.name}`; },
       create: rec('project.create', () => { fake.opened = true; }),
       open: rec('project.open', () => { fake.opened = true; }),
       close: rec('project.close', () => { fake.opened = false; }),

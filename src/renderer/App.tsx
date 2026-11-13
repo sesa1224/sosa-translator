@@ -59,7 +59,15 @@ export function App() {
   const { ready, snapshot } = useApp();
   useEffect(() => {
     void useApp.start(window.api);
-    return () => useApp.stop();
+    // A file dropped where nothing handles it would make Electron open it in place of the app.
+    const stopNav = (e: DragEvent) => e.preventDefault();
+    window.addEventListener('dragover', stopNav);
+    window.addEventListener('drop', stopNav);
+    return () => {
+      useApp.stop();
+      window.removeEventListener('dragover', stopNav);
+      window.removeEventListener('drop', stopNav);
+    };
   }, []);
   if (!ready) return null;
   return snapshot ? <Workspace /> : <ProjectPicker />;

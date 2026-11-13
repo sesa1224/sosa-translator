@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
-import { readdir, rm } from 'node:fs/promises';
+import { readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { openProject, originalDir, readJsonFile, type TextUnit, type TranslationStatus } from '../core/index.js';
+import { detectGame, openProject, originalDir, readJsonFile, type TextUnit, type TranslationStatus } from '../core/index.js';
 import type * as core from '../core/index.js';
 import type * as shared from '../shared/api.js';
 import type {
@@ -65,6 +65,31 @@ export interface IpcDeps {
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
+
+/** A project name from a game title: characters Windows file names cannot hold, and outer spaces and dots, removed. */
+export function nameFromTitle(title: string, fallback: string): string {
+  const clean = (s: string) => s.replace(/[\\/:*?"<>|]/g, '').replace(/^[\s.]+|[\s.]+$/g, '');
+  return clean(title) || clean(fallback);
+}
+
+/** Checks a picked or dropped path: a file means its folder. Never throws. */
+export async function inspectGameDir(input: string): Promise<shared.GameDirCheck> {
+  try {
+    let dir = path.resolve(String(input ?? ''));
+    if (!(await stat(dir)).isDirectory()) dir = path.dirname(dir);
+    const game = await detectGame(dir);
+    let title = '';
+    try {
+      const sys = (await readJsonFile(path.join(game.contentDir, 'data', 'System.json'))) as { gameTitle?: unknown };
+      if (typeof sys.gameTitle === 'string') title = sys.gameTitle.trim();
+    } catch {
+      // detectGame already read it; a title is optional
+    }
+    return { ok: true, dir, engine: game.engine, title, suggestedName: nameFromTitle(title, path.basename(dir)) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 async function readGameTitle(projectDir: string): Promise<string | null> {
   try {
@@ -193,6 +218,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return out;
   });
   handle('project:pickGameDir', () => deps.pickDirectory());
+  handle('project:inspectGameDir', (dir: string) => inspectGameDir(dir));
   handle('project:create', async (gameDir: string, name: string) => {
     const clean = String(name ?? '').trim();
     if (!clean) throw new Error('프로젝트 이름을 입력하세요');

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { Api, InvokeChannel, PushChannel } from '../shared/api.js';
 
 /** ipcRenderer.invoke with the "Error invoking remote method 'x': Error: " prefix removed. */
@@ -16,6 +16,8 @@ const api: Api = {
   project: {
     list: () => call('project:list'),
     pickGameDir: () => call('project:pickGameDir'),
+    inspectGameDir: (dir) => call('project:inspectGameDir', dir),
+    pathForDrop: (file) => webUtils.getPathForFile(file),
     create: (gameDir, name) => call('project:create', gameDir, name),
     open: (dir) => call('project:open', dir),
     close: () => call('project:close'),

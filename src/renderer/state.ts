@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type {
-  Api, AppSettings, BuildResult, CharacterCard, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
+  Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 
@@ -212,6 +212,8 @@ const actions = {
     set({ projects: await need().project.list() });
   },
   pickGameDir: (): Promise<string | null> => need().project.pickGameDir(),
+  inspectGameDir: (dir: string): Promise<GameDirCheck> => need().project.inspectGameDir(dir),
+  pathForDrop: (file: File): string => need().project.pathForDrop(file),
   async createProject(gameDir: string, name: string): Promise<void> {
     await need().project.create(gameDir, name);
     adoptSnapshot(await need().project.snapshot());
