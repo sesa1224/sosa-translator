@@ -30,7 +30,7 @@ export class TranslationStore {
 
   setStatus(id: string, status: TranslationStatus): void {
     const e = this.get(id);
-    this.table[id] = { target: e.target, status, updatedAt: new Date().toISOString() };
+    this.table[id] = { ...e, status, updatedAt: new Date().toISOString() };
   }
 
   entries(): Record<string, TranslationEntry> {

@@ -14,16 +14,25 @@ import {
   type TranslationEntry,
   type TranslationStatus,
 } from '../core/index.js';
+import { loadGlossary, saveGlossary, termId } from '../core/glossary/store.js';
+import { termsIn } from '../core/glossary/match.js';
+import type { Glossary, Term } from '../core/glossary/types.js';
 import type { ChangeEvent, Origin } from '../shared/api.js';
 
 const UNDO_LIMIT = 200;
 
 interface UndoRecord { id: string; before: TranslationEntry; origin: Origin }
 
+/** Reason stored for terms the model brought up while translating. */
+export const NEW_TERM_REASON = '번역 중 새로 나옴';
+
 export interface ProjectService {
   on(event: 'changed', listener: (e: ChangeEvent) => void): this;
+  on(event: 'glossary-changed', listener: (g: Glossary) => void): this;
   off(event: 'changed', listener: (e: ChangeEvent) => void): this;
+  off(event: 'glossary-changed', listener: (g: Glossary) => void): this;
   emit(event: 'changed', e: ChangeEvent): boolean;
+  emit(event: 'glossary-changed', g: Glossary): boolean;
 }
 
 /**
@@ -40,6 +49,7 @@ export class ProjectService extends EventEmitter {
     readonly meta: ProjectMeta,
     private readonly unitList: TextUnit[],
     private readonly store: TranslationStore,
+    private gloss: Glossary,
   ) {
     super();
     this.byId = new Map(unitList.map((u) => [u.id, u]));
@@ -50,14 +60,14 @@ export class ProjectService extends EventEmitter {
     const meta = await createProject(gameDir, projectDir, name);
     const { units } = await extractAll(projectDir);
     const store = await TranslationStore.load(projectDir);
-    return new ProjectService(projectDir, meta, units, store);
+    return new ProjectService(projectDir, meta, units, store, await loadGlossary(projectDir));
   }
 
   static async open(projectDir: string): Promise<ProjectService> {
     const meta = await openProject(projectDir);
     const units = await loadUnits(projectDir);
     const store = await TranslationStore.load(projectDir);
-    return new ProjectService(projectDir, meta, units, store);
+    return new ProjectService(projectDir, meta, units, store, await loadGlossary(projectDir));
   }
 
   units(): TextUnit[] {
@@ -72,10 +82,62 @@ export class ProjectService extends EventEmitter {
     return this.store.get(id);
   }
 
+  /** A copy of the project's glossary. */
+  glossary(): Glossary {
+    return structuredClone(this.gloss);
+  }
+
+  /** Replaces the glossary, saves glossary.json and emits 'glossary-changed'. */
+  setGlossary(g: Glossary): Promise<void> {
+    return this.enqueue(async () => {
+      this.gloss = structuredClone(g);
+      await saveGlossary(this.projectDir, this.gloss);
+      this.emit('glossary-changed', this.glossary());
+    });
+  }
+
+  /** Whether the unit's source holds a term still going on its recommended candidate. */
+  usesProvisional(id: string): boolean {
+    const u = this.byId.get(id);
+    if (!u) return false;
+    const provisional = this.gloss.terms.filter((t) => t.status === 'provisional');
+    return provisional.length > 0 && termsIn(u.source, provisional).length > 0;
+  }
+
+  /** Adds terms the model brought up as provisional, skipping sources already in the glossary. Returns the added terms. */
+  async addTermCandidates(terms: { source: string; target: string }[]): Promise<Term[]> {
+    const known = new Set(this.gloss.terms.map((t) => t.source));
+    const added: Term[] = [];
+    for (const n of terms) {
+      const source = n.source.trim();
+      const target = n.target.trim();
+      if (!source || !target || known.has(source)) continue;
+      known.add(source);
+      added.push({ id: termId(source), source, target, category: 'term', status: 'provisional', candidates: [{ target, reason: NEW_TERM_REASON }] });
+    }
+    if (added.length > 0) await this.setGlossary({ ...this.gloss, terms: [...this.gloss.terms, ...added] });
+    return added;
+  }
+
+  /** Marks a unit the model would not translate. */
+  setDeclined(id: string, reason: string, origin: Origin): Promise<void> {
+    return this.mutate(origin, () => {
+      this.require(id);
+      this.remember(id, origin);
+      this.store.restore(id, { target: null, status: 'declined', updatedAt: new Date().toISOString(), declinedReason: reason });
+      return { ids: [id], result: undefined };
+    });
+  }
+
+  private check(unit: TextUnit, target: string): Issue[] {
+    const g = this.gloss;
+    return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars });
+  }
+
   setTranslation(id: string, target: string, origin: Origin): Promise<Issue[]> {
     return this.mutate(origin, () => {
       const unit = this.require(id);
-      const issues = checkTranslation(unit, target);
+      const issues = this.check(unit, target);
       const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'needs-review';
       this.remember(id, origin);
       this.store.set(id, target, status);
@@ -105,7 +167,7 @@ export class ProjectService extends EventEmitter {
   issues(id: string): Issue[] {
     const unit = this.require(id);
     const target = this.store.get(id).target;
-    return target === null ? [] : checkTranslation(unit, target);
+    return target === null ? [] : this.check(unit, target);
   }
 
   /** Reverts the most recent change (of that origin, if given). Returns the changed ids, or []. */

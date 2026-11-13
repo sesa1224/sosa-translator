@@ -426,7 +426,7 @@ export class TranslateJob extends EventEmitter {   // 'progress' → JobProgress
 
 `progress.total` 은 시작할 때의 대상 항목 수, `done` 은 번역·거절·오류로 끝난 항목 수. `usage` 는 모든 호출의 합. `pause()` 는 진행 중인 호출이 끝난 뒤 멈춘다. `stop()` 은 호출을 끊는다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기** (`call` 은 시험이 주는 가짜. `answer(fn)` 은 받은 user JSON 으로 답을 만드는 도우미)
+- [x] **Step 1: 실패하는 시험 쓰기** (`call` 은 시험이 주는 가짜. `answer(fn)` 은 받은 user JSON 으로 답을 만드는 도우미)
 
 ```ts
 test('전부 번역', async () => {
@@ -470,10 +470,10 @@ test('로그인 오류는 실패로 끝낸다', async () => {
 test('멈추기', async () => { const job = mk(slow(okAll)); const p = job.start(); job.stop(); await p; expect(job.progress.state).toBe('stopped'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/job.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 번역 작업 실행기"`**
+- [x] **Step 2: `npx vitest run tests/main/job.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 번역 작업 실행기"`**
 
 ### Task 8: 검수 작업
 
