@@ -7,6 +7,8 @@ function segValue(s: PathSeg | undefined): string | number | undefined {
 }
 
 function refPath(ref: UnitRef): PathSeg[] {
+  if (ref.type === 'note') return ref.path;
+  if (ref.type === 'js') return [];
   return ref.type === 'value' ? ref.path : ref.listPath;
 }
 

@@ -93,7 +93,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - `meta.gameDir` 가 없는 경로면 `missingGameDir: true` 이고 예외가 나지 않는다
 - 원본 게임 폴더의 해시가 바뀌지 않는다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 원본 파일 목록과 보조 파일 보관"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 원본 파일 목록과 보조 파일 보관"`
 
 ### Task 2: 판단 키, 묶기, 그대로 둘 부분, 뼈대 검사
 
