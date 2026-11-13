@@ -41,7 +41,8 @@ export function manyRows(n: number): Row[] {
 
 export type FakeApi = Api & { calls: unknown[][]; emit(channel: PushChannel, payload: unknown): void; opened: boolean; rows: Row[] };
 
-export function fakeApi(o: { opened?: boolean; rows?: Row[] } = {}): FakeApi {
+export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings> } = {}): FakeApi {
+  let current: AppSettings = { ...settings, ...o.settings };
   const listeners = new Map<string, Set<(p: any) => void>>();
   const calls: unknown[][] = [];
   const rec = <T,>(name: string, result: (...a: any[]) => T) => async (...a: any[]): Promise<T> => { calls.push([name, ...a]); return result(...a); };
@@ -63,7 +64,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[] } = {}): FakeApi {
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
     },
-    settings: { get: rec('settings.get', () => settings), set: rec('settings.set', (p) => ({ ...settings, ...p })) },
+    settings: { get: rec('settings.get', () => current), set: rec('settings.set', (p) => (current = { ...current, ...p })) },
     project: {
       list: rec('project.list', () => []),
       pickGameDir: rec('project.pickGameDir', () => 'C:/game'),

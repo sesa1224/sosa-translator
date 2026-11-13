@@ -262,7 +262,8 @@ const actions = {
   async updateSettings(patch: Partial<AppSettings>): Promise<void> {
     const s = await need().settings.set(patch);
     applyTheme(s);
-    set({ settings: s, claudePath: await need().app.claudePath().catch(() => null) });
+    set({ settings: s });
+    if ('claudePath' in patch) set({ claudePath: await need().app.claudePath().catch(() => null) });
   },
 };
 

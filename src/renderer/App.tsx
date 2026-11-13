@@ -3,6 +3,7 @@ import type { Api } from '../shared/api';
 import { ChatPanel } from './components/ChatPanel';
 import { ItemPanel } from './components/ItemPanel';
 import { ProjectPicker } from './components/ProjectPicker';
+import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
 import { TextTable } from './components/TextTable';
@@ -42,7 +43,7 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
-          {view === 'text' ? <TextTable /> : <h1 className="page-title">설정</h1>}
+          {view === 'text' ? <TextTable /> : <SettingsView />}
         </main>
         <RightPanel />
       </div>

@@ -661,7 +661,7 @@ test('오류는 한 줄로', async () => {
 
 연기 시험은 가짜 CLI 로 한다: 환경 변수 `MVMZ_CLAUDE_COMMAND`, `MVMZ_CLAUDE_PREFIX_ARGS`(JSON 배열)가 있으면 `findClaude` 대신 그것을 쓴다. 폴더 고르기 창은 `MVMZ_PICK_DIR` 가 있으면 그 경로를 돌려준다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 // settings.test.tsx
@@ -685,11 +685,11 @@ test('가져오기 → 손으로 번역 → 채팅 → 빌드', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/renderer/settings.test.tsx && npm run build:app && npm run test:e2e` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: 전체 확인** — `npx vitest run` 전부 통과, `npx tsc --noEmit -p tsconfig.node.json` 와 `-p tsconfig.web.json` 오류 없음, `npm run test:e2e` 통과
-- [ ] **Step 5: 실제 CLI 확인** — `claude auth status` 가 `loggedIn: true` 일 때만 한다. 로그인돼 있지 않으면 이 단계를 건너뛰고 보고에 "실제 CLI 확인 안 함"이라고 적는다(로그인은 사용자만 할 수 있다). 로그인돼 있으면: `makeMiniGame` 으로 만든 게임으로 `ProjectService` 와 브리지를 띄우고 실제 `claude` 를 `buildClaudeArgs` 인자로 실행해 "月光草 를 찾아서 '월광초'로 번역해줘"를 보낸다. 확인할 것: (1) 출력 줄의 실제 모양이 작업 6의 파서 표와 맞는지. 다르면 실제 출력 몇 줄을 `tests/fixtures/real-stream.jsonl` 로 저장하고 파서와 시험을 실제 모양에 맞춘다, (2) Claude가 `mcp__mvmz__set_translation` 을 불러 번역표가 바뀌는지, (3) 내장 도구(Bash, Read 등)가 도구 목록에 없는지. 인자 이름이 달라 실행이 안 되면 고치지 말고 멈춰서 보고한다
-- [ ] **Step 6: `README.md` 에 실행 방법(`npm run dev`), 구조, 채팅 도구 표를 적고 `git commit -m "feat: 설정 화면과 전체 흐름 시험"`**
+- [x] **Step 2: `npx vitest run tests/renderer/settings.test.tsx && npm run build:app && npm run test:e2e` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: 전체 확인** — `npx vitest run` 전부 통과, `npx tsc --noEmit -p tsconfig.node.json` 와 `-p tsconfig.web.json` 오류 없음, `npm run test:e2e` 통과
+- [x] **Step 5: 실제 CLI 확인** — `claude auth status` 가 `loggedIn: true` 일 때만 한다. 로그인돼 있지 않으면 이 단계를 건너뛰고 보고에 "실제 CLI 확인 안 함"이라고 적는다(로그인은 사용자만 할 수 있다). 로그인돼 있으면: `makeMiniGame` 으로 만든 게임으로 `ProjectService` 와 브리지를 띄우고 실제 `claude` 를 `buildClaudeArgs` 인자로 실행해 "月光草 를 찾아서 '월광초'로 번역해줘"를 보낸다. 확인할 것: (1) 출력 줄의 실제 모양이 작업 6의 파서 표와 맞는지. 다르면 실제 출력 몇 줄을 `tests/fixtures/real-stream.jsonl` 로 저장하고 파서와 시험을 실제 모양에 맞춘다, (2) Claude가 `mcp__mvmz__set_translation` 을 불러 번역표가 바뀌는지, (3) 내장 도구(Bash, Read 등)가 도구 목록에 없는지. 인자 이름이 달라 실행이 안 되면 고치지 말고 멈춰서 보고한다
+- [x] **Step 6: `README.md` 에 실행 방법(`npm run dev`), 구조, 채팅 도구 표를 적고 `git commit -m "feat: 설정 화면과 전체 흐름 시험"`**
 
 ---
 
