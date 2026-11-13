@@ -10,3 +10,4 @@ export * from './project/project.js';
 export * from './extract/index.js';
 export * from './util/json.js';
 export * from './store/translations.js';
+export * from './check/format.js';

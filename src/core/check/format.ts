@@ -1,0 +1,81 @@
+import type { TranslationStore } from '../store/translations.js';
+import { controlCodes } from '../text/controlCodes.js';
+import { hasJapanese } from '../text/japanese.js';
+import type { Issue, TextUnit } from '../types.js';
+
+export interface FormatRules { controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null }
+
+export const DEFAULT_RULES: FormatRules = { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4 };
+
+/** Multiset difference a - b. */
+function minus(a: string[], b: string[]): string[] {
+  const rest = [...b];
+  const out: string[] = [];
+  for (const x of a) {
+    const i = rest.indexOf(x);
+    if (i >= 0) rest.splice(i, 1);
+    else out.push(x);
+  }
+  return out;
+}
+
+function lineCount(s: string): number {
+  return s.split('\n').length;
+}
+
+/** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
+export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES): Issue[] {
+  if (target.trim() === '') {
+    return [{ rule: 'empty', severity: 'error', message: '번역이 비어 있습니다' }];
+  }
+  const issues: Issue[] = [];
+
+  if (rules.controlCodes) {
+    const src = controlCodes(unit.source);
+    const dst = controlCodes(target);
+    const missing = minus(src, dst);
+    const added = minus(dst, src);
+    if (missing.length > 0 || added.length > 0) {
+      const parts: string[] = [];
+      if (missing.length > 0) parts.push(`빠짐: ${missing.join(' ')}`);
+      if (added.length > 0) parts.push(`더해짐: ${added.join(' ')}`);
+      issues.push({ rule: 'control-codes', severity: 'error', message: `제어문자가 원문과 다릅니다 (${parts.join(', ')})` });
+    }
+  }
+
+  if (rules.noLeftoverJapanese && hasJapanese(target)) {
+    issues.push({ rule: 'leftover-japanese', severity: 'error', message: '번역에 일본어 글자가 남아 있습니다' });
+  }
+
+  const srcLines = lineCount(unit.source);
+  const dstLines = lineCount(target);
+  if (rules.sameLineCount && srcLines !== dstLines) {
+    issues.push({ rule: 'line-count', severity: 'error', message: `줄 수가 원문(${srcLines}줄)과 다릅니다: ${dstLines}줄` });
+  }
+  if (rules.maxLines !== null && unit.kind === 'dialogue' && dstLines > rules.maxLines) {
+    issues.push({ rule: 'line-count', severity: 'warning', message: `대사가 ${rules.maxLines}줄을 넘습니다: ${dstLines}줄` });
+  }
+  return issues;
+}
+
+/**
+ * Checks every translated unit. Returns only units with issues.
+ * Units with an error get status 'error'; a unit marked 'error' that now passes goes back to 'needs-review'.
+ */
+export function checkAll(
+  units: TextUnit[],
+  store: TranslationStore,
+  rules: FormatRules = DEFAULT_RULES,
+): { id: string; issues: Issue[] }[] {
+  const out: { id: string; issues: Issue[] }[] = [];
+  for (const u of units) {
+    const entry = store.get(u.id);
+    if (entry.target === null) continue;
+    const issues = checkTranslation(u, entry.target, rules);
+    const hasError = issues.some((i) => i.severity === 'error');
+    if (hasError && entry.status !== 'error') store.setStatus(u.id, 'error');
+    else if (!hasError && entry.status === 'error') store.setStatus(u.id, 'needs-review');
+    if (issues.length > 0) out.push({ id: u.id, issues });
+  }
+  return out;
+}

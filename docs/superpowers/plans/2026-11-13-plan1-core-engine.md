@@ -529,7 +529,7 @@ test('가져오기: 모르는 id 는 돌려준다', () => {
 
 규칙: 빈 번역(공백만) → `empty` error. 제어문자를 정렬해 비교해서 다르면 `control-codes` error, 메시지에 빠진 것과 더해진 것을 적는다. 번역에 일본어 글자가 남으면 `leftover-japanese` error. `sameLineCount` 가 켜져 있고 줄 수가 다르면 `line-count` error. `maxLines` 는 `dialogue` 에만 적용하고 넘으면 `line-count` warning. 픽셀 폭 검사는 계획 4.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 const u = (source: string, kind: UnitKind = 'dialogue'): TextUnit => ({ id: 'i', kind, source, needsDecision: false, refs: [] });
@@ -548,10 +548,10 @@ test('줄 수', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/check/format.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 형식 검사"`**
+- [x] **Step 2: `npx vitest run tests/check/format.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 형식 검사"`**
 
 ### Task 10: 번역 적용
 
