@@ -166,6 +166,7 @@ export function ChatPanel() {
         {undoNote && <span className="sub small">{undoNote}</span>}
       </div>
       <div className="chat-input">
+        <AttachedImage />
         {(attached || images.length > 0) && (
           <div className="attached">
             {attached && (
@@ -208,6 +209,18 @@ export function ChatPanel() {
           <span className="mono sub small nowrap">{`이번 대화 ${num(total)} 토큰`}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---- plan 7: a picture attached from the image screen ----
+function AttachedImage() {
+  const { attachedImage } = useApp();
+  if (!attachedImage) return null;
+  return (
+    <div className="attached">
+      <span className="tag">{`이미지: ${attachedImage}`}</span>
+      <button type="button" className="x" aria-label="붙은 그림 떼기" onClick={() => useApp.detachImage()}>×</button>
     </div>
   );
 }

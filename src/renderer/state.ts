@@ -4,6 +4,7 @@ import type {
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type { DecisionGroup, DecisionInput, ImportPlan } from '../shared/api';
+import type { BuildRecord, ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../shared/api';
 
 export type ChatMessage =
   | { kind: 'user'; text: string; images: ChatImage[]; attached: string | null }
@@ -31,7 +32,7 @@ export interface AppState {
   selectedId: string | null;
   detail: UnitDetail | null;
   query: RowQuery;
-  view: 'text' | 'settings' | 'glossary' | 'decisions';
+  view: 'text' | 'settings' | 'glossary' | 'decisions' | 'images' | 'builds';
   glossary: Glossary | null;
   /** The glossary was edited after it was confirmed (this session). */
   glossaryDirty: boolean;
@@ -55,6 +56,15 @@ export interface AppState {
   decisionGroups: DecisionGroup[];
   /** The card the decisions screen should scroll to (from an item's "묶음 보기"). */
   decisionFocus: string | null;
+  // ---- plan 7 ----
+  /** The game's pictures (null until loaded for the open project). */
+  images: ImageEntry[] | null;
+  /** The picture open on the image screen. */
+  imageFile: string | null;
+  /** A picture attached to the next chat message. */
+  attachedImage: string | null;
+  /** Finished builds, newest first (null until the build history opens). */
+  builds: BuildRecord[] | null;
 }
 
 const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
@@ -68,6 +78,7 @@ function initial(): AppState {
     fontPickerRequest: 0,
     textMode: 'table',
     decisionGroups: [], decisionFocus: null,
+    images: null, imageFile: null, attachedImage: null, builds: null,
   };
 }
 
@@ -199,6 +210,8 @@ async function start(a: Api): Promise<void> {
     a.on('glossary:changed', onGlossaryChanged),
     a.on('job:progress', (p) => set({ job: p, jobDismissed: false })),
     a.on('decisions:changed', (g) => set({ decisionGroups: g })),
+    a.on('images:changed', onImagesChanged),
+    a.on('job:progress', onJobForPlan7),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -325,6 +338,11 @@ const actions = {
     const attached = state.attachedId;
     const attachedLabel = attached ? state.rowsById[attached]?.location ?? null : null;
     set((s) => ({ chat: { ...s.chat, busy: true, messages: [...s.chat.messages, { kind: 'user', text, images, attached: attachedLabel }] } }));
+    // plan 7: a picture attached from the image screen goes in front of the message.
+    if (state.attachedImage) {
+      text = `[이미지] file=${state.attachedImage}\n\n${text}`;
+      set({ attachedImage: null });
+    }
     try {
       await need().chat.send(text, images, attached ?? undefined);
     } catch (e) {
@@ -374,6 +392,46 @@ const actions = {
   exportRows: (ids: string[]): Promise<string | null> => need().exchange.export(ids),
   planImport: (): Promise<ImportPlan | null> => need().exchange.planImport(),
   applyImport: (overwrite: boolean): Promise<{ written: number }> => need().exchange.applyImport(overwrite),
+
+  // ---- plan 7: pictures and build history ----
+  async loadImages(): Promise<void> {
+    try {
+      set({ images: await need().images.list() });
+    } catch {
+      set({ images: [] });
+    }
+  },
+  selectImage(file: string | null): void {
+    set({ imageFile: file });
+  },
+  imageRecipe: (file: string): Promise<ImageRecipe | null> => need().images.recipe(file),
+  saveRecipe: (file: string, regions: (Partial<Region> & { rect: Rect })[]): Promise<ImageRecipe> => need().images.setRecipe(file, regions),
+  setImageStatus: (file: string, status: ImageStatus): Promise<void> => need().images.setStatus(file, status),
+  pickManualImage: (file: string): Promise<boolean> => need().images.pickManual(file),
+  clearManualImage: (file: string): Promise<void> => need().images.clearManual(file),
+  acceptImageBase: (file: string): Promise<void> => need().images.acceptBase(file),
+  setImageFont: (path: string | null): Promise<void> => need().images.setDefaultFont(path),
+  rerenderImages: (): Promise<void> => need().images.rerenderAll(),
+  /** Goes to the chat with the picture attached to the next message. */
+  talkAboutImage(file: string): void {
+    set({ attachedImage: file, rightTab: 'chat' });
+  },
+  detachImage(): void {
+    set({ attachedImage: null });
+  },
+  async loadBuilds(): Promise<void> {
+    try {
+      set({ builds: await need().builds.list() });
+    } catch {
+      set({ builds: [] });
+    }
+  },
+  async setBuildNotes(number: number, text: string): Promise<void> {
+    await need().builds.setNotes(number, text);
+    await actions.loadBuilds();
+  },
+  polishNotes: (number: number): Promise<void> => need().builds.polishNotes(number),
+  openBuildFolder: (number: number): Promise<void> => need().builds.openFolder(number),
 };
 
 function subscribe(l: () => void): () => void {
@@ -396,4 +454,21 @@ export function jobActive(s: AppState): boolean {
 /** Rows in project order. */
 export function orderedRows(s: AppState): Row[] {
   return s.rowOrder.map((id) => s.rowsById[id]);
+}
+
+// ---- plan 7 ----
+/** Merges changed pictures into the list (new ones are added). */
+function onImagesChanged(changed: ImageEntry[]): void {
+  set((s) => {
+    if (!s.images) return {};
+    const byFile = new Map(changed.map((e) => [e.file, e]));
+    const next = s.images.map((e) => byFile.get(e.file) ?? e);
+    for (const e of changed) if (!s.images.some((x) => x.file === e.file)) next.push(e);
+    return { images: next };
+  });
+}
+
+/** A finished build or polished notes changes the build history; reload it when it is on screen. */
+function onJobForPlan7(p: JobProgress): void {
+  if (p.kind === 'notes' && p.state === 'done' && state.builds !== null) void actions.loadBuilds();
 }

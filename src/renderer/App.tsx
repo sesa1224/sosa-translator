@@ -12,6 +12,7 @@ import { TextTable } from './components/TextTable';
 import { BuildBanner, TopBar } from './components/TopBar';
 import { useApp } from './state';
 import { DecisionView } from './components/DecisionView';
+import { ImageView } from './components/ImageView';
 
 declare global {
   interface Window { api: Api }
@@ -47,8 +48,10 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
+          {view === 'images' ? <ImageView /> : <>
           {view === 'decisions' ? <DecisionView /> : <>
           {view === 'text' ? <TextTable /> : view === 'glossary' ? <GlossaryView /> : <SettingsView />}
+          </>}
           </>}
         </main>
         <RightPanel />

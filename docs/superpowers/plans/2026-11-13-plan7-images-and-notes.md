@@ -292,7 +292,7 @@ export interface BuildDiff {
 - `problem: 'base-changed'` 인 그림에 안내와 "확인했어요" → `images.acceptBase`
 - 넘침 정보가 있으면 "영역을 넘쳐요"가 보인다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 이미지 화면"`
 
 ### Task 10: 빌드 기록 화면, 전체 흐름 시험
 
