@@ -309,7 +309,7 @@ export interface Material {
 
 프롬프트(system)에 꼭 들어갈 내용: 번역 지침 전체(`styleGuide`), 해야 할 일("자료에 나온 이름·고유명사·효과음마다 번역을 정한다. 읽는 법이나 뜻이 둘 이상으로 갈릴 수 있으면 후보를 2~3개 내고 가장 권하는 것을 첫 번째에 둔다. 확실하면 후보를 1개만 낸다. 효과음은 지침의 원칙대로 한국어 소리말로 정한다. 대사 표본을 보고 인물마다 말투를 한두 문장으로 적는다. 게임 전체의 분위기와 문체에서 지침에 더할 점을 styleNotes 에 적는다").
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('자료 모으기', () => {
@@ -335,10 +335,10 @@ test('초안 합치기', () => {
 test('프롬프트', () => { const p = buildDraftPrompt(m, 'GUIDE'); expect(p.system).toContain('GUIDE'); expect(JSON.parse(p.user).names[0].name).toBe('アーテル'); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/draft.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 용어집 자료 모으기와 초안"`**
+- [x] **Step 2: `npx vitest run tests/main/draft.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 용어집 자료 모으기와 초안"`**
 
 ### Task 6: 묶음 나누기와 번역 프롬프트
 
