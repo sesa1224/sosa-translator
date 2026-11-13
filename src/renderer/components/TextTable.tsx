@@ -6,6 +6,17 @@ import { num, STATUS_LABEL } from '../format';
 import { jobActive, orderedRows, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { ReviewDialog } from './ReviewDialog';
+import { ExchangeActions } from './ExchangeDialog';
+
+/** What the translation cell shows for a needs-decision row whose decision says more than the target (null = the usual). */
+function decisionCell(r: Row): string | null {
+  if (r.decision === 'skip') return '번역 안 함';
+  if (r.target !== null) return null;
+  if (r.decision === 'suggested-translate') return '추천: 번역함';
+  if (r.decision === 'suggested-skip') return '추천: 번역 안 함';
+  if (r.decision === 'translate') return '번역 전';
+  return null;
+}
 
 const SEARCH_DELAY = 200;
 
@@ -53,6 +64,8 @@ function JobActions() {
 function FilterBar() {
   const { snapshot, query } = useApp();
   const [text, setText] = useState(query.text ?? '');
+  const { rowsById } = useApp();
+  const skipped = useMemo(() => Object.values(rowsById).filter((r) => r.decision === 'skip').length, [rowsById]);
   useEffect(() => {
     const t = setTimeout(() => useApp.setQuery({ text: text || undefined }), SEARCH_DELAY);
     return () => clearTimeout(t);
@@ -65,6 +78,8 @@ function FilterBar() {
   ];
   if (s.declined > 0) chips.push(['declined', '거절됨', s.declined]);
   if (s.provisional > 0) chips.push(['provisional', '추천안 용어 사용', s.provisional]);
+  if ((s.external ?? 0) > 0) chips.push(['external', '외부 번역', s.external]);
+  if (skipped > 0) chips.push(['skipped', '번역 안 함', skipped]);
   const current = query.status ?? 'all';
   return (
     <div className="filters">
@@ -123,7 +138,13 @@ export function TextTable() {
             {`골라 본 줄 ${num(idFilter.length)}개 ×`}
           </button>
         )}
+        {query.decisionKey && (
+          <button type="button" className="pill on" onClick={() => useApp.setQuery({ decisionKey: undefined })} aria-label="판단 묶음 필터 해제">
+            {`묶음 ${query.decisionKey} ×`}
+          </button>
+        )}
         <span className="mono sub small">{`${num(rows.length)}줄`}</span>
+        <ExchangeActions ids={rows.map((r) => r.id)} />
       </div>
       <JobActions />
       <FilterBar />
@@ -148,7 +169,9 @@ export function TextTable() {
                   <span role="cell" className="small">{r.speaker ?? ''}</span>
                   <span role="cell" className="src"><CodeText text={r.source} /></span>
                   <span role="cell" className={r.target === null ? 'mute' : ''}>
+                    {decisionCell(r) !== null ? decisionCell(r) : <>
                     {r.target === null ? (r.needsDecision ? '판단 대기' : '번역 전') : <CodeText text={r.target} />}
+                    </>}
                   </span>
                   <span role="cell"><span className={`st ${chip.cls}`}>{chip.label}</span></span>
                 </div>

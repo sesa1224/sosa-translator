@@ -3,6 +3,7 @@ import type { AppSettings, StageModels } from '../../shared/api';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 import { useApp } from '../state';
+import { DEFAULT_DECIDE_MODEL } from '../../shared/api';
 
 export function SettingsView() {
   const { settings, claudePath } = useApp();
@@ -78,6 +79,14 @@ export function SettingsView() {
               </select>
             </div>
           ))}
+          <div className="field">
+            <label htmlFor="stage-decide">판단 필요 추천</label>
+            <select id="stage-decide" className="input" value={settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}
+              onChange={(e) => void save({ stageModels: { ...settings.stageModels, decide: e.target.value } })}>
+              {!settings.models.some((m) => m.id === (settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL)) && <option value={settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}>{settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}</option>}
+              {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </div>
         </div>
         <span className="hint">용어집 초안(대본 읽기와 정리), 전체 번역, 검수를 맡길 때 각각 이 모델을 써요. 대본 읽기를 비우면 용어집 정리 모델로 읽어요.</span>
       </section>

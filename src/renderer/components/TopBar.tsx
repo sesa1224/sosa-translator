@@ -1,5 +1,6 @@
 import { num, pct } from '../format';
 import { useApp } from '../state';
+import { TitleField } from './TitleField';
 
 export function TopBar() {
   const { snapshot, build } = useApp();
@@ -14,6 +15,7 @@ export function TopBar() {
         <div className="logo" aria-hidden="true">譯</div>
         <div className="brand-text">
           <span className="brand-title">{snapshot.gameTitle ?? meta.name}</span>
+          <TitleField />
           <span className="mono sub small">{meta.engine} · {meta.current} · 일본어 → 한국어 · {meta.name}</span>
         </div>
       </div>

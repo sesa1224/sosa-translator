@@ -313,7 +313,7 @@ export interface ExchangePackage {
 - 결정 상태에 따라 번역 칸의 글이 다섯 가지로 나온다
 - "이 줄만 따로 정하기"가 `unit:<id>` 키로 부른다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 제목 칸과 내보내기·가져오기 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 제목 칸과 내보내기·가져오기 화면"`
 
 ### Task 12: 전체 흐름 시험과 실제 CLI 확인
 
