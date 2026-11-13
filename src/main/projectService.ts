@@ -20,6 +20,7 @@ import { termsIn } from '../core/glossary/match.js';
 import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, Term } from '../core/glossary/types.js';
 import type { ChangeEvent, Origin } from '../shared/api.js';
+import type { PxCheck } from '../core/check/format.js';
 
 const UNDO_LIMIT = 200;
 
@@ -261,6 +262,8 @@ export class ProjectService extends EventEmitter {
 
   private check(unit: TextUnit, target: string): Issue[] {
     const g = this.gloss;
+    const px = this.pxChecker?.(unit);
+    if (px) return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern }, px);
     return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern });
   }
 
@@ -346,6 +349,19 @@ export class ProjectService extends EventEmitter {
     if (this.history.length > UNDO_LIMIT) this.history.shift();
   }
 
+  // ---- plan 4: pixel-width check ----
+  private pxChecker: PxChecker | null = null;
+
+  /**
+   * Makes setTranslation and issues use the pixel-width check (null = back to the character count).
+   * Announces every translated dialogue as changed, since its warnings may differ now.
+   */
+  setPxChecker(fn: PxChecker | null, announce = true): void {
+    this.pxChecker = fn;
+    const ids = this.unitList.filter((u) => u.kind === 'dialogue' && this.store.get(u.id).target !== null).map((u) => u.id);
+    if (announce && ids.length > 0) this.emit('changed', { ids, origin: 'user' });
+  }
+
   private enqueue<T>(job: () => Promise<T>): Promise<T> {
     const run = this.queue.then(job, job);
     this.queue = run.catch(() => undefined);
@@ -363,3 +379,6 @@ export class ProjectService extends EventEmitter {
     });
   }
 }
+
+/** Gives the pixel-width check for a unit (only dialogue is checked), or undefined to use the character count. */
+export type PxChecker = (unit: TextUnit) => PxCheck | undefined;

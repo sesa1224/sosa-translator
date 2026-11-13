@@ -11,6 +11,7 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
   empty: '빈 번역',
   glossary: '용어집',
   'line-width': '줄 폭',
+  'line-width-px': '창 폭',
 };
 
 export function ItemPanel() {

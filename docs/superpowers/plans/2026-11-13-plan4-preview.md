@@ -181,7 +181,7 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 - 7,000개 대사(시험에서 만들어 낸다)에 대해 `countOverflow` 가 1초 안에 끝난다
 - 폰트 파일을 지운 뒤 `init()` → `fontMissing` 이 참이고 검사는 글자 수 방식으로 돌아간다. 예외가 없다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 픽셀 폭 검사와 넘침 세기"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 픽셀 폭 검사와 넘침 세기"`
 
 ### Task 5: IPC 연결
 
