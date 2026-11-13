@@ -440,7 +440,7 @@ test('못 읽는 파일', () => { expect(() => parsePluginsFile('hello')).toThro
 - Produces: `extractAll(projectDir: string): Promise<{ units: TextUnit[]; warnings: Warning[] }>` — `original/<current>` 를 읽고 `units.json` 을 쓴다
 - Produces: `readJsonFile(path: string): Promise<unknown>` — 맨 앞 BOM(`﻿`)을 떼고 파싱
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('프로젝트를 만들고 원본을 복사한다', async () => {
@@ -472,10 +472,10 @@ test('BOM 붙은 파일은 읽고, 깨진 파일은 경고만', async () => {
 test('원본 게임 폴더는 바뀌지 않는다', async () => { expect(await hashDir(game)).toBe(gameHashBefore); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/project/project.test.ts` → FAIL**
-- [ ] **Step 3: 구현** — id 는 `node:crypto` sha1
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 프로젝트 생성과 전체 추출"`**
+- [x] **Step 2: `npx vitest run tests/project/project.test.ts` → FAIL**
+- [x] **Step 3: 구현** — id 는 `node:crypto` sha1
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 프로젝트 생성과 전체 추출"`**
 
 ### Task 8: 번역표
 
