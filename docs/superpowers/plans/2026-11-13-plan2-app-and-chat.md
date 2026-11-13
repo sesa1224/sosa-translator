@@ -220,7 +220,7 @@ test('없는 id', async () => { await expect(svc.setTranslation('nope', 'x', 'us
 
 규칙: `locationLabel` — `data/Map004.json` 의 `['events', 3, 'pages', 0, 'list']` → `맵4 · 이벤트3`(페이지가 0이 아니면 ` · 2페이지` 를 붙인다. 페이지 번호는 1부터), `data/CommonEvents.json` `[7,'list']` → `커먼이벤트7`, `data/Items.json` `[1,'name']` → `Items · 1`, `data/System.json` → `시스템`, `js/plugins.js` → `플러그인 설정`. `scopeLabel` — `data/Map004.json` → `맵4`, `data/CommonEvents.json` → `커먼이벤트`, `js/plugins.js` → `플러그인 설정`, 그 외 `data/X.json` → `X`. `filterRows` — `text` 는 대소문자 무시, 글자 그대로(정규식 아님), source·target·speaker 중 하나에 들어있으면 통과. `status: 'needs-decision'` 은 `needsDecision` 인 행. `computeScopes` 는 처음 나온 파일 순서.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('위치 이름', () => {
@@ -243,10 +243,10 @@ test('상태 필터와 통계', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/shared/rows.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 행 모델과 필터"`**
+- [x] **Step 2: `npx vitest run tests/shared/rows.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 행 모델과 필터"`**
 
 ### Task 4: 도구 처리기
 
