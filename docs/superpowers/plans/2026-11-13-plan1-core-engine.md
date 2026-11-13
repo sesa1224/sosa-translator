@@ -172,7 +172,7 @@ var $plugins =
 
 `www: true` 면 위 전부를 `dir/www/` 아래에 쓴다. `encrypted: true` 면 System 의 `hasEncryptedImages: true`, `encryptionKey: 'd41d8cd98f00b204e9800998ecf8427e'`.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('MZ 폴더를 판별한다', async () => {
@@ -192,10 +192,10 @@ test('MV/MZ가 아니면 오류', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/engine/detect.test.ts` → FAIL (모듈 없음)**
-- [ ] **Step 3: `package.json`(type module, scripts `test`, `build`, bin `mvmz` → `dist/cli.js`), `tsconfig.json`(strict, NodeNext, outDir dist), 타입, `makeMiniGame`, `detectGame` 구현**
-- [ ] **Step 4: 같은 명령 → PASS**
-- [ ] **Step 5: `git add -A && git commit -m "feat: 프로젝트 뼈대와 엔진 판별"`**
+- [x] **Step 2: `npx vitest run tests/engine/detect.test.ts` → FAIL (모듈 없음)**
+- [x] **Step 3: `package.json`(type module, scripts `test`, `build`, bin `mvmz` → `dist/cli.js`), `tsconfig.json`(strict, NodeNext, outDir dist), 타입, `makeMiniGame`, `detectGame` 구현**
+- [x] **Step 4: 같은 명령 → PASS**
+- [x] **Step 5: `git add -A && git commit -m "feat: 프로젝트 뼈대와 엔진 판별"`**
 
 ### Task 2: 이미지·소리 파일 복호화와 암호화
 
@@ -208,7 +208,7 @@ test('MV/MZ가 아니면 오류', async () => {
 
 형식: 암호화 파일 = 머리 16바이트(`52 50 47 4D 56 00 00 00 00 03 01 00 00 00 00 00`) + 본문. 본문의 앞 16바이트만 키 16바이트와 XOR 되어 있다. 머리가 다르면 `Error('RPG Maker 암호화 파일이 아닙니다')`. 확장자: MV `.rpgmvp`↔`.png`, `.rpgmvo`↔`.ogg`, `.rpgmvm`↔`.m4a`. MZ `.png_`, `.ogg_`, `.m4a_`.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 const key = 'd41d8cd98f00b204e9800998ecf8427e';
@@ -226,10 +226,10 @@ test('확장자', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/engine/crypto.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 에셋 복호화와 암호화"`**
+- [x] **Step 2: `npx vitest run tests/engine/crypto.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 에셋 복호화와 암호화"`**
 
 ### Task 3: 일본어 판별과 제어문자
 
