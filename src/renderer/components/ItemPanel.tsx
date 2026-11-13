@@ -92,6 +92,7 @@ export function ItemPanel() {
         <span className="label">원문</span>
         <div className="textbox src"><CodeText text={row.source} /></div>
       </div>
+      {row.previous && <PreviousBox row={row} onTake={(t) => setDraft(t)} disabled={saving} />}
       {row.needsDecision && <DecisionBox row={row} />}
       {row.external && <span className="tag">외부에서 가져온 번역</span>}
       {row.status === 'declined' && (
@@ -208,6 +209,39 @@ function DecisionBox({ row }: { row: Row }) {
         </div>
       )}
       {error && <span className="err-text small" role="alert">{error}</span>}
+    </section>
+  );
+}
+
+// ---- plan 6: the sentence in the older version ----
+import { changedWords, type WordPiece } from '../../core/update/carry';
+
+function Pieces({ pieces, kind }: { pieces: WordPiece[]; kind: 'old' | 'new' }) {
+  return (
+    <>
+      {pieces.map((p, i) => {
+        if (!p.changed) return <span key={i}>{p.text}</span>;
+        return kind === 'old' ? <del key={i} className="diff-del">{p.text}</del> : <ins key={i} className="diff-add">{p.text}</ins>;
+      })}
+    </>
+  );
+}
+
+/** A changed sentence: the older source next to the current one (changes marked) and the older translation to start from. */
+function PreviousBox({ row, onTake, disabled }: { row: Row; onTake: (target: string) => void; disabled: boolean }) {
+  const prev = row.previous!;
+  const words = changedWords(prev.source, row.source);
+  return (
+    <section className="prev-box" aria-label="이전 버전의 문장">
+      <span className="label">이전 버전의 문장</span>
+      <div className="textbox src pre" aria-label="이전 원문"><Pieces pieces={words.old} kind="old" /></div>
+      <div className="textbox src pre" aria-label="지금 원문"><Pieces pieces={words.new} kind="new" /></div>
+      <span className="label">이전 번역</span>
+      <div className="textbox src pre" aria-label="이전 번역">{prev.target ?? '(번역 없음)'}</div>
+      {row.carried && <span className="warn-text small">문장부호만 달라서 이전 번역을 넣어 뒀어요. 확인하고 승인하세요.</span>}
+      <div className="row-gap">
+        <button type="button" className="btn ghost small-btn" disabled={disabled || prev.target === null} onClick={() => onTake(prev.target ?? '')}>이전 번역 가져오기</button>
+      </div>
     </section>
   );
 }

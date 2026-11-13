@@ -213,6 +213,7 @@ async function start(a: Api): Promise<void> {
     ...plan5Listeners(a),
     a.on('images:changed', onImagesChanged),
     a.on('job:progress', onJobForPlan7),
+    ...plan6Listeners(a),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -591,3 +592,72 @@ function onImagesChanged(changed: ImageEntry[]): void {
 function onJobForPlan7(p: JobProgress): void {
   if (p.kind === 'notes' && p.state === 'done' && state.builds !== null) void actions.loadBuilds();
 }
+// ---- plan 6: game updates ----
+import type { UpdateInspect, UpdateSummary, VersionInfo } from '../shared/api';
+
+export interface AppState {
+  /** The "new version" dialog is open. */
+  updateOpen?: boolean;
+  /** The summary of the update that brought the current version (null = none; undefined = not loaded yet). */
+  updateSummary?: UpdateSummary | null;
+  /** The filter the image screen opens with (from the update result's "보기"). */
+  imageFilter?: string | null;
+}
+
+function plan6Listeners(a: Api): (() => void)[] {
+  return [a.on('project:reloaded', onReloaded)];
+}
+
+/**
+ * After an update or a rollback the main process opened the project again: the whole state follows the new snapshot,
+ * the selection and filters are cleared, and lists read from the old version are dropped to load again.
+ */
+function onReloaded(snap: Snapshot): void {
+  const onResult = state.view === ('update' as AppState['view']);
+  adoptSnapshot(snap);
+  set({ images: null, builds: null, decisionGroups: [], patchList: undefined, idFilter: null, imageFilter: null, ...(onResult ? { view: 'update' as AppState['view'] } : {}) });
+  void loadGlossary();
+  void updateActions.loadSummary();
+}
+
+/** Plan 6 actions (kept apart from useApp's so that object stays as it was). */
+export const updateActions = {
+  open(): void {
+    set({ updateOpen: true });
+  },
+  close(): void {
+    set({ updateOpen: false });
+  },
+  pickGameDir: (): Promise<string | null> => need().update.pickGameDir(),
+  inspect: (dir: string): Promise<UpdateInspect> => need().update.inspect(dir),
+  pathForDrop: (file: File): string => need().project.pathForDrop(file),
+  versions: (): Promise<VersionInfo[]> => need().update.versions(),
+  /** Takes the new version and shows its result. */
+  async importVersion(gameDir: string, label: string): Promise<void> {
+    const summary = await need().update.import(gameDir, label);
+    set({ updateSummary: summary, updateOpen: false, view: 'update' as AppState['view'], selectedId: null, detail: null });
+  },
+  async rollback(): Promise<void> {
+    await need().update.rollback();
+    set({ view: 'text', selectedId: null, detail: null });
+    await updateActions.loadSummary();
+  },
+  async loadSummary(): Promise<void> {
+    try {
+      set({ updateSummary: await need().update.summary() });
+    } catch {
+      set({ updateSummary: null });
+    }
+  },
+  openResult(): void {
+    set({ view: 'update' as AppState['view'] });
+  },
+  /** The text table with one status filter (untranslated for new lines, changed for changed ones). */
+  showStatus(status: StatusFilter): void {
+    set({ view: 'text', idFilter: null, query: { status } });
+  },
+  showImageProblems(): void {
+    set({ view: 'images', imageFilter: 'problem' });
+  },
+};
+import type { StatusFilter } from '../shared/api';

@@ -37,6 +37,7 @@ export function Sidebar() {
       <PatchNavButton />
       <ImagesNavButton />
       <BuildsNavButton />
+      <UpdateNavButton />
 
       <span className="nav-head spaced">범위별 진행률</span>
       {snapshot.scopes.map((s) => {
@@ -84,3 +85,19 @@ function BuildsNavButton() {
     </button>
   );
 }
+// ---- plan 6 ----
+/** Shown when the current version came from an update: opens its result again. */
+function UpdateNavButton() {
+  const app = useApp();
+  const meta = app.snapshot?.meta;
+  useEffect(() => { if (meta) void updateActions.loadSummary(); }, [meta]);
+  if (!app.updateSummary) return null;
+  const on = app.view === ('update' as typeof app.view);
+  return (
+    <button type="button" className={`nav-btn${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined}
+      onClick={() => updateActions.openResult()}>
+      <span>업데이트 결과</span>
+    </button>
+  );
+}
+import { updateActions } from '../state';

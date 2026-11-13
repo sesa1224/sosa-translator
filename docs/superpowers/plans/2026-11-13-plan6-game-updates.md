@@ -226,7 +226,7 @@ export interface UpdateSummary {
 - 항목 탭: `previous` 가 있는 줄에 이전 원문과 이전 번역이 보이고, 바뀐 글자만 강조 요소 안에 있다. "이전 번역 가져오기"가 편집 칸을 그 글로 채우되 `unit.setTranslation` 은 부르지 않는다
 - `project:reloaded` 뒤 표의 줄이 새 스냅숏의 것이다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 새 버전 가져오기 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 새 버전 가져오기 화면"`
 
 ### Task 8: 남겨 둔 것 마무리
 

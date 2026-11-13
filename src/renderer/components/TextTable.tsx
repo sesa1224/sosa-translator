@@ -81,6 +81,7 @@ function FilterBar() {
   if (s.provisional > 0) chips.push(['provisional', '추천안 용어 사용', s.provisional]);
   if ((s.external ?? 0) > 0) chips.push(['external', '외부 번역', s.external]);
   if (skipped > 0) chips.push(['skipped', '번역 안 함', skipped]);
+  if ((s.changed ?? 0) > 0) chips.push(['changed', '바뀐 문장', s.changed]);
   const current = query.status ?? 'all';
   return (
     <div className="filters">

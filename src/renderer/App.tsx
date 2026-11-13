@@ -40,7 +40,7 @@ function RightPanel() {
 
 
 function Workspace() {
-  const { view } = useApp();
+  const { view, updateOpen } = useApp();
   const mainView5 = mainView(useApp());
   return (
     <div className="shell">
@@ -50,7 +50,7 @@ function Workspace() {
       <div className="body">
         <Sidebar />
         <main className="main">
-          {mainView5 === 'events' ? <EventView /> : mainView5 === 'patches' ? <PatchView5 /> : <>
+          {(view as string) === 'update' ? <UpdateView /> : mainView5 === 'events' ? <EventView /> : mainView5 === 'patches' ? <PatchView5 /> : <>
           {view === 'builds' ? <BuildsView /> : <>
           {view === 'images' ? <ImageView /> : <>
           {view === 'decisions' ? <DecisionView /> : <>
@@ -63,6 +63,7 @@ function Workspace() {
         <RightPanel />
       </div>
       <StatusBar />
+      {updateOpen && <UpdateDialog />}
     </div>
   );
 }
@@ -91,3 +92,6 @@ import { mainView } from './state';
 /** The patches screen (plan 5). */
 const PatchView5 = PatchView;
 import { PatchView } from './components/PatchView';
+// ---- plan 6: game updates ----
+import { UpdateDialog } from './components/UpdateDialog';
+import { UpdateView } from './components/UpdateView';
