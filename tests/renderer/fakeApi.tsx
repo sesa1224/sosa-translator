@@ -224,7 +224,20 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       polishNotes: rec('builds.polishNotes', () => undefined),
       openFolder: rec('builds.openFolder', () => undefined),
     },
+    update: {
+      inspect: rec('update.inspect', (dir: string) => upState.inspect(dir)),
+      pickGameDir: rec('update.pickGameDir', () => upState.picked),
+      import: rec('update.import', () => {
+        if (upState.importError) throw new Error(upState.importError);
+        return upState.summary!;
+      }),
+      rollback: rec('update.rollback', () => ({ restored: 'v1' })),
+      summary: rec('update.summary', () => upState.summary),
+      versions: rec('update.versions', () => upState.versions),
+    },
   };
+  const upState = defaultUpdateFake();
+  updateFakes.set(fake, upState);
   const pv = defaultPreviewFake();
   const evState = defaultEventsFake();
   eventsFakes.set(fake, evState);
@@ -321,4 +334,38 @@ const imagesFakes = new WeakMap<FakeApi, ImagesFake>();
 /** The images state behind a fake api. */
 export function imagesFake(api: FakeApi): ImagesFake {
   return imagesFakes.get(api)!;
+}
+
+// ---- plan 6: game updates ----
+import type { UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
+/** What the fake's update calls give back; tests change these. */
+export interface UpdateFake {
+  inspect: (dir: string) => UpdateInspect;
+  picked: string | null;
+  summary: UpdateSummary | null;
+  importError: string | null;
+  versions: VersionInfo[];
+}
+export function sampleSummary(): UpdateSummary {
+  return {
+    from: 'v1', to: 'v2', fromLabel: 'v1', toLabel: '1.1', kept: 40, keptTranslated: 30, added: 5, changed: 3, carried: 1, removed: 2, removedTranslated: 1,
+    patches: [{ id: 'p-1', title: '스위치 켜기', result: 'unchanged' }, { id: 'p-2', title: '대사 고치기', result: 'moved' }, { id: 'p-3', title: '문 열기', result: 'conflict', reason: '수정이 가리키던 줄이 새 버전에 없어요(6번: 대사 やった！)' }],
+    images: { changed: ['img/pictures/menu.png'], added: 4, removed: 0 },
+    decisions: { newGroups: 2 },
+    warnings: [{ file: 'js/plugins/Broken.js', message: '따옴표가 닫히지 않은 문자열이 있습니다' }],
+  };
+}
+function defaultUpdateFake(): UpdateFake {
+  return {
+    inspect: (dir) => ({ ok: true, engine: 'MZ', title: `霧の薬草園 ver1.1 (${dir})`, suggestedLabel: '1.1', sameGame: true, overlap: 1 }),
+    picked: 'C:/games/v2',
+    summary: null,
+    importError: null,
+    versions: [{ id: 'v1', label: 'v1', importedAt: '2026-11-13T00:00:00.000Z', gameDir: 'C:/game' }],
+  };
+}
+const updateFakes = new WeakMap<FakeApi, UpdateFake>();
+/** The update state behind a fake api. */
+export function updateFake(api: FakeApi): UpdateFake {
+  return updateFakes.get(api)!;
 }

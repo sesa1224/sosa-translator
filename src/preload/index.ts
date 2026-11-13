@@ -117,7 +117,7 @@ const api: Api = {
   events: {
     files: () => callE('events:files'),
     list: (file) => callE('events:list', file),
-    read: (file, listPath) => callE('events:read', file, listPath),
+    read: (file, listPath, version) => callE('events:read', file, listPath, version),
     usage: (target) => callE('events:usage', target),
   },
   patches: {
@@ -157,6 +157,15 @@ const api: Api = {
     polishNotes: (number) => callI('builds:polishNotes', number),
     openFolder: (number) => callI('builds:openFolder', number),
   },
+  // ---- plan 6: game updates ----
+  update: {
+    inspect: (gameDir) => callU('update:inspect', gameDir),
+    pickGameDir: () => callU('update:pickGameDir'),
+    import: (gameDir, label) => callU('update:import', gameDir, label),
+    rollback: () => callU('update:rollback'),
+    summary: () => callU('update:summary'),
+    versions: () => callU('update:versions'),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);
@@ -166,3 +175,9 @@ function callE(channel: EventInvokeChannel, ...args: unknown[]): Promise<any> {
   return call(channel as unknown as InvokeChannel, ...args);
 }
 import type { EventInvokeChannel } from '../shared/api.js';
+
+/** call() for the plan 6 channels. */
+function callU(channel: UpdateInvokeChannel, ...args: unknown[]): Promise<any> {
+  return call(channel as unknown as InvokeChannel, ...args);
+}
+import type { UpdateInvokeChannel } from '../shared/api.js';

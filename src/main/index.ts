@@ -90,6 +90,13 @@ app.whenReady().then(async () => {
       const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
       return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
     },
+    pickNewVersionDir: async () => {
+      if (process.env.MVMZ_PICK_DIR2) return process.env.MVMZ_PICK_DIR2;
+      const win = BrowserWindow.getFocusedWindow();
+      const opts = { title: '게임의 새 버전 폴더 고르기', properties: ['openDirectory' as const] };
+      const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+      return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
+    },
     createChat: ({ cwd, systemPrompt, model, claudePath }) => {
       const command = resolveClaude(claudePath);
       if (!command) return null;

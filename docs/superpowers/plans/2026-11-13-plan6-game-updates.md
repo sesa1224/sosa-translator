@@ -196,7 +196,7 @@ export interface UpdateSummary {
 - `events:read` 에 `version: 'v1'` 을 주면 옛 목록이 온다(v2 에서 앞에 더해진 커맨드가 없다)
 - 채팅 도구 `update_summary` 가 충돌난 수정의 `listPath` 를 준다. 업데이트가 없으면 `ok: false`(`가져온 업데이트가 없습니다`)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 업데이트 IPC 와 채팅 도구"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 업데이트 IPC 와 채팅 도구"`
 
 ### Task 7: 화면 — 새 버전 가져오기, 결과, 이전 번역
 

@@ -24,3 +24,6 @@ export function buildClaudeArgs(o: { model: string; mcpConfigPath: string; syste
 
 // Plan 5: event and patch tools (appended so the list above stays as it was).
 CHAT_TOOLS.push('event_files', 'event_list', 'event_read', 'usage_search', 'event_patch');
+
+// Plan 6: game updates (appended).
+CHAT_TOOLS.push('update_summary');

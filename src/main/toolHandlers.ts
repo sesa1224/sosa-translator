@@ -223,6 +223,7 @@ TOOL_DEFS.push(
       raw: z.boolean().optional().describe('원본 커맨드를 받으려면 true'),
       from: z.number().int().min(0).optional().describe('raw: 첫 원본 번호 (기본 0)'),
       to: z.number().int().min(0).optional().describe('raw: 끝 원본 번호 (포함)'),
+      version: z.string().optional().describe('옛 버전 id (예: v1). 게임 업데이트 뒤 충돌난 수정을 볼 때. 없으면 지금 버전'),
     }),
   },
   {
@@ -319,8 +320,8 @@ HANDLERS.event_list = async (svc, input: { file: string }) => {
   const events = await listEvents(svc.projectDir, input.file);
   return { total: events.length, events: events.map(({ key: _key, ...e }) => e) };
 };
-HANDLERS.event_read = async (svc, input: { file: string; listPath: PathSeg[]; raw?: boolean; from?: number; to?: number }) => {
-  const ev = await readEvent(svc.projectDir, input.file, input.listPath);
+HANDLERS.event_read = async (svc, input: { file: string; listPath: PathSeg[]; raw?: boolean; from?: number; to?: number; version?: string }) => {
+  const ev = await readEvent(svc.projectDir, input.file, input.listPath, input.version);
   const key = JSON.stringify([input.file, input.listPath]);
   const patch = svc.patches().find((p) => p.body.kind === 'event' && JSON.stringify([p.body.file, p.body.listPath]) === key);
   const out: Record<string, unknown> = {
@@ -414,4 +415,22 @@ HANDLERS.image_list = async (svc, input: { status?: z.infer<typeof imageStatus>;
     total: all.length,
     items: all.slice(0, limit).map((e) => ({ file: e.file, width: e.width, height: e.height, status: e.status, ...(e.problem ? { problem: e.problem } : {}), usedByEvents: e.usedByEvents })),
   };
+};
+
+// ---- plan 6: game updates (appended; the tools above are unchanged) ----
+TOOL_DEFS.push({
+  name: 'update_summary',
+  description: '게임을 새 버전으로 가져온 뒤 무엇이 바뀌었는지(문장 수, 수정 옮기기 결과, 그림, 경고)와 충돌난 수정의 목록(제목, 이유, 파일, listPath)을 볼 때 쓴다.',
+  inputSchema: z.object({}),
+});
+HANDLERS.update_summary = async (svc) => {
+  const s = await svc.updateSummary();
+  if (!s) throw new Error('가져온 업데이트가 없습니다');
+  const byId = new Map(svc.patches().map((p) => [p.id, p]));
+  const conflicts = s.patches.filter((m) => m.result === 'conflict').map((m) => {
+    const b = byId.get(m.id)?.body;
+    return { id: m.id, title: m.title, reason: m.reason ?? '', ...(b && b.kind === 'event' ? { file: b.file, listPath: b.listPath } : b && b.kind === 'json' ? { file: b.file, path: b.path } : {}) };
+  });
+  const { patches: _all, ...rest } = s;
+  return { ...rest, patches: { unchanged: s.patches.filter((m) => m.result === 'unchanged').length, moved: s.patches.filter((m) => m.result === 'moved').length, conflict: conflicts.length }, conflicts };
 };

@@ -17,15 +17,19 @@ export interface EventFileInfo { file: string; label: string; events: number }
 
 const MAP_FILE = /^Map(\d+)\.json$/i;
 
-async function dataDir(projectDir: string): Promise<string> {
+/** data/ of the current original copy, or of an older version's copy (plan 6). */
+async function dataDir(projectDir: string, version?: string): Promise<string> {
   const meta = await openProject(projectDir);
-  return path.join(originalDir(projectDir, meta), 'data');
+  if (version === undefined || version === meta.current) return path.join(originalDir(projectDir, meta), 'data');
+  if (!meta.versions.some((v) => v.id === version) || !existsSync(path.join(projectDir, 'original', version))) throw new Error(`없는 버전입니다: ${version}`);
+  return path.join(projectDir, 'original', version, 'data');
 }
 
-/** A data file of the original copy, or null when it is missing or broken. */
-export async function readData(projectDir: string, file: string): Promise<unknown> {
+/** A data file of the original copy (or of an older version's copy), or null when it is missing or broken. */
+export async function readData(projectDir: string, file: string, version?: string): Promise<unknown> {
+  const dir = await dataDir(projectDir, version);
   try {
-    return await readJsonFile(path.join(await dataDir(projectDir), file.replace(/^data\//i, '')));
+    return await readJsonFile(path.join(dir, file.replace(/^data\//i, '')));
   } catch {
     return null;
   }
@@ -97,8 +101,8 @@ export async function listEvents(projectDir: string, file: string): Promise<Even
 }
 
 /** One command list, described line by line, with the hash a patch must record. */
-export async function readEvent(projectDir: string, file: string, listPath: PathSeg[]): Promise<EventDetail> {
-  const root = await readData(projectDir, file);
+export async function readEvent(projectDir: string, file: string, listPath: PathSeg[], version?: string): Promise<EventDetail> {
+  const root = await readData(projectDir, file, version);
   const raw = getAtPath(root, listPath);
   if (!Array.isArray(raw)) throw new Error(`이벤트를 찾을 수 없습니다: ${file} ${JSON.stringify(listPath)}`);
   const n = await loadNames(projectDir);

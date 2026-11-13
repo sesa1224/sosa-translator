@@ -797,9 +797,8 @@ export class ProjectService extends EventEmitter {
     const units = await loadUnits(this.projectDir);
     const store = await TranslationStore.load(this.projectDir);
     const gloss = await loadGlossary(this.projectDir);
-    // meta is a public readonly reference other parts hold on to: change it in place.
-    for (const k of Object.keys(this.meta)) if (!(k in meta)) delete (this.meta as unknown as Record<string, unknown>)[k];
-    Object.assign(this.meta, meta);
+    // A new object, not an in-place change: snapshots handed out earlier keep the meta they were made with.
+    (this as { meta: ProjectMeta }).meta = meta;
     this.unitList.splice(0, this.unitList.length, ...units);
     this.byId.clear();
     for (const u of units) this.byId.set(u.id, u);

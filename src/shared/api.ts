@@ -298,7 +298,7 @@ export interface PushEvents { 'patches:changed': PatchList; 'game:state': GameSt
 export interface EventInvokeChannels {
   'events:files': () => EventFileInfo[];
   'events:list': (file: string) => EventListInfo[];
-  'events:read': (file: string, listPath: PathSegT[]) => EventDetail;
+  'events:read': (file: string, listPath: PathSegT[], version?: string) => EventDetail;   // version: an older version's copy (plan 6)
   'events:usage': (target: UsageTarget) => EventRef[];
   'patches:list': () => PatchList;
   'patches:add': (p: NewPatch) => PatchT;
@@ -384,3 +384,29 @@ export interface Api { images: ImagesApi; builds: BuildsApi }
 export interface Row { previous?: { source: string; target: string | null }; carried?: boolean }
 /** changed: rows with a previous version's sentence; carried: those whose old translation was filled in. */
 export interface Stats { changed: number; carried: number }
+export type { PatchMove, UpdateSummary, VersionInfo } from '../core/update/types.js';
+type UpdateSummaryT = import('../core/update/types.js').UpdateSummary;
+type VersionInfoT = import('../core/update/types.js').VersionInfo;
+/** What update.inspect says about a folder picked as the game's new version. */
+export type UpdateInspect =
+  | { ok: true; engine: 'MV' | 'MZ'; title: string; suggestedLabel: string; sameGame: boolean; overlap: number; reason?: string }
+  | { ok: false; error: string };
+/** The whole project as it is after an update or a rollback (the screen starts over from it). */
+export interface PushEvents { 'project:reloaded': Snapshot }
+/** Plan 6 request/response channels (kept apart so the older lists stay as they were). */
+export interface UpdateInvokeChannels {
+  'update:inspect': (gameDir: string) => UpdateInspect;
+  'update:pickGameDir': () => string | null;
+  'update:import': (gameDir: string, label: string) => UpdateSummaryT;
+  'update:rollback': () => { restored: string };
+  'update:summary': () => UpdateSummaryT | null;
+  'update:versions': () => VersionInfoT[];
+}
+export type UpdateInvokeChannel = keyof UpdateInvokeChannels;
+type AsyncU<F> = F extends (...a: infer A) => infer R ? (...a: A) => Promise<R> : never;
+export interface UpdateApi {
+  inspect: AsyncU<UpdateInvokeChannels['update:inspect']>; pickGameDir: AsyncU<UpdateInvokeChannels['update:pickGameDir']>;
+  import: AsyncU<UpdateInvokeChannels['update:import']>; rollback: AsyncU<UpdateInvokeChannels['update:rollback']>;
+  summary: AsyncU<UpdateInvokeChannels['update:summary']>; versions: AsyncU<UpdateInvokeChannels['update:versions']>;
+}
+export interface Api { update: UpdateApi }

@@ -97,6 +97,9 @@ export interface IpcDeps {
   render?: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'>;
   /** Open dialog for a hand-fixed PNG (null = cancelled). */
   pickPngFile?(): Promise<string | null>;
+  // ---- plan 6 ----
+  /** Folder dialog for the game's new version (null = cancelled; default: pickDirectory). */
+  pickNewVersionDir?(): Promise<string | null>;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -222,6 +225,12 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     });
     adoptPlan5(s);
     await startImages(s);
+    s.setBusyCheck(() => busy());
+  }
+
+  function snapshotOf(s: ProjectService): Snapshot {
+    const all = allRows();
+    return { meta: s.meta, gameTitle, rows: all, stats: computeStats(all), scopes: computeScopes(all) };
   }
 
   async function ensureChat(): Promise<ChatLike | null> {
@@ -285,8 +294,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('project:snapshot', (): Snapshot | null => {
     const s = deps.holder.svc;
     if (!s) return null;
-    const all = allRows();
-    return { meta: s.meta, gameTitle, rows: all, stats: computeStats(all), scopes: computeScopes(all) };
+    return snapshotOf(s);
   });
   handle('project:undo', () => svc().undo());
   handle('project:build', () => svc().build());
@@ -589,7 +597,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   handleE('events:files', () => eventFiles(svc().projectDir));
   handleE('events:list', (file: string) => listEvents(svc().projectDir, String(file ?? '')));
-  handleE('events:read', (file: string, listPath: core.PathSeg[]) => readEvent(svc().projectDir, String(file ?? ''), Array.isArray(listPath) ? listPath : []));
+  handleE('events:read', (file: string, listPath: core.PathSeg[], version?: string) =>
+    readEvent(svc().projectDir, String(file ?? ''), Array.isArray(listPath) ? listPath : [], typeof version === 'string' && version ? version : undefined));
   handleE('events:usage', (target: shared.UsageTarget) => findUsage(svc().projectDir, target));
   handleE('patches:list', () => patchList(svc()));
   handleE('patches:add', (p: shared.NewPatch) => svc().addPatch(p, 'user'));
@@ -604,7 +613,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     if (runner?.running) throw new Error('게임이 이미 실행 중입니다');
     if (!existsSync(s.meta.gameDir)) throw new Error('게임 폴더를 찾을 수 없습니다');
     if (!runner) {
-      const r = new GameRunner({ projectDir: s.projectDir, gameDir: s.meta.gameDir, spawn: deps.spawnGame ?? (process.env.MVMZ_GAME_SPAWN_FAKE === '1' ? fakeGameSpawn : undefined) });
+      const r = new GameRunner({ projectDir: s.projectDir, gameDir: s.meta.gameDir, version: s.meta.current, spawn: deps.spawnGame ?? (process.env.MVMZ_GAME_SPAWN_FAKE === '1' ? fakeGameSpawn : undefined) });
       r.on('exit', () => { if (runner === r) deps.broadcast('game:state', { state: 'idle' }); });
       runner = r;
     }
@@ -726,8 +735,57 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     deps.showItemInFolder(zipName ? path.join(dir, zipName) : dir);
   });
 
+  // ---- plan 6: game updates ----
+  const handleU = (channel: UpdateInvokeChannel, fn: (...args: any[]) => unknown) => {
+    deps.ipcMain.handle(channel, (_event, ...args) => fn(...args));
+  };
+
+  /**
+   * After an update or a rollback the project is closed and opened again, the same way as opening it from the list:
+   * the preview, pictures, event names and test-play copy all read the game folder or the original copy and start over.
+   */
+  async function reopen(s: ProjectService): Promise<void> {
+    const next = await ProjectService.open(s.projectDir);
+    await adopt(next);
+    deps.broadcast('project:reloaded', snapshotOf(next));
+  }
+
+  handleU('update:inspect', async (gameDir: string) => {
+    const s = svc();
+    let dir = path.resolve(String(gameDir ?? ''));
+    try {
+      if (!(await stat(dir)).isDirectory()) dir = path.dirname(dir);
+    } catch {
+      // inspectNewVersion says the folder is not a game
+    }
+    return inspectNewVersion(s.projectDir, dir);
+  });
+  handleU('update:pickGameDir', () => (deps.pickNewVersionDir ?? deps.pickDirectory)());
+  handleU('update:import', async (gameDir: string, label: string) => {
+    if (busy()) throw new Error(JOB_BUSY);
+    const s = svc();
+    let dir = path.resolve(String(gameDir ?? ''));
+    if (existsSync(dir) && !(await stat(dir)).isDirectory()) dir = path.dirname(dir);
+    const summary = await s.importVersion(dir, String(label ?? ''));
+    await reopen(s);
+    return summary;
+  });
+  handleU('update:rollback', async () => {
+    if (busy()) throw new Error(JOB_BUSY);
+    const s = svc();
+    const r = await s.rollbackVersion();
+    await reopen(s);
+    return r;
+  });
+  handleU('update:summary', () => svc().updateSummary());
+  handleU('update:versions', () => svc().versions());
+
   return { dispose: () => closeProject() };
 }
+
+// ---- plan 6 (appended) ----
+import type { UpdateInvokeChannel } from '../shared/api.js';
+import { inspectNewVersion } from '../core/update/importVersion.js';
 
 // ---- plan 5 (appended) ----
 import { EventEmitter as GameEmitter } from 'node:events';
