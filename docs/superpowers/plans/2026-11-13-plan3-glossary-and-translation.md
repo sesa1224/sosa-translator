@@ -249,7 +249,7 @@ export function runClaudeJson<T>(o: { command: string; prefixArgs?: string[]; cw
 
 `fake-claude-json.mjs`: 환경 변수 `FAKE_JSON_SCRIPT`(JSON 파일 경로)의 배열에서 호출 순서대로 하나씩 꺼내 그 객체를 표준 출력에 쓴다(`{ exit?: number, stderr?: string, body: object | string }`). 받은 표준 입력과 인자는 `FAKE_JSON_LOG` 파일에 한 줄씩 남긴다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('성공', async () => {
@@ -276,10 +276,10 @@ test.skipIf(!process.env.MVMZ_REAL_CLI)('실제 CLI 가 스키마대로 답한�
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/claudeJson.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS. `claude auth status` 가 로그인 상태면 `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCliJson.test.ts` 도 돌려 통과를 확인한다. 실제 출력이 위 판정과 맞지 않으면 여기서 멈추고 보고한다**
-- [ ] **Step 5: `git commit -m "feat: 정해진 형식으로 답을 받는 Claude 호출"`**
+- [x] **Step 2: `npx vitest run tests/main/claudeJson.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS. `claude auth status` 가 로그인 상태면 `MVMZ_REAL_CLI=1 npx vitest run tests/main/realCliJson.test.ts` 도 돌려 통과를 확인한다. 실제 출력이 위 판정과 맞지 않으면 여기서 멈추고 보고한다**
+- [x] **Step 5: `git commit -m "feat: 정해진 형식으로 답을 받는 Claude 호출"`**
 
 ### Task 5: 용어집 자료 모으기와 초안
 
