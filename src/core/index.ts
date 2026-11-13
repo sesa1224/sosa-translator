@@ -13,3 +13,4 @@ export * from './store/translations.js';
 export * from './check/format.js';
 export * from './build/apply.js';
 export * from './build/patch.js';
+export * from './glossary/types.js';

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readJsonFile, writeJsonFile } from '../core/util/json.js';
-import { DEFAULT_MODELS, type AppSettings } from '../shared/api.js';
+import { DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type AppSettings, type StageModels } from '../shared/api.js';
 
 const SETTINGS_FILE = 'settings.json';
 export const PROJECTS_FOLDER_NAME = 'MVMZ 번역 작업실';
@@ -14,12 +14,18 @@ export function defaultSettings(documentsDir = path.join(os.homedir(), 'Document
     chatModel: 'claude-fable-5-2',
     claudePath: null,
     projectsDir: path.join(documentsDir, PROJECTS_FOLDER_NAME),
+    stageModels: { ...DEFAULT_STAGE_MODELS },
   };
 }
 
 function isModelList(v: unknown): v is AppSettings['models'] {
   return Array.isArray(v) && v.length > 0
     && v.every((m) => m && typeof m === 'object' && typeof m.id === 'string' && m.id && typeof m.label === 'string');
+}
+
+function readStageModels(v: any, d: StageModels): StageModels {
+  const pick = (k: keyof StageModels) => (v && typeof v === 'object' && typeof v[k] === 'string' && v[k] ? v[k] : d[k]);
+  return { glossary: pick('glossary'), translate: pick('translate'), review: pick('review'), patchNotes: pick('patchNotes') };
 }
 
 /** Reads <dir>/settings.json. A missing or broken file (or broken field) gives the default for it. */
@@ -40,6 +46,7 @@ export async function loadSettings(dir: string, documentsDir?: string): Promise<
     chatModel: typeof raw.chatModel === 'string' && raw.chatModel ? raw.chatModel : d.chatModel,
     claudePath: typeof raw.claudePath === 'string' && raw.claudePath ? raw.claudePath : null,
     projectsDir: typeof raw.projectsDir === 'string' && raw.projectsDir ? raw.projectsDir : d.projectsDir,
+    stageModels: readStageModels(raw.stageModels, d.stageModels),
   };
 }
 

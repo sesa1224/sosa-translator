@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { App } from '../../src/renderer/App';
 import { useApp } from '../../src/renderer/state';
 import {
-  DEFAULT_MODELS, type Api, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
+  DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 
-export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects' };
+export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
 
 const meta: ProjectMeta = {
   name: '약초원', engine: 'MZ', gameDir: 'C:/game', contentPrefix: '', sourceLang: 'ja', targetLang: 'ko',
@@ -15,7 +15,7 @@ const meta: ProjectMeta = {
 };
 
 function row(p: Partial<Row> & { id: string; source: string }): Row {
-  return { kind: 'dialogue', target: null, status: 'untranslated', needsDecision: false, file: 'data/Map001.json', location: '맵1 · 이벤트1', refCount: 1, ...p };
+  return { kind: 'dialogue', target: null, status: 'untranslated', needsDecision: false, file: 'data/Map001.json', location: '맵1 · 이벤트1', refCount: 1, usesProvisional: false, ...p };
 }
 
 export const itemId = 'r-item-name';

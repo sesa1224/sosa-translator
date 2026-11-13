@@ -30,8 +30,14 @@ export interface TextUnit {
   refs: UnitRef[];
 }
 
-export type TranslationStatus = 'untranslated' | 'needs-review' | 'approved' | 'error';
-export interface TranslationEntry { target: string | null; status: TranslationStatus; updatedAt: string }
+export type TranslationStatus = 'untranslated' | 'needs-review' | 'approved' | 'error' | 'declined';
+export interface ReviewNote { problem: string; suggestion: string; model: string }
+export interface TranslationEntry {
+  target: string | null; status: TranslationStatus; updatedAt: string;
+  declinedReason?: string;   // why the model would not translate it (status 'declined')
+  review?: ReviewNote;       // reviewer's open remark
+  reviewedAt?: string;       // last time a review looked at it
+}
 
-export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty'; severity: 'error' | 'warning'; message: string }
+export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width'; severity: 'error' | 'warning'; message: string }
 export interface Warning { file: string; message: string }

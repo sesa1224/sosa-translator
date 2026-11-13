@@ -140,7 +140,7 @@ function buildProgram(setCode: (code: number) => void): Command {
     .action(async (projectDir: string) => {
       const units = await loadUnits(projectDir);
       const store = await TranslationStore.load(projectDir);
-      const count: Record<TranslationStatus, number> = { untranslated: 0, 'needs-review': 0, approved: 0, error: 0 };
+      const count: Record<TranslationStatus, number> = { untranslated: 0, 'needs-review': 0, approved: 0, error: 0, declined: 0 };
       for (const u of units) {
         const e = store.get(u.id);
         count[e.target === null ? 'untranslated' : e.status]++;
@@ -150,6 +150,7 @@ function buildProgram(setCode: (code: number) => void): Command {
       out(`검토 필요: ${count['needs-review']}`);
       out(`승인: ${count.approved}`);
       out(`오류: ${count.error}`);
+      if (count.declined > 0) out(`거절됨: ${count.declined}`);
     });
 
   return program;

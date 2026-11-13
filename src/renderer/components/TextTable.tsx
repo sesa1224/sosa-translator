@@ -10,7 +10,7 @@ const SEARCH_DELAY = 200;
 
 function statusChip(r: Row): { label: string; cls: string } {
   if (r.status === 'untranslated' && r.needsDecision) return { label: '판단 필요', cls: 'st-warn' };
-  const cls = { untranslated: 'st-none', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err' }[r.status];
+  const cls = { untranslated: 'st-none', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err', declined: 'st-err' }[r.status];
   return { label: STATUS_LABEL[r.status], cls };
 }
 

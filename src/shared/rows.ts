@@ -59,8 +59,9 @@ export function locationLabel(unit: TextUnit): string {
   return typeof first === 'number' ? `${name} · ${first}` : name;
 }
 
-export function toRow(unit: TextUnit, entry: TranslationEntry): Row {
-  return {
+/** usesProvisional: whether the unit's source holds a provisional term (only counts when translated). */
+export function toRow(unit: TextUnit, entry: TranslationEntry, usesProvisional = false): Row {
+  const row: Row = {
     id: unit.id,
     kind: unit.kind,
     ...(unit.speaker !== undefined ? { speaker: unit.speaker } : {}),
@@ -71,7 +72,11 @@ export function toRow(unit: TextUnit, entry: TranslationEntry): Row {
     file: unit.refs[0]?.file ?? '',
     location: locationLabel(unit),
     refCount: unit.refs.length,
+    usesProvisional: usesProvisional && entry.target !== null,
   };
+  if (entry.declinedReason !== undefined) row.declinedReason = entry.declinedReason;
+  if (entry.review !== undefined) row.review = { ...entry.review };
+  return row;
 }
 
 /** Plain-text (not regex), case-insensitive search over source, target and speaker; plus status and file filters. */
@@ -82,6 +87,8 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
     if (q.file && r.file !== q.file) return false;
     if (status === 'needs-decision') {
       if (!r.needsDecision) return false;
+    } else if (status === 'provisional') {
+      if (!r.usesProvisional) return false;
     } else if (status !== 'all' && r.status !== status) return false;
     if (text === '') return true;
     return r.source.toLowerCase().includes(text)
@@ -91,13 +98,15 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
 }
 
 export function computeStats(rows: Row[]): Stats {
-  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0 };
+  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0 };
   for (const r of rows) {
     if (r.status === 'untranslated') s.untranslated++;
     else if (r.status === 'needs-review') s.needsReview++;
     else if (r.status === 'approved') s.approved++;
     else if (r.status === 'error') s.error++;
+    else if (r.status === 'declined') s.declined++;
     if (r.needsDecision) s.needsDecision++;
+    if (r.usesProvisional) s.provisional++;
   }
   return s;
 }

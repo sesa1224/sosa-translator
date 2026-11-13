@@ -101,7 +101,7 @@ export interface JobProgress { kind: JobKind; state: JobState; done: number; tot
 - Produces: `loadGlossary(projectDir): Promise<Glossary>`(없으면 기본값, 빠진 필드는 기본값으로 채움), `saveGlossary(projectDir, g)` → `<projectDir>/glossary.json`, `termId(source): string`
 - Produces: `computeStats` 가 `declined`, `provisional` 을 센다. `filterRows` 가 `'declined'`, `'provisional'` 을 받는다
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('기본 지침이 들어간다', () => {
@@ -120,10 +120,10 @@ test('새 상태를 센다', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/glossary/store.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS, 전체 `npx vitest run` 통과**
-- [ ] **Step 5: `git commit -m "feat: 용어집 저장과 기본 번역 지침"`**
+- [x] **Step 2: `npx vitest run tests/glossary/store.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS, 전체 `npx vitest run` 통과**
+- [x] **Step 5: `git commit -m "feat: 용어집 저장과 기본 번역 지침"`**
 
 ### Task 2: 용어 찾기, 일치 검사, 조사, 용어 바꾸기
 

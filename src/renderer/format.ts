@@ -17,4 +17,5 @@ export const STATUS_LABEL = {
   'needs-review': '검토 필요',
   approved: '승인됨',
   error: '오류',
+  declined: '거절됨',
 } as const;

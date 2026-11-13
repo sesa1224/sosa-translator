@@ -8,7 +8,7 @@ function unitAt(ref: UnitRef): TextUnit {
 }
 
 function row(p: Partial<Row> & { id: string; source: string; file: string }): Row {
-  return { kind: 'db', target: null, status: 'untranslated', needsDecision: false, location: '', refCount: 1, ...p };
+  return { kind: 'db', target: null, status: 'untranslated', needsDecision: false, location: '', refCount: 1, usesProvisional: false, ...p };
 }
 
 const rows: Row[] = [
@@ -36,7 +36,7 @@ test('검색은 글자 그대로', () => {
 test('상태 필터와 통계', () => {
   expect(filterRows(rows, { status: 'needs-decision' }).every(r => r.needsDecision)).toBe(true);
   expect(filterRows(rows, { status: 'untranslated', file: 'data/Items.json' }).map(r => r.id)).toEqual(['item-desc']);
-  expect(computeStats(rows)).toEqual({ total: rows.length, untranslated: rows.length - 1, needsReview: 1, approved: 0, error: 0, needsDecision: 2 });
+  expect(computeStats(rows)).toEqual({ total: rows.length, untranslated: rows.length - 1, needsReview: 1, approved: 0, error: 0, needsDecision: 2, declined: 0, provisional: 0 });
   expect(computeScopes(rows).find(s => s.file === 'data/Items.json')).toEqual({ file: 'data/Items.json', label: 'Items', total: 2, done: 1 });
 });
 
@@ -51,6 +51,6 @@ test('그 밖의 위치 이름과 toRow', () => {
       { type: 'value', file: 'data/Items.json', path: [1, 'name'] }] };
   expect(toRow(u, { target: '해냈다!', status: 'approved', updatedAt: 't' })).toEqual({
     id: 'a', kind: 'dialogue', speaker: 'リナ', source: 'やった！', target: '해냈다!', status: 'approved', needsDecision: false,
-    file: 'data/Map001.json', location: '맵1 · 이벤트1', refCount: 2 });
+    file: 'data/Map001.json', location: '맵1 · 이벤트1', refCount: 2, usesProvisional: false });
   expect(filterRows(rows, { text: 'showrecord' }).map(r => r.id)).toEqual(['cmd-1']);
 });

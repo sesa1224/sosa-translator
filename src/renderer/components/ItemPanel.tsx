@@ -9,6 +9,8 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
   'leftover-japanese': '남은 일본어',
   'line-count': '줄 수',
   empty: '빈 번역',
+  glossary: '용어집',
+  'line-width': '줄 폭',
 };
 
 export function ItemPanel() {

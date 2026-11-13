@@ -1,4 +1,4 @@
-import type { Issue, TranslationStatus, UnitKind } from '../core/types.js';
+import type { Issue, ReviewNote, TranslationStatus, UnitKind } from '../core/types.js';
 
 export interface Row {
   id: string; kind: UnitKind; speaker?: string; source: string;
@@ -6,13 +6,16 @@ export interface Row {
   file: string;          // file of the first ref
   location: string;      // human-readable location, e.g. '맵4 · 이벤트3', 'Items · 1', '플러그인 설정'
   refCount: number;
+  usesProvisional: boolean;   // translated, and the source holds a term still on its recommended candidate
+  declinedReason?: string;
+  review?: ReviewNote;
 }
-export type StatusFilter = 'all' | TranslationStatus | 'needs-decision';
+export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional';
 export interface RowQuery { text?: string; status?: StatusFilter; file?: string }
-export interface Stats { total: number; untranslated: number; needsReview: number; approved: number; error: number; needsDecision: number }
+export interface Stats { total: number; untranslated: number; needsReview: number; approved: number; error: number; needsDecision: number; declined: number; provisional: number }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
-export type Origin = 'user' | 'chat';
+export type Origin = 'user' | 'chat' | 'batch' | 'review';
 export interface ChangeEvent { ids: string[]; origin: Origin }
 
 export interface ChatImage { mediaType: 'image/png' | 'image/jpeg' | 'image/webp'; base64: string }
@@ -27,7 +30,13 @@ export type ChatEvent =
   | { type: 'error'; message: string };
 
 export interface ModelOption { id: string; label: string }
-export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string }
+export interface StageModels { glossary: string; translate: string; review: string; patchNotes: string }
+export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels }
+export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
+
+export type JobKind = 'draft' | 'translate' | 'review';
+export type JobState = 'idle' | 'running' | 'paused' | 'paused-limit' | 'done' | 'failed' | 'stopped';
+export interface JobProgress { kind: JobKind; state: JobState; done: number; total: number; label: string; usage: ChatUsage; declined: number; errors: number; message?: string }
 export const DEFAULT_MODELS: ModelOption[] = [
   { id: 'claude-fable-5-2', label: 'Claude Fable 5.2' }, { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
   { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' }, { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5' } ];
@@ -39,7 +48,7 @@ export interface ProjectListItem { dir: string; name: string; engine: string }
 export interface Snapshot { meta: ProjectMeta; gameTitle: string | null; rows: Row[]; stats: Stats; scopes: Scope[] }
 export interface UnitDetail { row: Row; issues: Issue[]; refs: string[] }
 export interface ProjectChanged { rows: Row[]; stats: Stats; scopes: Scope[]; origin: Origin }
-export type { Issue, TranslationStatus, UnitKind };
+export type { Issue, ReviewNote, TranslationStatus, UnitKind };
 
 // Copies of core types whose modules import node built-ins (the renderer cannot type-check those).
 // src/main/ipc.ts checks at compile time that they still match the core ones.
