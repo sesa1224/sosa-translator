@@ -5,6 +5,7 @@ import path from 'node:path';
 import { _electron as electron, type ElectronApplication } from 'playwright-core';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { makeMiniGame } from '../helpers/miniGame.js';
+import { makeTestFont } from '../helpers/testFont.js';
 
 const fakeClaude = path.resolve(__dirname, '../fixtures/fake-claude.mjs');
 const fakeClaudeJson = path.resolve(__dirname, '../fixtures/fake-claude-json.mjs');
@@ -88,5 +89,45 @@ test('용어집 초안 → 확정 → 전체 번역 → 검수 → 빌드', asyn
 
   await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
   expect(existsSync(path.join(projectsDir, '한 바퀴/builds/001/한 바퀴_patch_001.zip'))).toBe(true);
+  await app.close();
+});
+
+test('게임 폰트 고르기 → 긴 번역 → 미리보기 넘침과 px 경고 → 스토리', async () => {
+  const game3 = path.join(tmp, 'game3');
+  await makeMiniGame(game3);
+  const fontDir = path.join(tmp, 'fonts');
+  await mkdir(fontDir, { recursive: true });
+  const glyphs: Record<string, number> = { ' ': 250 };
+  for (const ch of '가나다라마바사아자차카타파하좋아다음에힣뷁') glyphs[ch] = 1000;   // 가 힣 뷁: counts as a Hangul font
+  await makeTestFont(fontDir, { name: 'E2E Font', nameKo: '시험 글꼴', glyphs });
+
+  const app = await launch({ MVMZ_PICK_DIR: game3, MVMZ_FONT_DIRS: fontDir });
+  const w = await app.firstWindow();
+  const nav = w.getByRole('navigation', { name: '작업 메뉴' });
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('미리보기'); await w.getByRole('button', { name: '만들기' }).click();
+
+  await nav.getByRole('button', { name: /^설정/ }).click();
+  const fonts = w.getByRole('listbox', { name: '폰트 목록' });
+  await fonts.getByRole('option', { name: /시험 글꼴/ }).click();
+  await expect(fonts.getByRole('option', { name: /시험 글꼴/, selected: true })).toBeVisible();
+  await expect(w.getByText(/지금 폰트: 시험 글꼴/)).toBeVisible();
+
+  await nav.getByRole('button', { name: /^텍스트/ }).click();
+  await w.getByText('やった！', { exact: true }).click();
+  await w.getByLabel('번역').fill('가'.repeat(40));
+  await w.getByLabel('번역').press('Control+Enter');
+  // MZ window, no face: 768 px; 40 characters at 26 px = 1040 px.
+  await expect(w.getByText('1040 / 768px')).toBeVisible();
+  await expect(w.getByTestId('overflow-mark')).toBeVisible();
+  await expect(w.getByText('1번째 줄이 창을 272px 넘어요')).toBeVisible();
+  await expect(w.getByText('프로그램이 흉내 내어 그린 화면이에요. 실제 확인은 게임에서 해요.')).toBeVisible();
+
+  await w.getByRole('button', { name: '스토리' }).click();
+  await expect(w.getByText('왼쪽에서 범위를 고르면 장면이 나와요')).toBeVisible();
+  await nav.getByRole('button', { name: /^맵1/ }).click();
+  await expect(w.getByRole('region', { name: '맵1 · 이벤트1' })).toBeVisible();
+  const choices = w.getByRole('group', { name: '선택지' });
+  await expect(choices.getByText('いいよ')).toBeVisible();
+  await expect(choices.getByText('また今度')).toBeVisible();
   await app.close();
 });

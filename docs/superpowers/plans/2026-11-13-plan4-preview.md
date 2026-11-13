@@ -285,11 +285,11 @@ export interface PreviewContext { actorNames: Record<number, string>; variables:
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`, `README.md`
 
-- [ ] **연기 시험 추가**: 시험 안에서 `opentype.js` 로 한글 몇 글자가 든 시험 폰트를 만들어 임시 폴더에 두고(`MVMZ_FONT_DIRS` 환경 변수가 있으면 `systemFontDirs` 대신 그 폴더들을 쓴다), 가져오기 → 설정의 게임 폰트에서 그 폰트 고르기 → 텍스트 화면에서 긴 번역 쓰기 → 항목 탭 미리보기에 넘침 표시와 `px` 수치가 보임 → 검사 결과에 "창을 …px 넘어요" → 스토리로 전환 → 장면과 선택지가 보임
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 폰트로 눈 확인**: 앱을 띄워 이 컴퓨터에 설치된 한글 폰트 하나(예: 맑은 고딕 `malgun.ttf`)를 고르고, 미리보기 화면과 폰트 고르기 화면, 스토리 보기 화면을 캡처해 공유 노트 폴더에 저장한다. 미리보기의 글자 폭이 폭 수치와 눈으로 맞는지(막대가 100%일 때 글이 창 끝에 닿는지) 확인하고, 어긋나면 원인을 찾아 고친다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`README.md` 에 미리보기와 폰트, 새 파일(`preview.json`)을 적고 `git commit -m "feat: 미리보기 전체 흐름 시험"`**
+- [x] **연기 시험 추가**: 시험 안에서 `opentype.js` 로 한글 몇 글자가 든 시험 폰트를 만들어 임시 폴더에 두고(`MVMZ_FONT_DIRS` 환경 변수가 있으면 `systemFontDirs` 대신 그 폴더들을 쓴다), 가져오기 → 설정의 게임 폰트에서 그 폰트 고르기 → 텍스트 화면에서 긴 번역 쓰기 → 항목 탭 미리보기에 넘침 표시와 `px` 수치가 보임 → 검사 결과에 "창을 …px 넘어요" → 스토리로 전환 → 장면과 선택지가 보임
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 폰트로 눈 확인**: 앱을 띄워 이 컴퓨터에 설치된 한글 폰트 하나(예: 맑은 고딕 `malgun.ttf`)를 고르고, 미리보기 화면과 폰트 고르기 화면, 스토리 보기 화면을 캡처해 공유 노트 폴더에 저장한다. 미리보기의 글자 폭이 폭 수치와 눈으로 맞는지(막대가 100%일 때 글이 창 끝에 닿는지) 확인하고, 어긋나면 원인을 찾아 고친다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`README.md` 에 미리보기와 폰트, 새 파일(`preview.json`)을 적고 `git commit -m "feat: 미리보기 전체 흐름 시험"`**
 
 ---
 

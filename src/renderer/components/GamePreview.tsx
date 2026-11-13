@@ -50,10 +50,12 @@ export function MessageWindow({ layout, metrics, palette, family }: { layout: La
   const shown = layout.lines.slice(0, metrics.maxLines);
   const rest = layout.lines.slice(metrics.maxLines);
   const restHeight = rest.length > 0 ? 24 + rest.length * metrics.lineHeight : 0;
-  const scale = outer > 0 ? Math.min(1, outer / metrics.boxWidth) : 1;
+  // Room for text that sticks out of the window, so the overflow stays visible inside the panel.
+  const content = Math.max(metrics.boxWidth, left + layout.maxWidth + 16);
+  const scale = outer > 0 ? Math.min(1, outer / content) : 1;
   return (
     <div ref={ref} className="gp-frame" style={{ height: (height + restHeight) * scale }}>
-      <div className="gp-stage" style={{ width: metrics.boxWidth, transform: `scale(${scale})` }}>
+      <div className="gp-stage" style={{ width: content, transform: `scale(${scale})` }}>
         <div className="gp-box" role="img" aria-label="대사창 미리보기" style={{ width: metrics.boxWidth, height }}>
           {withFace && (
             <div className="gp-face" aria-hidden="true"
