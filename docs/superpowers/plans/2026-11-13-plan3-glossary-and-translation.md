@@ -491,7 +491,7 @@ test('멈추기', async () => { const job = mk(slow(okAll)); const p = job.start
 
 결과 처리: 돌아온 항목은 `svc.setReview(id, { problem, suggestion, model }, 'review')` → 상태 `needs-review`. 묶음의 나머지 항목은 `reviewedAt` 만 찍는다(상태는 그대로). `acceptReview` 는 suggestion 을 `setTranslation`(출처 `'review'`)으로 쓰고 review 를 지운다. 화자 줄이 있는 항목은 본문만 주고받고 `composeSpeaker` 로 붙인다. `rejectReview` 는 review 만 지운다. 호출 실패 처리는 `TranslateJob` 과 같되 `refused`/`invalid` 는 쪼개지 않고 그 묶음을 건너뛰며 `errors` 를 올린다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('범위와 추정', () => {
@@ -511,10 +511,10 @@ test('받기와 거절', async () => {
 test('프롬프트', () => { const p = buildReviewPrompt(batch, g); expect(p.system).toContain(g.styleGuide); expect(JSON.parse(p.user).items[0]).toMatchObject({ i: 0, source: expect.any(String), target: expect.any(String) }); });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/main/review.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 검수 작업"`**
+- [x] **Step 2: `npx vitest run tests/main/review.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 검수 작업"`**
 
 ### Task 9: 용어집 조작, 작업 연결, IPC, 채팅 도구
 

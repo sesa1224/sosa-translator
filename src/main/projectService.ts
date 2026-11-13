@@ -12,6 +12,7 @@ import {
   type ProjectMeta,
   type TextUnit,
   type TranslationEntry,
+  type ReviewNote,
   type TranslationStatus,
 } from '../core/index.js';
 import { loadGlossary, saveGlossary, termId } from '../core/glossary/store.js';
@@ -126,6 +127,70 @@ export class ProjectService extends EventEmitter {
       this.remember(id, origin);
       this.store.restore(id, { target: null, status: 'declined', updatedAt: new Date().toISOString(), declinedReason: reason });
       return { ids: [id], result: undefined };
+    });
+  }
+
+  /**
+   * Puts a reviewer's remark on a translated unit (status back to 'needs-review'), or removes it (null).
+   * The translation and its updatedAt are kept; reviewedAt is set.
+   */
+  setReview(id: string, review: ReviewNote | null, origin: Origin): Promise<void> {
+    return this.mutate(origin, () => {
+      this.require(id);
+      const e = this.store.get(id);
+      if (e.target === null) throw new Error('번역이 없는 항목입니다');
+      this.remember(id, origin);
+      const next: TranslationEntry = { ...e, reviewedAt: new Date().toISOString() };
+      if (review) {
+        next.review = { ...review };
+        next.status = 'needs-review';
+      } else delete next.review;
+      this.store.restore(id, next);
+      return { ids: [id], result: undefined };
+    });
+  }
+
+  /** Writes the reviewer's suggestion as the translation (origin 'review') and removes the remark. */
+  acceptReview(id: string): Promise<Issue[]> {
+    return this.mutate('review', () => {
+      const unit = this.require(id);
+      const e = this.store.get(id);
+      if (!e.review) throw new Error('검수 의견이 없습니다');
+      const issues = this.check(unit, e.review.suggestion);
+      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'needs-review';
+      this.remember(id, 'review');
+      const now = new Date().toISOString();
+      this.store.restore(id, { target: e.review.suggestion, status, updatedAt: now, reviewedAt: now });
+      return { ids: [id], result: issues };
+    });
+  }
+
+  /** Removes the reviewer's remark and keeps the translation. */
+  rejectReview(id: string): Promise<void> {
+    return this.mutate('user', () => {
+      this.require(id);
+      const e = this.store.get(id);
+      if (!e.review) return { ids: [], result: undefined };
+      this.remember(id, 'user');
+      const { review: _dropped, ...rest } = e;
+      this.store.restore(id, rest);
+      return { ids: [id], result: undefined };
+    });
+  }
+
+  /** Records that a review looked at these units (status and translation unchanged, not undoable). */
+  markReviewed(ids: string[], origin: Origin): Promise<void> {
+    return this.mutate(origin, () => {
+      const now = new Date().toISOString();
+      const done: string[] = [];
+      for (const id of ids) {
+        this.require(id);
+        const e = this.store.get(id);
+        if (e.target === null) continue;
+        this.store.restore(id, { ...e, reviewedAt: now });
+        done.push(id);
+      }
+      return { ids: done, result: undefined };
     });
   }
 
