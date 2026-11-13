@@ -1,4 +1,4 @@
-// Opt-in run of the whole flow against the real, logged-in Claude CLI (spends real tokens):
+// Opt-in run of the whole flow (draft in the default 'balanced' mode: read the script, then merge) against the real, logged-in Claude CLI (spends real tokens):
 //   MVMZ_REAL_CLI=1 npx vitest run tests/main/realFlow.test.ts
 // Optional: MVMZ_REAL_FLOW_OUT=<file> writes the translations and per-call token use as JSON.
 // Model: claude-haiku-5-5. Game: the test mini game plus a few lines written below.
@@ -30,7 +30,15 @@ const EXTRA: [string | null, string[]][] = [
   ['【アーテル】', ['「はぁ…はぁ…もう、イっちゃう…！」']],
   ['【ギア】', ['「ふん、ギルドの連中なんか信用できるか」']],
   ['【アーテル】', ['「ギア、\\N[1]を見なかった？」']],
+  // Two characters of opposite temperament saying the same moan (per-character moan style).
+  ['【シズク】', ['「あ、あの……すみません……', 'わ、私なんかが、お役に立てるかどうか……」']],
+  ['【シズク】', ['「ご、ごめんなさい……', '声、出ちゃいそうで……恥ずかしい……」']],
+  ['【レイナ】', ['「はあ？　私に指図するつもり？', '百年早いわよ、この雑魚！」']],
+  ['【レイナ】', ['「ふん、こんなの全然平気なんだから！', '泣き言なんて言わないわよ！」']],
+  ['【シズク】', ['「あっ…んんっ♥」']],
+  ['【レイナ】', ['「あっ…んんっ♥」']],
 ];
+export const SAME_MOAN = '「あっ…んんっ♥」';
 
 async function addLines(game: string): Promise<void> {
   const file = path.join(game, 'data', 'Map001.json');
@@ -64,7 +72,7 @@ test.skipIf(!process.env.MVMZ_REAL_CLI)('실제 CLI 로 초안 → 확정 → �
   const base = { svc, call, claude: { command: command! }, model: MODEL, cwd: svc.projectDir };
 
   stage = 'draft';
-  const draft = new DraftJob(base);
+  const draft = new DraftJob({ ...base, mode: 'balanced' });
   await draft.start();
   expect(draft.progress.state).toBe('done');
   const g = svc.glossary();

@@ -63,3 +63,10 @@ test('효과음 용어는 화자 있는 대사에는 강제하지 않고, 지문
   expect(checkTranslation(D('3', 'ぐちゅぐちゅと音がした'), '질척질척 소리가 났다', undefined, check)[0]).toMatchObject({ rule: 'glossary' });
   expect(checkTranslation({ ...D('4', 'ぐちゅぐちゅ'), kind: 'db' }, '질척질척', undefined, check)).toHaveLength(1);
 });
+
+test('초안 용어에서 제어문자를 거른다 (실제 CLI 확인에서 나온 경우)', () => {
+  const g = mergeDraft(defaultGlossary(), { styleNotes: '', characters: [], terms: [
+    { source: '\\N[1]', category: 'name', candidates: [{ target: '\\N[1]', reason: '' }] },
+    { source: '\\C[2]月光草\\C[0]', category: 'term', candidates: [{ target: '\\C[2]월광초\\C[0]', reason: '' }] }] }, null);
+  expect(g.terms.map((t) => [t.source, t.target])).toEqual([['月光草', '월광초']]);
+});

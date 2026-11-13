@@ -1,5 +1,7 @@
 import { termId } from '../../core/glossary/store.js';
 import type { CharacterCard, Glossary, Term, TermCategory } from '../../core/glossary/types.js';
+import { stripControlCodes } from '../../core/text/controlCodes.js';
+import { hasJapanese } from '../../core/text/japanese.js';
 import { detectSpeakerPattern } from '../../core/text/speaker.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -140,9 +142,11 @@ export function mergeDraft(g: Glossary, draft: DraftResult, pattern: string | nu
   const terms: Term[] = [...g.terms];
   const seen = new Set(terms.map((t) => t.source));
   for (const d of draft.terms) {
-    const source = d.source.trim();
+    // Control codes are not terms: \C[2]月光草\C[0] is the term 月光草, and \N[1] alone is nothing to translate.
+    const source = stripControlCodes(d.source).trim();
+    if (!hasJapanese(source)) continue;
     const candidates = d.candidates
-      .map((c) => ({ target: c.target.trim(), reason: (c.reason ?? '').trim() }))
+      .map((c) => ({ target: stripControlCodes(c.target).trim(), reason: (c.reason ?? '').trim() }))
       .filter((c) => c.target !== '')
       .slice(0, MAX_CANDIDATES);
     if (source === '' || candidates.length === 0 || seen.has(source)) continue;
