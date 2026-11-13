@@ -22,3 +22,74 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 input, select, textarea { font-family: inherit; }
 .mono { font-family: 'IBM Plex Mono', monospace; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---- shared bits ---- */
+.sub { color: var(--sub); }
+.mute { color: var(--mute); }
+.small { font-size: 12px; }
+.nowrap { white-space: nowrap; }
+.grow { flex-grow: 1; }
+.accent-text { color: var(--accent-text); }
+.warn-text { color: var(--warn); }
+.err-text { color: var(--err); }
+.logo { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; flex: none; }
+.btn { height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 14px; }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; padding: 0 20px; }
+.btn.soft { border-color: var(--accent); background: var(--accent-bg); color: var(--accent-text); font-weight: 500; }
+.btn.ghost { background: transparent; }
+.btn.small-btn { height: 36px; padding: 0 12px; font-size: 13px; }
+.input { height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 14px; }
+.input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+select.input { padding: 0 12px; }
+.card { border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+.card-title { font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-size: 12px; color: var(--sub); }
+.hint { font-size: 12px; color: var(--mute); }
+.page-title { margin: 0; font-size: 22px; font-weight: 600; }
+.seg { display: flex; padding: 3px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.seg > button { height: 38px; padding: 0 16px; border: 0; border-radius: 6px; font-size: 13px; background: transparent; color: var(--sub); }
+.seg > button.on { background: var(--card); color: var(--text); }
+.chip { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--accent-bg); color: var(--accent-text); }
+
+/* ---- project picker ---- */
+.picker { max-width: 720px; margin: 0 auto; padding: 48px 24px; display: flex; flex-direction: column; gap: 18px; }
+.picker-head { display: flex; align-items: center; gap: 12px; }
+.picker-head h1 { margin: 0; font-size: 22px; font-weight: 600; }
+.picker-section { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.picker-path { overflow-wrap: anywhere; font-size: 12px; }
+.picker-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.picker-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.picker-item { display: flex; flex-direction: column; min-width: 0; }
+.picker-item .mono { font-size: 12px; overflow-wrap: anywhere; }
+
+/* ---- shell ---- */
+.shell { height: 100%; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-text { display: flex; flex-direction: column; }
+.brand-title { font-weight: 600; font-size: 15px; }
+.progress { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bar { flex-grow: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; display: flex; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 13px; }
+.banner.ok { background: var(--accent-bg); color: var(--accent-text); }
+.banner.err { background: var(--err-bg); color: var(--err); }
+.body { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; }
+.sidebar { width: 220px; flex: none; box-sizing: border-box; padding: 16px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.nav-head { font-size: 12px; color: var(--mute); padding: 0 10px 6px; }
+.nav-head.spaced { padding-top: 18px; }
+.nav-btn { height: 44px; padding: 0 12px; border: 0; border-radius: 8px; text-align: left; font-size: 14px; display: flex; align-items: center; justify-content: space-between; background: transparent; color: var(--sub); }
+.nav-btn.on { background: var(--card); color: var(--text); }
+.scope { padding: 6px 10px; display: flex; flex-direction: column; gap: 5px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; font-size: 13px; }
+.scope.on { background: var(--card); outline: 1px solid var(--accent); }
+.scope-line { display: flex; justify-content: space-between; gap: 8px; }
+.thin-bar { display: block; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.thin-bar > span { display: block; height: 100%; background: var(--accent); }
+.note-box { margin-top: 16px; padding: 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.main { flex: 1 1 auto; min-width: 0; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+.right { width: 380px; flex: none; box-sizing: border-box; border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.right-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.right-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.statusbar { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 8px 20px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--sub); }

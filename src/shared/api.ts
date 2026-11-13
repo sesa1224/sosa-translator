@@ -39,7 +39,7 @@ export interface ProjectListItem { dir: string; name: string; engine: string }
 export interface Snapshot { meta: ProjectMeta; gameTitle: string | null; rows: Row[]; stats: Stats; scopes: Scope[] }
 export interface UnitDetail { row: Row; issues: Issue[]; refs: string[] }
 export interface ProjectChanged { rows: Row[]; stats: Stats; scopes: Scope[]; origin: Origin }
-export type { Issue };
+export type { Issue, TranslationStatus, UnitKind };
 
 // Copies of core types whose modules import node built-ins (the renderer cannot type-check those).
 // src/main/ipc.ts checks at compile time that they still match the core ones.

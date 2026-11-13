@@ -526,7 +526,7 @@ test('같은 이름의 프로젝트가 있으면 오류', async () => { await ex
 
 패치 빌드: 누르면 `project.build()`. 성공하면 "패치를 만들었습니다 · 파일 n개 · 오류로 뺀 항목 k개"와 "폴더 열기", 실패하면 오류 글자(예: "바뀐 파일이 없습니다").
 
-- [ ] **Step 1: 실패하는 시험 쓰기**
+- [x] **Step 1: 실패하는 시험 쓰기**
 
 ```ts
 test('프로젝트가 없으면 고르기 화면, 만들면 본 화면', async () => {
@@ -551,10 +551,10 @@ test('패치 빌드 결과', async () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/renderer/shell.test.tsx` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 앱 배치와 프로젝트 고르기"`**
+- [x] **Step 2: `npx vitest run tests/renderer/shell.test.tsx` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 앱 배치와 프로젝트 고르기"`**
 
 ### Task 10: 텍스트 표와 항목 탭
 
