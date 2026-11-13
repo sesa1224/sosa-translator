@@ -289,7 +289,7 @@ test('제어문자 뽑기', () => {
 
 일본어가 없는 문자열은 내보내지 않는다. `list` 가 배열이 아니거나 항목이 `null` 이면 건너뛴다.
 
-- [ ] **Step 1: 실패하는 시험 쓰기** (`makeMiniGame` 의 Map001 목록을 `list` 로 쓴다)
+- [x] **Step 1: 실패하는 시험 쓰기** (`makeMiniGame` 의 Map001 목록을 `list` 로 쓴다)
 
 ```ts
 const P = ['events', 1, 'pages', 0, 'list'];
@@ -323,10 +323,10 @@ test('null 과 배열 아닌 값에 죽지 않는다', () => {
 });
 ```
 
-- [ ] **Step 2: `npx vitest run tests/extract/events.test.ts` → FAIL**
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: PASS**
-- [ ] **Step 5: `git commit -m "feat: 이벤트 커맨드 추출"`**
+- [x] **Step 2: `npx vitest run tests/extract/events.test.ts` → FAIL**
+- [x] **Step 3: 구현**
+- [x] **Step 4: PASS**
+- [x] **Step 5: `git commit -m "feat: 이벤트 커맨드 추출"`**
 
 ### Task 5: 데이터베이스와 맵에서 추출
 
