@@ -4,6 +4,8 @@ import type { Issue } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { GamePreview } from './GamePreview';
+import type { KeepRule, Row } from '../../shared/api';
+import { keyLabel } from '../../core/decisions/keys';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
   'control-codes': '제어 코드',
@@ -13,6 +15,7 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
   glossary: '용어집',
   'line-width': '줄 폭',
   'line-width-px': '창 폭',
+  skeleton: '그대로 둘 부분',
 };
 
 export function ItemPanel() {
@@ -89,6 +92,8 @@ export function ItemPanel() {
         <span className="label">원문</span>
         <div className="textbox src"><CodeText text={row.source} /></div>
       </div>
+      {row.needsDecision && <DecisionBox row={row} />}
+      {row.external && <span className="tag">외부에서 가져온 번역</span>}
       {row.status === 'declined' && (
         <div className="field">
           <span className="label">거절 이유</span>
@@ -153,5 +158,56 @@ export function ItemPanel() {
               onClick={() => void run(() => useApp.setStatus(row.id, 'approved'))}>승인</button>}
       </div>
     </div>
+  );
+}
+
+const DECISION_LABEL: Record<NonNullable<Row['decision']>, string> = {
+  none: '정하지 않음', translate: '번역함', skip: '번역 안 함', 'suggested-translate': '추천: 번역함', 'suggested-skip': '추천: 번역 안 함',
+};
+
+/** Keep rule for deciding one line on its own: its group's when that translates, else by kind of key. */
+function lineKeep(key: string | undefined, groupKeep: KeepRule | undefined): KeepRule {
+  if (groupKeep) return groupKeep;
+  if (key?.startsWith('mv:')) return { mode: 'args', from: 1, dropLast: 0 };
+  if (key?.startsWith('shape:')) return { mode: 'spans' };
+  return { mode: 'whole' };
+}
+
+/** A needs-decision line's group, its decision, and deciding just this line. */
+function DecisionBox({ row }: { row: Row }) {
+  const { decisionGroups } = useApp();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const key = row.decisionKey;
+  const group = key ? decisionGroups.find((g) => g.key === key) : undefined;
+  const set = async (translate: boolean) => {
+    setError(null);
+    try {
+      const keep: KeepRule = translate ? lineKeep(key, group?.decision?.translate ? group.decision.keep : undefined) : { mode: 'whole' };
+      await useApp.setDecision(`unit:${row.id}`, { translate, keep });
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <section className="field decision-box" aria-label="판단 필요">
+      <span className="label">판단 필요</span>
+      <div className="row-gap small">
+        {key && <span className="mono">{keyLabel(key)}</span>}
+        <span className="sub">{DECISION_LABEL[row.decision ?? 'none']}</span>
+      </div>
+      <div className="row-gap">
+        <button type="button" className="btn ghost small-btn" aria-expanded={open} onClick={() => setOpen(!open)}>이 줄만 따로 정하기</button>
+        {key && <button type="button" className="btn ghost small-btn" onClick={() => useApp.openDecisions(key)}>묶음 보기</button>}
+      </div>
+      {open && (
+        <div className="row-gap">
+          <button type="button" className="btn soft small-btn" onClick={() => void set(true)}>이 줄 번역함</button>
+          <button type="button" className="btn small-btn" onClick={() => void set(false)}>이 줄 번역 안 함</button>
+        </div>
+      )}
+      {error && <span className="err-text small" role="alert">{error}</span>}
+    </section>
   );
 }

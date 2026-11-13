@@ -21,6 +21,20 @@ import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, Term } from '../core/glossary/types.js';
 import type { ChangeEvent, Origin } from '../shared/api.js';
 import type { PxCheck } from '../core/check/format.js';
+import { existsSync, readFileSync } from 'node:fs';
+import nodePath from 'node:path';
+import { groupDecisions } from '../core/decisions/keys.js';
+import { mergeSuggestions } from '../core/decisions/auto.js';
+import { decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
+import type { Decision, DecisionGroup, Decisions, PluginMeta } from '../core/decisions/types.js';
+import { pluginMetaFromDir } from '../core/extract/pluginMeta.js';
+import { ensureOriginals, FILES_LIST } from '../core/project/originals.js';
+import { originalDir } from '../core/project/project.js';
+import { readFile, writeFile } from 'node:fs/promises';
+import { confirmedDecisionFor } from '../core/decisions/store.js';
+import type { KeepRule } from '../core/decisions/types.js';
+import { buildPackage, planImport, type ImportPlan } from '../core/exchange/package.js';
+import { rowDecisionOf, unitRowDecisions } from '../shared/rows.js';
 
 const UNDO_LIMIT = 200;
 
@@ -36,6 +50,9 @@ export interface ProjectService {
   off(event: 'glossary-changed', listener: (g: Glossary) => void): this;
   emit(event: 'changed', e: ChangeEvent): boolean;
   emit(event: 'glossary-changed', g: Glossary): boolean;
+  on(event: 'decisions-changed', listener: (d: Decisions) => void): this;
+  off(event: 'decisions-changed', listener: (d: Decisions) => void): this;
+  emit(event: 'decisions-changed', d: Decisions): boolean;
 }
 
 /**
@@ -56,6 +73,172 @@ export class ProjectService extends EventEmitter {
   ) {
     super();
     this.byId = new Map(unitList.map((u) => [u.id, u]));
+    this.loadDecisionData();
+  }
+
+  // ---- decisions (plan 3b) ----
+  private dec: Decisions = {};
+  private pluginMeta: Record<string, PluginMeta> = {};
+  private gameFileNames = new Set<string>();
+
+  /** Reads decisions.json, the plugins' header comments and the game file names (small files, read once). */
+  private loadDecisionData(): void {
+    const decFile = nodePath.join(this.projectDir, DECISIONS_FILE);
+    try {
+      const d = existsSync(decFile) ? JSON.parse(readFileSync(decFile, 'utf8').replace(/^﻿/, '')) : {};
+      this.dec = d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+    } catch {
+      this.dec = {};
+    }
+    this.refreshRowDecisions();
+    const root = originalDir(this.projectDir, this.meta);
+    this.pluginMeta = pluginMetaFromDir(root);
+    try {
+      const list = JSON.parse(readFileSync(nodePath.join(root, FILES_LIST), 'utf8')) as unknown;
+      if (Array.isArray(list)) {
+        for (const f of list) if (typeof f === 'string') this.gameFileNames.add(f.replace(/^.*\//, '').replace(/\.[^.]*$/, ''));
+      }
+    } catch {
+      // no files.json: no file-name hints
+    }
+  }
+
+  /** A copy of the project's decisions. */
+  decisions(): Decisions {
+    return structuredClone(this.dec);
+  }
+
+  /** Needs-decision units grouped by decision key, largest first. */
+  decisionGroups(): DecisionGroup[] {
+    return groupDecisions(this.unitList, this.dec, { fileNames: this.gameFileNames, meta: this.pluginMeta });
+  }
+
+  /** The decision that applies to a unit (its own one first), suggestions included. */
+  decisionOf(id: string): Decision | null {
+    const u = this.byId.get(id);
+    return u ? decisionFor(u, this.dec) : null;
+  }
+
+  /** Text of a file in the original copy (for context around plugin JS strings), or null. */
+  originalText(file: string): string | null {
+    try {
+      return readFileSync(nodePath.join(originalDir(this.projectDir, this.meta), ...file.split('/')), 'utf8');
+    } catch {
+      return null;
+    }
+  }
+
+  /** Merges suggestions (confirmed decisions stay), saves decisions.json and announces the change. */
+  addSuggestions(suggested: Decisions): Promise<void> {
+    return this.writeDecisions(() => mergeSuggestions(this.dec, suggested), Object.keys(suggested));
+  }
+
+  /** Confirms a decision for a group key or 'unit:<id>' (by the user, or by Claude in the chat). */
+  setDecision(key: string, d: Omit<Decision, 'status' | 'by'>, by: 'user' | 'claude'): Promise<void> {
+    if (!this.knowsKey(key)) return Promise.reject(new Error(`없는 판단 키입니다: ${key}`));
+    const decision: Decision = { translate: d.translate, keep: structuredClone(d.keep), status: 'confirmed', by };
+    if (d.reason !== undefined) decision.reason = d.reason;
+    return this.writeDecisions(() => ({ ...this.dec, [key]: decision }), [key]);
+  }
+
+  /** Turns suggestions into confirmed decisions (all of them, or those of the given keys). */
+  confirmSuggestions(keys?: string[]): Promise<void> {
+    const want = keys ? new Set(keys) : null;
+    const touched = Object.keys(this.dec).filter((k) => this.dec[k].status === 'suggested' && (!want || want.has(k)));
+    return this.writeDecisions(() => {
+      const next = { ...this.dec };
+      for (const k of touched) next[k] = { ...next[k], status: 'confirmed' };
+      return next;
+    }, touched);
+  }
+
+  /** Removes the decision of a key (its units need a decision again). */
+  clearDecision(key: string): Promise<void> {
+    return this.writeDecisions(() => {
+      const { [key]: _gone, ...rest } = this.dec;
+      return rest;
+    }, [key]);
+  }
+
+  /** Whether key is a decision key of some unit, or 'unit:<id>' of a needs-decision unit. */
+  knowsKey(key: string): boolean {
+    if (key.startsWith('unit:')) return this.byId.get(key.slice(5))?.needsDecision === true;
+    return this.unitList.some((u) => u.decisionKey === key);
+  }
+
+  /** The keep rule that applies when the unit is confirmed as translated (for the skeleton check), or undefined. */
+  keepRuleOf(unit: TextUnit): KeepRule | undefined {
+    if (!unit.needsDecision) return undefined;
+    const d = confirmedDecisionFor(unit, this.dec);
+    return d?.translate ? d.keep : undefined;
+  }
+
+  /** Writes the translated game title (System.json gameTitle) as approved. */
+  setGameTitle(target: string): Promise<void> {
+    const unit = this.unitList.find((u) => u.refs.some((r) => r.type === 'value' && r.file === 'data/System.json' && r.path.length === 1 && r.path[0] === 'gameTitle'));
+    if (!unit) return Promise.reject(new Error('게임 제목 항목이 없습니다'));
+    const text = target.trim();
+    if (!text) return Promise.reject(new Error('제목을 입력하세요'));
+    return this.mutate('user', () => {
+      this.remember(unit.id, 'user');
+      this.store.set(unit.id, text, 'approved');
+      return { ids: [unit.id], result: undefined };
+    });
+  }
+
+  /** Writes an exchange package for the given ids to filePath (UTF-8 JSON). */
+  async exportPackage(ids: string[], filePath: string): Promise<void> {
+    const pkg = buildPackage({ meta: this.meta, units: this.unitList, entryOf: (id) => this.store.get(id), glossary: this.gloss, decisions: this.dec, ids });
+    await writeFile(filePath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+  }
+
+  /** Reads a translator's reply (a JSON array, or an object with an items array) and sorts it. Never applies anything. */
+  async importPackage(filePath: string): Promise<ImportPlan> {
+    let raw: unknown;
+    try {
+      raw = JSON.parse((await readFile(filePath, 'utf8')).replace(/^﻿/, ''));
+    } catch {
+      return { ok: [], conflicts: [], unknownIds: [], invalid: 1 };
+    }
+    const items = Array.isArray(raw) ? raw : raw && typeof raw === 'object' && Array.isArray((raw as { items?: unknown }).items) ? (raw as { items: unknown[] }).items : raw;
+    return planImport(this.unitList, (id) => this.store.get(id), this.gloss, this.dec, items as { id: string; target: string }[]);
+  }
+
+  /** Writes an import plan's translations (origin 'external', marked external). Conflicts only when overwriteConflicts. */
+  applyImport(plan: ImportPlan, overwriteConflicts: boolean): Promise<{ written: number }> {
+    return this.mutate('external', () => {
+      const todo = [...plan.ok.map((o) => ({ id: o.id, target: o.target })), ...(overwriteConflicts ? plan.conflicts.map((c) => ({ id: c.id, target: c.incoming })) : [])];
+      const ids: string[] = [];
+      for (const t of todo) {
+        const unit = this.byId.get(t.id);
+        if (!unit) continue;
+        const status: TranslationStatus = this.check(unit, t.target).some((i) => i.severity === 'error') ? 'error' : 'needs-review';
+        this.remember(t.id, 'external');
+        this.store.restore(t.id, { target: t.target, status, updatedAt: new Date().toISOString(), external: true });
+        ids.push(t.id);
+      }
+      return { ids, result: { written: ids.length } };
+    });
+  }
+
+  /** Puts every needs-decision unit's decision state where toRow reads it. */
+  private refreshRowDecisions(): void {
+    for (const u of this.unitList) if (u.needsDecision) unitRowDecisions.set(u, rowDecisionOf(decisionFor(u, this.dec)));
+  }
+
+  /** Replaces the decisions, saves them, emits 'decisions-changed' and a change for the units of the touched keys. */
+  private writeDecisions(next: () => Decisions, keys: string[]): Promise<void> {
+    return this.enqueue(async () => {
+      this.dec = next();
+      this.refreshRowDecisions();
+      await saveDecisions(this.projectDir, this.dec);
+      this.emit('decisions-changed', this.decisions());
+      const touched = new Set(keys);
+      const ids = this.unitList
+        .filter((u) => u.needsDecision && (touched.has(`unit:${u.id}`) || (u.decisionKey !== undefined && touched.has(u.decisionKey))))
+        .map((u) => u.id);
+      if (ids.length > 0) this.emit('changed', { ids, origin: 'user' });
+    });
   }
 
   /** createProject + extractAll, then opens it. */
@@ -68,7 +251,10 @@ export class ProjectService extends EventEmitter {
 
   static async open(projectDir: string): Promise<ProjectService> {
     const meta = await openProject(projectDir);
+    await ensureOriginals(projectDir);
     const units = await loadUnits(projectDir);
+    // Projects extracted before decision keys existed are extracted again from the original copy (ids do not change).
+    if (units.some((u) => u.needsDecision && u.decisionKey === undefined)) units.splice(0, units.length, ...(await extractAll(projectDir)).units);
     const store = await TranslationStore.load(projectDir);
     return new ProjectService(projectDir, meta, units, store, await loadGlossary(projectDir));
   }
@@ -264,6 +450,9 @@ export class ProjectService extends EventEmitter {
     const g = this.gloss;
     const px = this.pxChecker?.(unit);
     if (px) return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern }, px);
+    // A unit confirmed as translated with a keep rule also gets the skeleton check.
+    const keep = this.keepRuleOf(unit);
+    if (keep) return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern }, keep);
     return checkTranslation(unit, target, g.rules, { terms: g.terms, maxLineWidthChars: g.rules.maxLineWidthChars, speakerPattern: g.rules.speakerPattern });
   }
 

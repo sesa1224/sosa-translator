@@ -93,7 +93,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - `meta.gameDir` 가 없는 경로면 `missingGameDir: true` 이고 예외가 나지 않는다
 - 원본 게임 폴더의 해시가 바뀌지 않는다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 원본 파일 목록과 보조 파일 보관"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 원본 파일 목록과 보조 파일 보관"`
 
 ### Task 2: 판단 키, 묶기, 그대로 둘 부분, 뼈대 검사
 
@@ -119,7 +119,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - `groupDecisions`: 같은 키의 항목이 한 묶음, `samples` 는 최대 5개, 표본 값이 `fileNames` 에 있으면 `hints.fileNames` 가 센다
 - `isTranslatable`: 결정 없음 → false, `translate: true` → true, `unit:<id>` 의 `translate: false` 가 묶음의 true 를 이긴다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 키와 뼈대 검사"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 키와 뼈대 검사"`
 
 ### Task 3: 플러그인 주석 읽기와 자동 결정
 
@@ -143,7 +143,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - 위 표의 각 줄에 대해 하나씩: 조건을 만족하는 묶음 → 기대한 제안, 마지막 줄 → 키가 결과에 없음
 - 이미 `confirmed` 결정이 있는 키는 `autoDecide` 결과에 넣지 않는다(호출 쪽에서 합칠 때 사용자 결정을 덮지 않게 `mergeSuggestions(existing, suggested): Decisions` 를 함께 만든다. `confirmed` 는 유지, `suggested` 는 새 것으로 바꿈)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 주석으로 자동 결정"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 주석으로 자동 결정"`
 
 ### Task 4: 메모란 추출
 
@@ -160,7 +160,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - `replaceNoteValue` 로 index 1 만 바꾸면 나머지 글이 그대로다. 값에 `$1` 이 있어도 그대로 들어간다
 - note 가 빈 글이거나 문자열이 아니면 빈 배열
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 메모란 태그 추출"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 메모란 태그 추출"`
 
 ### Task 5: 플러그인 JS 파일의 문자열 추출
 
@@ -177,7 +177,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - 꺼진 플러그인(`status: false`)의 파일은 추출하지 않는다
 - 따옴표가 닫히지 않은 깨진 파일에서 예외를 던지지 않고, 그 파일에 대한 경고 하나를 돌려준다(`extractAll` 의 `warnings`)
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 JS 문자열 추출"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 플러그인 JS 문자열 추출"`
 
 ### Task 6: 적용 — 결정 반영, 메모란, JS 파일, 제목
 
@@ -197,7 +197,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - JS 원본 사본을 시험에서 고쳐 위치가 어긋나게 하면 그 파일은 패치에 없고 경고가 하나 온다. 다른 파일은 정상 적용
 - 제목: `gameTitle` 을 `안개 약초원` 으로 번역하면 패치에 `index.html` 이 있고 `<title>안개 약초원</title>` 이다. 제목에 `&` 가 있으면 `&amp;`. `package.top.json` 의 `window.title` 이 빈 글이면 `package.json` 은 패치에 없다. `name` 값은 어떤 경우에도 원본과 같다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 결정에 따른 적용과 제목 파일"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 결정에 따른 적용과 제목 파일"`
 
 ### Task 7: Claude에게 결정 추천 받기
 
@@ -218,7 +218,7 @@ export type Decisions = Record<string, Decision>;   // 키는 판단 키 또는 
 - JS 파일의 문자열은 `unit:<id>` 키로 따로 정해진다
 - `auth` 실패 → `failed` 와 로그인 메시지, `limit` → `paused-limit`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 묶음 추천"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 묶음 추천"`
 
 ### Task 8: 외부 번역용 내보내기와 가져오기
 
@@ -249,7 +249,7 @@ export interface ExchangePackage {
 - `planImport`: 모르는 id → `unknownIds`, 기존 번역과 다름 → `conflicts`, 같음 → 어디에도 없음, 번역 없음 → `ok`. 제어문자를 빼먹은 번역은 `ok` 에 들어가되 `issues` 에 오류가 있다
 - JSON 이 배열이 아니거나 항목 모양이 틀려도 예외 없이 `invalid` 로 센다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 외부 번역용 꾸러미"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 외부 번역용 꾸러미"`
 
 ### Task 9: ProjectService, IPC, 채팅 도구 연결
 
@@ -270,7 +270,7 @@ export interface ExchangePackage {
 - 내보낸 꾸러미 파일을 읽어 번역을 채워 다시 가져오면 `external: true` 로 들어가고, 충돌 항목은 `overwriteConflicts: false` 일 때 그대로다
 - 채팅 도구: `set_decision` 뒤 `list_decisions` 가 그 결정을 보여준다. 모르는 키는 `ok: false`
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 결정과 꾸러미 연결"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 결정과 꾸러미 연결"`
 
 ### Task 10: 판단 필요 화면
 
@@ -292,7 +292,7 @@ export interface ExchangePackage {
 - "추천 전부 받아들이기"가 `decisions.confirm()` 을 부른다. "Claude에게 추천 받기"가 `job.decide` 를 부른다
 - 필터 칩이 묶음을 걸러낸다. 사이드바의 숫자가 `Stats.undecided` 다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 통과 확인 → `git commit -m "feat: 판단 필요 화면"`
 
 ### Task 11: 게임 제목 칸, 내보내기·가져오기 화면, 표의 표시
 
@@ -313,17 +313,17 @@ export interface ExchangePackage {
 - 결정 상태에 따라 번역 칸의 글이 다섯 가지로 나온다
 - "이 줄만 따로 정하기"가 `unit:<id>` 키로 부른다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 제목 칸과 내보내기·가져오기 화면"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 제목 칸과 내보내기·가져오기 화면"`
 
 ### Task 12: 전체 흐름 시험과 실제 CLI 확인
 
 **Files:** Modify `tests/e2e/app.e2e.test.ts`, `tests/helpers/miniGame.ts`(메모란 태그, MZ 플러그인 커맨드, 주석이 달린 플러그인 JS 파일 하나, `index.html`, 최상위 `package.json`, `img/pictures` 의 빈 파일 몇 개를 더한다. 기존 시험이 기대는 값은 바꾸지 않는다), `README.md` · Create `tests/main/realDecide.test.ts`
 
-- [ ] **연기 시험 추가**(가짜 JSON CLI): 가져오기 → 판단 필요 화면 → "Claude에게 추천 받기" → "추천 전부 받아들이기" → 용어집 확정 → 번역 맡기기 → 판단 필요였던 줄에 번역이 들어가고 그대로 둘 부분이 유지됨 → 게임 제목 고치기 → 패치 빌드 → zip 에 `index.html` 과 고친 플러그인 JS 가 있고, JS 의 바뀌지 않은 부분이 원본과 같음
-- [ ] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
-- [ ] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만. 아니면 건너뛰고 보고에 적는다): 시험용 게임의 묶음들(표시 글자인 커맨드 하나, 파일 이름을 받는 커맨드 하나, 글자와 코드가 섞인 스크립트 하나)로 `DecideJob` 을 한 번 돌려, 결정과 이유를 보고에 그대로 붙인다. 표시 글자 묶음이 번역함으로, 파일 이름 묶음이 번역 안 함으로 나오는지 확인한다
-- [ ] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
-- [ ] **`README.md` 에 판단 필요 흐름과 새 파일(`decisions.json`)을 적고 `git commit -m "feat: 판단 필요 전체 흐름 시험"`**
+- [x] **연기 시험 추가**(가짜 JSON CLI): 가져오기 → 판단 필요 화면 → "Claude에게 추천 받기" → "추천 전부 받아들이기" → 용어집 확정 → 번역 맡기기 → 판단 필요였던 줄에 번역이 들어가고 그대로 둘 부분이 유지됨 → 게임 제목 고치기 → 패치 빌드 → zip 에 `index.html` 과 고친 플러그인 JS 가 있고, JS 의 바뀌지 않은 부분이 원본과 같음
+- [x] **`npm run build:app && npm run test:e2e` → 실패 확인 후 빠진 연결을 채워 통과**
+- [x] **실제 CLI 확인**(`MVMZ_REAL_CLI=1`, 로그인 상태에서만. 아니면 건너뛰고 보고에 적는다): 시험용 게임의 묶음들(표시 글자인 커맨드 하나, 파일 이름을 받는 커맨드 하나, 글자와 코드가 섞인 스크립트 하나)로 `DecideJob` 을 한 번 돌려, 결정과 이유를 보고에 그대로 붙인다. 표시 글자 묶음이 번역함으로, 파일 이름 묶음이 번역 안 함으로 나오는지 확인한다
+- [x] **전체 확인**: `npx vitest run`, 두 tsconfig 의 `tsc --noEmit`, `npm run test:e2e`
+- [x] **`README.md` 에 판단 필요 흐름과 새 파일(`decisions.json`)을 적고 `git commit -m "feat: 판단 필요 전체 흐름 시험"`**
 
 ---
 

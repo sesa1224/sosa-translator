@@ -1,7 +1,8 @@
 import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg, UnitKind, UnitRef } from '../types.js';
+import { mvCommandKey, mzArgKey, shapeKey } from '../decisions/keys.js';
 
-export interface RawUnit { kind: UnitKind; source: string; speaker?: string; needsDecision: boolean; ref: UnitRef }
+export interface RawUnit { kind: UnitKind; source: string; speaker?: string; needsDecision: boolean; ref: UnitRef; decisionKey?: string; distinct?: string }
 
 interface Command { code: number; indent?: number; parameters: unknown[] }
 
@@ -26,6 +27,9 @@ export function extractFromList(list: unknown, file: string, listPath: PathSeg[]
   const valueRef = (i: number, ...rest: PathSeg[]): UnitRef => ({ type: 'value', file, path: [...listPath, i, 'parameters', ...rest] });
   const pushValue = (kind: UnitKind, source: string | null, needsDecision: boolean, ref: UnitRef) => {
     if (source !== null && hasJapanese(source)) out.push({ kind, source, needsDecision, ref });
+  };
+  const pushKeyed = (kind: UnitKind, source: string | null, ref: UnitRef, key: (s: string) => string) => {
+    if (source !== null && hasJapanese(source)) out.push({ kind, source, needsDecision: true, ref, decisionKey: key(source) });
   };
 
   // Collects the run of `code` commands starting at `from`; returns their texts.
@@ -91,22 +95,22 @@ export function extractFromList(list: unknown, file: string, listPath: PathSeg[]
         pushValue('name-change', strParam(cmd, 1), false, valueRef(i, 1));
         break;
       case 356:
-        pushValue('plugin-command', strParam(cmd, 0), true, valueRef(i, 0));
+        pushKeyed('plugin-command', strParam(cmd, 0), valueRef(i, 0), mvCommandKey);
         break;
       case 357: {
         const args = cmd.parameters[3];
         if (args && typeof args === 'object' && !Array.isArray(args)) {
           for (const [k, v] of Object.entries(args as Record<string, unknown>)) {
-            if (typeof v === 'string') pushValue('plugin-command', v, true, valueRef(i, 3, k));
+            if (typeof v === 'string') pushKeyed('plugin-command', v, valueRef(i, 3, k), () => mzArgKey(strParam(cmd, 0) ?? '', strParam(cmd, 1) ?? '', k));
           }
         }
         break;
       }
       case 355: case 655:
-        pushValue('script', strParam(cmd, 0), true, valueRef(i, 0));
+        pushKeyed('script', strParam(cmd, 0), valueRef(i, 0), shapeKey);
         break;
       case 108: case 408:
-        pushValue('comment', strParam(cmd, 0), true, valueRef(i, 0));
+        pushKeyed('comment', strParam(cmd, 0), valueRef(i, 0), shapeKey);
         break;
       default:
         break;

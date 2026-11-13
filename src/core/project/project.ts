@@ -4,6 +4,7 @@ import path from 'node:path';
 import { detectGame } from '../engine/detect.js';
 import type { Engine } from '../types.js';
 import { readJsonFile, writeJsonFile } from '../util/json.js';
+import { fillOriginals } from './originals.js';
 
 export interface ProjectMeta {
   name: string;
@@ -52,6 +53,7 @@ export async function createProject(gameDir: string, projectDir: string, name: s
   await copyInto(path.join(src, 'data'), path.join(dst, 'data'), await listFiles(path.join(src, 'data'), '.json'));
   if (existsSync(path.join(src, 'js', 'plugins.js'))) await copyInto(path.join(src, 'js'), path.join(dst, 'js'), ['plugins.js']);
   await copyInto(path.join(src, 'js', 'plugins'), path.join(dst, 'js', 'plugins'), await listFiles(path.join(src, 'js', 'plugins'), '.js'));
+  await fillOriginals(game.topDir, src, dst);
 
   await writeJsonFile(path.join(projectDir, PROJECT_FILE), meta);
   return meta;

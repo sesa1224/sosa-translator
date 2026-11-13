@@ -3,6 +3,7 @@ import type { TextUnit } from '../core/types.js';
 import type { Row } from '../shared/api.js';
 import { computeStats, filterRows, toRow } from '../shared/rows.js';
 import type { ProjectService } from './projectService.js';
+import type { KeepRule } from '../core/decisions/types.js';
 
 export interface ToolDef { name: string; description: string; inputSchema: z.ZodObject<any> }
 
@@ -63,6 +64,23 @@ export const TOOL_DEFS: ToolDef[] = [
       source: z.string().describe('원문 용어'),
       target: z.string().describe('번역'),
       category: termCategory.optional().describe('name 이름, place 지명, term 용어, sfx 효과음, other 기타 (새 용어의 기본값 term)'),
+    }),
+  },
+  {
+    name: 'list_decisions',
+    description: '판단 필요 항목(플러그인 커맨드, 스크립트, 플러그인 설정, 메모란, 플러그인 JS 문자열)의 묶음을 볼 때 쓴다. 키, 이름, 쓰인 곳 수, 표본, 힌트, 지금 결정을 돌려준다.',
+    inputSchema: z.object({ query: z.string().optional().describe('키, 이름, 표본에서 글자 그대로 찾기 (대소문자 무시)') }),
+  },
+  {
+    name: 'set_decision',
+    description: '판단 필요 묶음(또는 unit:<id> 로 항목 하나)을 번역할지 정할 때 쓴다. 바로 확정된다. 화면에 보이는 글자라는 근거가 있을 때만 translate true 로 한다.',
+    inputSchema: z.object({
+      key: z.string().describe('list_decisions 의 key, 또는 unit:<항목 id>'),
+      translate: z.boolean().describe('번역하면 true, 코드가 읽는 값이면 false'),
+      mode: z.enum(['whole', 'args', 'spans']).optional().describe('whole 값 전체, args MV 커맨드의 앞뒤 조각은 그대로, spans 일본어 부분만 (기본 whole)'),
+      from: z.number().int().min(0).optional().describe('args: 앞에서 그대로 둘 조각 수 (기본 1)'),
+      dropLast: z.number().int().min(0).optional().describe('args: 뒤에서 그대로 둘 조각 수 (기본 0)'),
+      reason: z.string().optional().describe('이유'),
     }),
   },
 ];
@@ -139,6 +157,18 @@ const HANDLERS: Record<string, Handler> = {
     const r = await svc.chooseCandidate(existing.id, input.target);
     return { term: svc.glossary().terms.find((t) => t.id === existing.id), ...r };
   },
+};
+
+HANDLERS.list_decisions = async (svc, input: { query?: string }) => {
+  const q = (input.query ?? '').toLowerCase();
+  const groups = svc.decisionGroups().filter((g) => q === '' || [g.key, g.label, ...g.samples].some((s) => s.toLowerCase().includes(q)));
+  return { total: groups.length, groups: groups.slice(0, GLOSSARY_SEARCH_MAX).map((g) => ({ key: g.key, label: g.label, count: g.count, samples: g.samples, hints: g.hints, decision: g.decision })) };
+};
+HANDLERS.set_decision = async (svc, input: { key: string; translate: boolean; mode?: 'whole' | 'args' | 'spans'; from?: number; dropLast?: number; reason?: string }) => {
+  const mode = input.mode ?? 'whole';
+  const keep: KeepRule = mode === 'args' ? { mode, from: input.from ?? 1, dropLast: input.dropLast ?? 0 } : { mode };
+  await svc.setDecision(input.key, { translate: input.translate, keep, ...(input.reason !== undefined ? { reason: input.reason } : {}) }, 'claude');
+  return { key: input.key, decision: svc.decisions()[input.key] };
 };
 
 /** Runs one tool for the chat. All writes use origin 'chat'. Never throws. */

@@ -20,6 +20,10 @@ export function Sidebar() {
         onClick={() => useApp.setView('settings')}>
         <span>설정</span>
       </button>
+      <button type="button" className={`nav-btn${view === 'decisions' ? ' on' : ''}`} aria-current={view === 'decisions' ? 'page' : undefined}
+        onClick={() => useApp.openDecisions()}>
+        <span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
+      </button>
 
       <span className="nav-head spaced">범위별 진행률</span>
       {snapshot.scopes.map((s) => {

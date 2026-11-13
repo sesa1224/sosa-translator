@@ -277,3 +277,36 @@ select.input { padding: 0 12px; }
 .story-choices { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 60px; }
 .story-choice { padding: 8px 14px; border-radius: 8px; border: 1px dashed var(--accent); background: transparent; color: var(--text); display: flex; flex-direction: column; align-items: flex-start; text-align: left; font-size: 14px; }
 .story-foot { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* ---- decisions screen (plan 3b) ---- */
+.decision-view { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; overflow: auto; height: 100%; }
+.decision-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.decision-top h2 { margin: 0 0 4px; font-size: 18px; }
+.decision-top p { margin: 0; }
+.decision-top-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.decision-list { display: flex; flex-direction: column; gap: 12px; }
+.decision-card { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.decision-card.focus { border-color: var(--accent); }
+.decision-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; }
+.decision-label { font-weight: 600; }
+.decision-samples { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.decision-sample { font-family: 'IBM Plex Mono', monospace; overflow-wrap: anywhere; }
+.decision-sample .translate-part { background: var(--accent-bg); color: var(--text); border-radius: 3px; }
+.decision-sample .keep-part { color: var(--mute); }
+.decision-suggest { font-size: 13px; }
+.decision-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.decision-picker { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.decision-modes { display: flex; flex-wrap: wrap; gap: 14px; }
+.decision-args { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; align-items: center; }
+.num-input { width: 64px; height: 32px; }
+.js-strings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.js-string { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.js-string .grow { flex: 1; }
+
+/* ---- game title field, exchange, item decision box (plan 3b) ---- */
+.title-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.title-field .icon-btn { width: 28px; height: 28px; font-size: 13px; }
+.title-input { height: 30px; min-width: 200px; }
+.title-target { color: var(--accent-text); }
+.tiny { font-size: 11px; }
+.exchange-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.decision-box .row-gap { margin-top: 4px; }

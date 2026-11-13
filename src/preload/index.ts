@@ -30,6 +30,7 @@ const api: Api = {
     snapshot: () => call('project:snapshot'),
     undo: () => call('project:undo'),
     build: () => call('project:build'),
+    setGameTitle: (target) => call('project:setGameTitle', target),
   },
   unit: {
     get: (id) => call('unit:get', id),
@@ -61,6 +62,7 @@ const api: Api = {
     resume: () => call('job:resume'),
     stop: () => call('job:stop'),
     current: () => call('job:current'),
+    decide: () => call('job:decide'),
   },
   chat: {
     send: (text, images, attachedUnitId) => call('chat:send', text, images, attachedUnitId),
@@ -72,6 +74,17 @@ const api: Api = {
   app: {
     claudePath: () => call('app:claudePath'),
     showItemInFolder: (file) => call('app:showItemInFolder', file),
+  },
+  decisions: {
+    groups: () => call('decisions:groups'),
+    set: (key, d) => call('decisions:set', key, d),
+    confirm: (keys) => call('decisions:confirm', keys),
+    clear: (key) => call('decisions:clear', key),
+  },
+  exchange: {
+    export: (ids) => call('exchange:export', ids),
+    planImport: () => call('exchange:planImport'),
+    applyImport: (overwrite) => call('exchange:applyImport', overwrite),
   },
   on(channel: PushChannel, cb: (payload: any) => void) {
     const listener = (_e: unknown, payload: unknown) => cb(payload);

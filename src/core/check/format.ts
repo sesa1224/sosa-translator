@@ -8,6 +8,10 @@ import type { Issue, TextUnit } from '../types.js';
 
 import { DEFAULT_RULES, type FormatRules } from './rules.js';
 import type { Layout } from '../preview/types.js';
+import { keepPieces } from '../decisions/keys.js';
+import { checkSkeleton, translatedParts } from '../decisions/skeleton.js';
+import type { Decisions, KeepRule } from '../decisions/types.js';
+import { confirmedDecisionFor } from '../decisions/store.js';
 
 export { DEFAULT_RULES, type FormatRules };
 
@@ -31,15 +35,36 @@ function lineCount(s: string): number {
 export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null; speakerPattern?: string | null }
 
 /** Checks one translation against the format rules. Pixel-width checks come in plan 4. */
-export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck, px?: PxCheck): Issue[] {
+/**
+ * The last argument is either a pixel-width check (dialogue shown in the message window) or a keep rule
+ * (a needs-decision value where only part is translated). A unit never needs both: keep rules apply to
+ * plugin commands, scripts and the like, which are not laid out in the message window.
+ */
+export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck, extra?: PxCheck | KeepRule): Issue[] {
+  const px = extra && 'layout' in extra ? extra : undefined;
+  const keep = extra && 'mode' in extra ? extra : undefined;
   if (target.trim() === '') {
     return [{ rule: 'empty', severity: 'error', message: '번역이 비어 있습니다' }];
   }
   const issues: Issue[] = [];
+  // With a keep rule, the kept pieces must be unchanged, and the code and Japanese checks look at the translated parts only.
+  let srcText = unit.source;
+  let dstText = target;
+  if (keep) {
+    const skeleton = checkSkeleton(unit.source, target, keep);
+    issues.push(...skeleton);
+    const pieces = keepPieces(unit.source, keep);
+    const srcParts = pieces && translatedParts(unit.source, pieces);
+    const dstParts = pieces && translatedParts(target, pieces);
+    if (skeleton.length === 0 && srcParts && dstParts) {
+      srcText = srcParts.join(' ');
+      dstText = dstParts.join(' ');
+    }
+  }
 
   if (rules.controlCodes) {
-    const src = controlCodes(unit.source);
-    const dst = controlCodes(target);
+    const src = controlCodes(srcText);
+    const dst = controlCodes(dstText);
     const missing = minus(src, dst);
     const added = minus(dst, src);
     if (missing.length > 0 || added.length > 0) {
@@ -50,7 +75,7 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
     }
   }
 
-  if (rules.noLeftoverJapanese && hasJapanese(target)) {
+  if (rules.noLeftoverJapanese && hasJapanese(dstText)) {
     issues.push({ rule: 'leftover-japanese', severity: 'error', message: '번역에 일본어 글자가 남아 있습니다' });
   }
 
@@ -96,12 +121,15 @@ export function checkAll(
   units: TextUnit[],
   store: TranslationStore,
   rules: FormatRules = DEFAULT_RULES,
+  decisions?: Decisions,
 ): { id: string; issues: Issue[] }[] {
   const out: { id: string; issues: Issue[] }[] = [];
   for (const u of units) {
     const entry = store.get(u.id);
     if (entry.target === null) continue;
-    const issues = checkTranslation(u, entry.target, rules);
+    // A unit confirmed as translated with a keep rule also gets the skeleton check.
+    const dec = decisions && u.needsDecision ? confirmedDecisionFor(u, decisions) : null;
+    const issues = checkTranslation(u, entry.target, rules, undefined, dec?.translate ? dec.keep : undefined);
     const hasError = issues.some((i) => i.severity === 'error');
     if (hasError && entry.status !== 'error') store.setStatus(u.id, 'error');
     else if (!hasError && entry.status === 'error') store.setStatus(u.id, 'needs-review');

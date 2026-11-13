@@ -9,13 +9,13 @@ const meta: ProjectMeta = {
   name: '약초원', engine: 'MZ', gameDir: 'C:/game', contentPrefix: '', sourceLang: 'ja', targetLang: 'ko',
   versions: [{ id: 'v1', importedAt: '2026-11-13T00:00:00.000Z' }], current: 'v1',
 };
-const stats: Stats = { total: 12, untranslated: 10, needsReview: 1, approved: 1, error: 0, needsDecision: 2, declined: 0, provisional: 0 };
+const stats: Stats = { total: 12, untranslated: 10, needsReview: 1, approved: 1, error: 0, needsDecision: 2, declined: 0, provisional: 0, external: 0, undecided: 2 };
 
 test('인자', () => {
   const a = buildClaudeArgs({ model: 'claude-opus-5-5', mcpConfigPath: 'C:/x/mcp.json', systemPrompt: 'S' });
   expect(a).toEqual(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--model', 'claude-opus-5-5', '--mcp-config', 'C:/x/mcp.json', '--strict-mcp-config', '--tools', '',
-    '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last,mcp__mvmz__glossary_search,mcp__mvmz__glossary_set_term',
+    '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last,mcp__mvmz__glossary_search,mcp__mvmz__glossary_set_term,mcp__mvmz__list_decisions,mcp__mvmz__set_decision',
     '--permission-mode', 'dontAsk', '--setting-sources', 'project', '--disable-slash-commands', '--system-prompt', 'S']);
   expect(buildClaudeArgs({ model: 'm', mcpConfigPath: 'p', systemPrompt: 'S', resumeSessionId: 'abc' }).slice(-2)).toEqual(['--resume', 'abc']);
 });

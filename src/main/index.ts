@@ -105,6 +105,20 @@ app.whenReady().then(async () => {
       const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
       return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
     },
+    pickSaveFile: async (defaultName) => {
+      if (process.env.MVMZ_SAVE_FILE) return process.env.MVMZ_SAVE_FILE;
+      const win = BrowserWindow.getFocusedWindow();
+      const opts = { title: '외부 번역용으로 내보내기', defaultPath: defaultName, filters: [{ name: 'JSON', extensions: ['json'] }] };
+      const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
+      return r.canceled || !r.filePath ? null : r.filePath;
+    },
+    pickOpenFile: async () => {
+      if (process.env.MVMZ_OPEN_FILE) return process.env.MVMZ_OPEN_FILE;
+      const win = BrowserWindow.getFocusedWindow();
+      const opts = { title: '외부 번역 가져오기', properties: ['openFile' as const], filters: [{ name: 'JSON', extensions: ['json'] }] };
+      const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+      return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
+    },
   });
 
   createWindow();

@@ -18,6 +18,9 @@ import { TranslateJob } from './translate/job.js';
 import { planReview, ReviewJob } from './translate/review.js';
 import { computeScopes, computeStats, locationLabel, toRow } from '../shared/rows.js';
 import { buildSystemPrompt } from './claude/prompt.js';
+import type { ImportPlan as ExchangeImportPlan } from '../core/exchange/package.js';
+import { DEFAULT_DECIDE_MODEL, type DecisionInput } from '../shared/api.js';
+import { DecideJob } from './translate/decide.js';
 import { ProjectService } from './projectService.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { readFile } from 'node:fs/promises';
@@ -34,6 +37,8 @@ export const sharedTypesMatch: [
   Same<core.ProjectMeta, shared.ProjectMeta>, Same<core.BuildResult, shared.BuildResult>,
   Same<glossaryTypes.Glossary, shared.Glossary>, Same<glossaryTypes.Term, shared.Term>,
 ] = [true, true, true, true];
+
+export const sharedTypesMatch3b: [Same<ExchangeImportPlan, shared.ImportPlan>] = [true];
 
 export const JOB_BUSY = '다른 작업이 진행 중입니다';
 export const CONFIRM_FIRST = '용어집을 먼저 확정하세요';
@@ -73,6 +78,10 @@ export interface IpcDeps {
   fontDirs?(): string[];
   /** Opens a file dialog for one .ttf/.otf font; null when cancelled. */
   pickFontFile?(): Promise<string | null>;
+  /** Save dialog for an exchange package (null = cancelled). */
+  pickSaveFile?(defaultName: string): Promise<string | null>;
+  /** Open dialog for a translator's reply (null = cancelled). */
+  pickOpenFile?(): Promise<string | null>;
 }
 
 const BAD_NAME = /[\\/:*?"<>|]/;
@@ -190,6 +199,10 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       }
     });
     await startPreview(s);
+    s.on('decisions-changed', () => {
+      if (deps.holder.svc !== s) return;
+      deps.broadcast('decisions:changed', s.decisionGroups());
+    });
   }
 
   async function ensureChat(): Promise<ChatLike | null> {
@@ -483,6 +496,44 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handleP('story:scenes', (file: string) => {
     const s = svc();
     return buildScenes(s.projectDir, s.units(), String(file ?? ''), s.glossary().rules.speakerPattern);
+  });
+
+  // ---- decisions, game title, exchange (plan 3b) ----
+  let importPlan: ExchangeImportPlan | null = null;
+  handle('decisions:groups', () => svc().decisionGroups());
+  handle('decisions:set', (key: string, d: DecisionInput) => svc().setDecision(String(key), { translate: !!d?.translate, keep: d?.keep ?? { mode: 'whole' }, ...(d?.reason !== undefined ? { reason: d.reason } : {}) }, 'user'));
+  handle('decisions:confirm', (keys?: string[]) => svc().confirmSuggestions(Array.isArray(keys) ? keys : undefined));
+  handle('decisions:clear', (key: string) => svc().clearDecision(String(key)));
+  handle('job:decide', async () => {
+    if (busy()) throw new Error(JOB_BUSY);
+    const o = await jobOptions('glossary');
+    const model = (await settings()).stageModels.decide || DEFAULT_DECIDE_MODEL;
+    void launch(new DecideJob({ ...o, model }));
+  });
+  handle('project:setGameTitle', async (target: string) => {
+    await svc().setGameTitle(String(target ?? ''));
+  });
+  handle('exchange:export', async (ids: string[]) => {
+    const s = svc();
+    const list = Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [];
+    if (list.length === 0) throw new Error('내보낼 항목이 없습니다');
+    const file = deps.pickSaveFile ? await deps.pickSaveFile(`${s.meta.name}_외부번역.json`) : null;
+    if (!file) return null;
+    await s.exportPackage(list, file);
+    return file;
+  });
+  handle('exchange:planImport', async () => {
+    const s = svc();
+    const file = deps.pickOpenFile ? await deps.pickOpenFile() : null;
+    if (!file) return null;
+    importPlan = await s.importPackage(file);
+    return importPlan;
+  });
+  handle('exchange:applyImport', async (overwrite: boolean) => {
+    if (!importPlan) throw new Error('가져올 번역이 없습니다. 먼저 파일을 고르세요');
+    const plan = importPlan;
+    importPlan = null;
+    return svc().applyImport(plan, overwrite === true);
   });
 
   return { dispose: () => closeProject() };

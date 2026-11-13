@@ -1,4 +1,5 @@
 import type { Issue, ReviewNote, TranslationStatus, UnitKind } from '../core/types.js';
+import type { Decision, DecisionGroup, KeepRule } from '../core/decisions/types.js';
 
 export interface Row {
   id: string; kind: UnitKind; speaker?: string; source: string;
@@ -10,12 +11,12 @@ export interface Row {
   declinedReason?: string;
   review?: ReviewNote;
 }
-export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional';
+export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped';
 export interface RowQuery { text?: string; status?: StatusFilter; file?: string }
 export interface Stats { total: number; untranslated: number; needsReview: number; approved: number; error: number; needsDecision: number; declined: number; provisional: number }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
-export type Origin = 'user' | 'chat' | 'batch' | 'review';
+export type Origin = 'user' | 'chat' | 'batch' | 'review' | 'external';
 export interface ChangeEvent { ids: string[]; origin: Origin }
 
 export interface ChatImage { mediaType: 'image/png' | 'image/jpeg' | 'image/webp'; base64: string }
@@ -38,7 +39,7 @@ export interface DraftPlan { chunks: number; chars: number; estimatedInputTokens
 export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 
-export type JobKind = 'draft' | 'translate' | 'review';
+export type JobKind = 'draft' | 'translate' | 'review' | 'decide';
 export type JobState = 'idle' | 'running' | 'paused' | 'paused-limit' | 'done' | 'failed' | 'stopped';
 export interface JobProgress { kind: JobKind; state: JobState; done: number; total: number; label: string; usage: ChatUsage; declined: number; errors: number; message?: string }
 export const DEFAULT_MODELS: ModelOption[] = [
@@ -155,6 +156,7 @@ export interface Api {
     create: Async<InvokeChannels['project:create']>; open: Async<InvokeChannels['project:open']>;
     close: Async<InvokeChannels['project:close']>; snapshot: Async<InvokeChannels['project:snapshot']>;
     undo: Async<InvokeChannels['project:undo']>; build: Async<InvokeChannels['project:build']>;
+    setGameTitle: Async<InvokeChannels['project:setGameTitle']>;
   };
   unit: {
     get: Async<InvokeChannels['unit:get']>; setTranslation: Async<InvokeChannels['unit:setTranslation']>;
@@ -177,6 +179,7 @@ export interface Api {
     reviewPlan: Async<InvokeChannels['job:reviewPlan']>; review: Async<InvokeChannels['job:review']>;
     pause: Async<InvokeChannels['job:pause']>; resume: Async<InvokeChannels['job:resume']>; stop: Async<InvokeChannels['job:stop']>;
     current: Async<InvokeChannels['job:current']>;
+    decide: Async<InvokeChannels['job:decide']>;
   };
   app: { claudePath: Async<InvokeChannels['app:claudePath']>; showItemInFolder: Async<InvokeChannels['app:showItemInFolder']> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
@@ -227,3 +230,48 @@ export interface SceneLine { id: string; kind: UnitKind; order: number; speaker:
 /** One event page (or common event, or troop page) read as a scene. */
 export interface SceneInfo { key: string; file: string; label: string; condition: string | null; lines: SceneLine[] }
 export interface StoryApi { scenes(file: string): Promise<SceneInfo[]> }
+// ---- Plan 3b: decisions, title, exchange (added below; existing lines above are unchanged) ----
+
+/** Plugin JS files left out of a build (merged into BuildResult above). */
+export interface BuildResult { warnings: { file: string; message: string }[] }
+
+export type { Decision, DecisionGroup, KeepRule };
+/** A needs-decision row's state: no decision, confirmed (translate / skip), or only suggested. null for other rows. */
+export type RowDecision = 'none' | 'translate' | 'skip' | 'suggested-translate' | 'suggested-skip';
+/** Filled by toRow; optional so rows built by hand (tests, older callers) stay valid. */
+export interface Row { decision?: RowDecision | null; external?: boolean; decisionKey?: string }
+export interface RowQuery { decisionKey?: string }
+/** undecided: needs-decision rows without a confirmed decision. */
+export interface Stats { external: number; undecided: number }
+export interface StageModels { decide?: string }
+export const DEFAULT_DECIDE_MODEL = 'claude-fable-5-2';
+/** Copy of src/core/exchange/package.ts ImportPlan (checked in src/main/ipc.ts). */
+export interface ImportPlan {
+  ok: { id: string; target: string; issues: Issue[] }[];
+  conflicts: { id: string; current: string; incoming: string }[];
+  unknownIds: string[];
+  invalid: number;
+}
+export interface DecisionInput { translate: boolean; keep: KeepRule; reason?: string }
+export interface PushEvents { 'decisions:changed': DecisionGroup[] }
+export interface InvokeChannels {
+  'decisions:groups': () => DecisionGroup[];
+  'decisions:set': (key: string, d: DecisionInput) => void;
+  'decisions:confirm': (keys?: string[]) => void;
+  'decisions:clear': (key: string) => void;
+  'job:decide': () => void;
+  'project:setGameTitle': (target: string) => void;
+  'exchange:export': (ids: string[]) => string | null;
+  'exchange:planImport': () => ImportPlan | null;
+  'exchange:applyImport': (overwrite: boolean) => { written: number };
+}
+export interface Api {
+  decisions: {
+    groups: Async<InvokeChannels['decisions:groups']>; set: Async<InvokeChannels['decisions:set']>;
+    confirm: Async<InvokeChannels['decisions:confirm']>; clear: Async<InvokeChannels['decisions:clear']>;
+  };
+  exchange: {
+    export: Async<InvokeChannels['exchange:export']>; planImport: Async<InvokeChannels['exchange:planImport']>;
+    applyImport: Async<InvokeChannels['exchange:applyImport']>;
+  };
+}

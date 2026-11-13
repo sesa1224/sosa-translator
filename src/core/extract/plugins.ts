@@ -1,6 +1,7 @@
 import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg } from '../types.js';
 import type { RawUnit } from './events.js';
+import { paramKey } from '../decisions/keys.js';
 
 export interface PluginsFile { prefix: string; plugins: unknown[]; suffix: string }
 
@@ -84,6 +85,8 @@ export function setAtPath(root: unknown, path: PathSeg[], value: unknown): void 
 /** Extracts every Japanese string from plugin parameters, descending into nested JSON strings. */
 export function extractFromPlugins(plugins: unknown[]): RawUnit[] {
   const out: RawUnit[] = [];
+  let plugin = '';
+  const key = (path: PathSeg[]) => paramKey(plugin, path.slice(2));
   const visit = (v: unknown, path: PathSeg[]) => {
     if (typeof v === 'string') {
       const nested = parseNested(v);
@@ -92,13 +95,13 @@ export function extractFromPlugins(plugins: unknown[]): RawUnit[] {
         const last = path[path.length - 1];
         const jsonPath: PathSeg[] = [...path.slice(0, -1), { key: segKey(last), json: true }];
         if (typeof nested === 'string') {
-          if (hasJapanese(nested)) out.push({ kind: 'plugin-param', source: nested, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path: jsonPath } });
+          if (hasJapanese(nested)) out.push({ kind: 'plugin-param', source: nested, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path: jsonPath }, decisionKey: key(jsonPath) });
         } else {
           visitContainer(nested as object, jsonPath);
         }
         return;
       }
-      if (hasJapanese(v)) out.push({ kind: 'plugin-param', source: v, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path } });
+      if (hasJapanese(v)) out.push({ kind: 'plugin-param', source: v, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path }, decisionKey: key(path) });
       return;
     }
     if (v !== null && typeof v === 'object') visitContainer(v, path);
@@ -111,6 +114,8 @@ export function extractFromPlugins(plugins: unknown[]): RawUnit[] {
   plugins.forEach((p, i) => {
     if (p === null || typeof p !== 'object') return;
     const params = (p as Record<string, unknown>).parameters;
+    const name = (p as Record<string, unknown>).name;
+    plugin = typeof name === 'string' ? name : String(i);
     if (params !== null && typeof params === 'object') visitContainer(params, [i, 'parameters']);
   });
   return out;

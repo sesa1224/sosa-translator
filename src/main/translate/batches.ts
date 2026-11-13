@@ -3,9 +3,12 @@ import type { Glossary, ProjectRules, Term } from '../../core/glossary/types.js'
 import { splitSpeaker } from '../../core/text/speaker.js';
 import type { TextUnit, TranslationEntry, TranslationStatus, UnitKind } from '../../core/types.js';
 import { scopeLabel } from '../../shared/rows.js';
+import { keepPieces } from '../../core/decisions/keys.js';
+import { confirmedDecisionFor, isTranslatable } from '../../core/decisions/store.js';
+import type { Decisions } from '../../core/decisions/types.js';
 
 /** One unit as sent to the model. text is the body with the speaker line taken off. */
-export interface BatchItem { i: number; id: string; kind: UnitKind; speaker: string | null; speakerLine: string | null; text: string }
+export interface BatchItem { i: number; id: string; kind: UnitKind; speaker: string | null; speakerLine: string | null; text: string; keep?: string[] }
 export interface Batch { label: string; file: string; items: BatchItem[]; context: { speaker: string | null; source: string; target: string | null }[] }
 
 const DEFAULT_MAX_ITEMS = 40;
@@ -34,7 +37,7 @@ export function planBatches(
   units: TextUnit[],
   entryOf: (id: string) => TranslationEntry,
   glossary: Glossary,
-  o: { maxItems?: number; maxChars?: number; ids?: string[]; includeStatuses?: TranslationStatus[] } = {},
+  o: { maxItems?: number; maxChars?: number; ids?: string[]; includeStatuses?: TranslationStatus[]; decisions?: Decisions } = {},
 ): Batch[] {
   const maxItems = o.maxItems ?? DEFAULT_MAX_ITEMS;
   const maxChars = o.maxChars ?? DEFAULT_MAX_CHARS;
@@ -56,7 +59,7 @@ export function planBatches(
     let cur: { items: BatchItem[]; startIndex: number } | null = null;
     let chars = 0;
     list.forEach((u, index) => {
-      if (u.needsDecision) return;
+      if (!isTranslatable(u, o.decisions ?? {})) return;
       if (only && !only.has(u.id)) return;
       if (!statuses.has(entryOf(u.id).status)) return;
       const p = unitParts(u, pattern);
@@ -66,7 +69,12 @@ export function planBatches(
         fileBatches.push(cur);
         chars = 0;
       }
-      cur.items.push({ i: cur.items.length, id: u.id, kind: u.kind, speaker: p.speaker, speakerLine: p.speakerLine, text: p.body });
+      const item: BatchItem = { i: cur.items.length, id: u.id, kind: u.kind, speaker: p.speaker, speakerLine: p.speakerLine, text: p.body };
+      // A needs-decision unit carries the pieces that must stay as they are.
+      const dec = u.needsDecision ? confirmedDecisionFor(u, o.decisions ?? {}) : null;
+      const pieces = dec ? keepPieces(u.source, dec.keep) : null;
+      if (pieces && pieces.some((x) => x !== '')) item.keep = pieces;
+      cur.items.push(item);
       chars += p.body.length;
     });
     fileBatches.forEach((fb, n) => {
@@ -172,6 +180,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
     '- 번역할 수 없는 항목은 t 를 null 로 하고 declined 에 이유를 적는다.',
     '- 용어집에 없는 고유명사를 새로 옮겼으면 그 항목의 newTerms 에 source(원문)와 target(번역)을 적는다.',
     '- 화자 이름은 번역하지 않는다. text 의 본문만 옮긴다.',
+    '- keep 이 있으면 그 글들은 한 글자도 바꾸지 않고 같은 순서로 남긴다. text 전체를 돌려주되 그 사이의 글자만 번역한다.',
   ].join('\n');
 
   const speakers = speakersOf(batch);
@@ -185,7 +194,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
       return out;
     }),
     context: batch.context,
-    items: batch.items.map((i) => ({ i: i.i, kind: i.kind, speaker: i.speaker, text: i.text })),
+    items: batch.items.map((i) => ({ i: i.i, kind: i.kind, speaker: i.speaker, text: i.text, ...(i.keep ? { keep: i.keep } : {}) })),
   };
   return { system, user: JSON.stringify(user) };
 }

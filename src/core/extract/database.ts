@@ -1,6 +1,7 @@
 import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg, UnitKind } from '../types.js';
 import { extractFromList, type RawUnit } from './events.js';
+import { extractNotes } from './notes.js';
 
 const DB_FIELDS: Record<string, string[]> = {
   'Actors.json': ['name', 'nickname', 'profile'],
@@ -37,6 +38,7 @@ export function extractFromDataFile(fileName: string, json: unknown): RawUnit[] 
     json.forEach((row, i) => {
       if (!isObject(row)) return;
       for (const f of fields) value('db', row[f], [i, f]);
+      out.push(...extractNotes(row.note as string, file, [i, 'note']));
     });
     return out;
   }
@@ -69,6 +71,7 @@ export function extractFromDataFile(fileName: string, json: unknown): RawUnit[] 
     if (Array.isArray(events)) {
       events.forEach((ev, i) => {
         if (!isObject(ev) || !Array.isArray(ev.pages)) return;
+        out.push(...extractNotes(ev.note as string, file, ['events', i, 'note']));
         ev.pages.forEach((page, j) => {
           if (isObject(page)) out.push(...extractFromList(page.list, file, ['events', i, 'pages', j, 'list']));
         });

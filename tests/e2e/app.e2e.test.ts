@@ -6,6 +6,8 @@ import { _electron as electron, type ElectronApplication } from 'playwright-core
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { makeMiniGame } from '../helpers/miniGame.js';
 import { makeTestFont } from '../helpers/testFont.js';
+import { strFromU8, unzipSync } from 'fflate';
+import { MENU_PLUGIN_JS } from '../helpers/miniGame.js';
 
 const fakeClaude = path.resolve(__dirname, '../fixtures/fake-claude.mjs');
 const fakeClaudeJson = path.resolve(__dirname, '../fixtures/fake-claude-json.mjs');
@@ -129,5 +131,49 @@ test('게임 폰트 고르기 → 긴 번역 → 미리보기 넘침과 px 경�
   const choices = w.getByRole('group', { name: '선택지' });
   await expect(choices.getByText('いいよ')).toBeVisible();
   await expect(choices.getByText('また今度')).toBeVisible();
+  await app.close();
+});
+
+test('판단 필요: 추천 받기 → 받아들이기 → 번역 → 제목 → 빌드', async () => {
+  const game4 = path.join(tmp, 'game4');
+  await makeMiniGame(game4, { decisions: true });
+  const app = await launch({ MVMZ_PICK_DIR: game4, MVMZ_CLAUDE_JSON_COMMAND: process.execPath, MVMZ_CLAUDE_JSON_PREFIX_ARGS: JSON.stringify([fakeClaudeJson]) });
+  const w = await app.firstWindow();
+  const nav = w.getByRole('navigation', { name: '작업 메뉴' });
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('판단'); await w.getByRole('button', { name: '만들기' }).click();
+
+  await nav.getByRole('button', { name: /^판단 필요/ }).click();
+  await expect(w.getByRole('heading', { name: '판단 필요' })).toBeVisible();
+  await w.getByRole('button', { name: 'Claude에게 추천 받기' }).click();
+  await expect(w.getByText(/판단 필요 추천을 받았어요/)).toBeVisible();
+  // The picture argument is decided by the plugin's header, without a call.
+  await expect(w.getByText(/추천: 번역 안 함 — 플러그인이 이 값을 file 로 선언함/)).toBeVisible();
+  await w.getByRole('button', { name: /추천 전부 받아들이기/ }).click();
+  await expect(w.getByRole('button', { name: /^정할 것 0/ })).toBeVisible();
+
+  await nav.getByRole('button', { name: /^용어집/ }).click();
+  await w.getByRole('button', { name: '용어집 확정' }).click();
+  await expect(w.getByRole('button', { name: /확정됨/ })).toBeVisible();
+  await nav.getByRole('button', { name: /^텍스트/ }).click();
+  await w.getByRole('button', { name: /새 문장 \d+개 번역 맡기기/ }).click();
+  await expect(w.getByText(/끝났어요 · \d+개 번역/)).toBeVisible();
+  // The command name was kept, only the rest translated.
+  await expect(w.getByRole('row', { name: /ShowRecord 記録.*ShowRecord 번역/ })).toBeVisible();
+
+  await w.getByRole('button', { name: '게임 제목 고치기' }).click();
+  await w.getByLabel('번역 제목').fill('안개 약초원'); await w.getByLabel('번역 제목').press('Enter');
+  await expect(w.getByRole('banner').getByText('안개 약초원')).toBeVisible();
+
+  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
+  const zip = unzipSync(new Uint8Array(await readFile(path.join(projectsDir, '판단/builds/001/판단_patch_001.zip'))));
+  expect(Object.keys(zip)).toEqual(expect.arrayContaining(['index.html', 'package.json', 'js/plugins/Menu.js', 'data/Items.json', 'data/Map001.json']));
+  expect(strFromU8(zip['index.html'])).toContain('<title>안개 약초원</title>');
+  expect(JSON.parse(strFromU8(zip['package.json']))).toMatchObject({ name: 'kiri-no-yakusouen', window: { title: '안개 약초원' } });
+  // Only the string literal changed in the plugin file.
+  expect(strFromU8(zip['js/plugins/Menu.js'])).toBe(MENU_PLUGIN_JS.replace('"記録を見る"', '"번역"'));
+  expect(JSON.parse(strFromU8(zip['data/Items.json']))[1].note).toBe('<SG説明:번역>\n<price:100>');
+  const list = JSON.parse(strFromU8(zip['data/Map001.json'])).events[1].pages[0].list;
+  const cmds = list.filter((c: { code: number }) => c.code === 357).map((c: { parameters: unknown[] }) => c.parameters[3]);
+  expect(cmds).toEqual([{ destination: '번역' }, { picture: '立ち絵' }]);
   await app.close();
 });

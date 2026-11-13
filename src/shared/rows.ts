@@ -1,5 +1,20 @@
 import type { PathSeg, TextUnit, TranslationEntry, UnitRef } from '../core/types.js';
 import type { Row, RowQuery, Scope, Stats } from './api.js';
+import type { RowDecision } from './api.js';
+import type { Decision } from '../core/decisions/types.js';
+
+/** How a decision shows in a row. */
+export function rowDecisionOf(d: Decision | null): RowDecision {
+  if (!d) return 'none';
+  if (d.status === 'confirmed') return d.translate ? 'translate' : 'skip';
+  return d.translate ? 'suggested-translate' : 'suggested-skip';
+}
+
+/**
+ * Decision state of needs-decision units, kept up to date by the main process's ProjectService so that
+ * every toRow call (also the ones that do not pass a decision) shows it. Units not in it count as 'none'.
+ */
+export const unitRowDecisions = new WeakMap<TextUnit, RowDecision>();
 
 function segValue(s: PathSeg | undefined): string | number | undefined {
   if (s === undefined) return undefined;
@@ -7,6 +22,8 @@ function segValue(s: PathSeg | undefined): string | number | undefined {
 }
 
 function refPath(ref: UnitRef): PathSeg[] {
+  if (ref.type === 'note') return ref.path;
+  if (ref.type === 'js') return [];
   return ref.type === 'value' ? ref.path : ref.listPath;
 }
 
@@ -60,7 +77,7 @@ export function locationLabel(unit: TextUnit): string {
 }
 
 /** usesProvisional: whether the unit's source holds a provisional term (only counts when translated). */
-export function toRow(unit: TextUnit, entry: TranslationEntry, usesProvisional = false): Row {
+export function toRow(unit: TextUnit, entry: TranslationEntry, usesProvisional = false, decision?: RowDecision): Row {
   const row: Row = {
     id: unit.id,
     kind: unit.kind,
@@ -73,7 +90,10 @@ export function toRow(unit: TextUnit, entry: TranslationEntry, usesProvisional =
     location: locationLabel(unit),
     refCount: unit.refs.length,
     usesProvisional: usesProvisional && entry.target !== null,
+    decision: unit.needsDecision ? (decision ?? unitRowDecisions.get(unit) ?? 'none') : null,
+    external: entry.external === true,
   };
+  if (unit.decisionKey !== undefined) row.decisionKey = unit.decisionKey;
   if (entry.declinedReason !== undefined) row.declinedReason = entry.declinedReason;
   if (entry.review !== undefined) row.review = { ...entry.review };
   return row;
@@ -85,10 +105,15 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
   const status = q.status ?? 'all';
   return rows.filter((r) => {
     if (q.file && r.file !== q.file) return false;
+    if (q.decisionKey && r.decisionKey !== q.decisionKey) return false;
     if (status === 'needs-decision') {
       if (!r.needsDecision) return false;
     } else if (status === 'provisional') {
       if (!r.usesProvisional) return false;
+    } else if (status === 'external') {
+      if (!r.external) return false;
+    } else if (status === 'skipped') {
+      if (r.decision !== 'skip') return false;
     } else if (status !== 'all' && r.status !== status) return false;
     if (text === '') return true;
     return r.source.toLowerCase().includes(text)
@@ -98,7 +123,7 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
 }
 
 export function computeStats(rows: Row[]): Stats {
-  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0 };
+  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0 };
   for (const r of rows) {
     if (r.status === 'untranslated') s.untranslated++;
     else if (r.status === 'needs-review') s.needsReview++;
@@ -107,6 +132,8 @@ export function computeStats(rows: Row[]): Stats {
     else if (r.status === 'declined') s.declined++;
     if (r.needsDecision) s.needsDecision++;
     if (r.usesProvisional) s.provisional++;
+    if (r.external) s.external++;
+    if (r.needsDecision && r.decision !== 'translate' && r.decision !== 'skip') s.undecided++;
   }
   return s;
 }

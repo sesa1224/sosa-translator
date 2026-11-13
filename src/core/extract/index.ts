@@ -8,6 +8,7 @@ import { readJsonFile, writeJsonFile } from '../util/json.js';
 import { extractFromDataFile } from './database.js';
 import type { RawUnit } from './events.js';
 import { extractFromPlugins, parsePluginsFile } from './plugins.js';
+import { extractJsStringsDetailed } from './pluginJs.js';
 
 export const UNITS_FILE = 'units.json';
 
@@ -19,11 +20,13 @@ function unitId(kind: string, speaker: string | undefined, source: string): stri
 export function mergeUnits(raw: RawUnit[]): TextUnit[] {
   const byId = new Map<string, TextUnit>();
   for (const r of raw) {
-    const id = unitId(r.kind, r.speaker, r.source);
+    // distinct keeps units apart that would otherwise merge (plugin JS strings: one per file and place).
+    const id = unitId(r.kind, r.distinct ?? r.speaker, r.source);
     let u = byId.get(id);
     if (!u) {
       u = { id, kind: r.kind, source: r.source, needsDecision: r.needsDecision, refs: [] };
       if (r.speaker !== undefined) u.speaker = r.speaker;
+      if (r.decisionKey !== undefined) u.decisionKey = r.decisionKey;
       byId.set(id, u);
     }
     u.needsDecision ||= r.needsDecision;
@@ -69,9 +72,36 @@ export async function extractAll(projectDir: string): Promise<{ units: TextUnit[
     }
   }
 
+  raw.push(...(await extractPluginFiles(root, warnings)));
+
   const units = mergeUnits(raw);
   await writeJsonFile(path.join(projectDir, UNITS_FILE), units);
   return { units, warnings };
+}
+
+/** Strings of the enabled plugins' own files (js/plugins/<name>.js). */
+async function extractPluginFiles(root: string, warnings: Warning[]): Promise<RawUnit[]> {
+  const pluginsPath = path.join(root, 'js', 'plugins.js');
+  if (!existsSync(pluginsPath)) return [];
+  let plugins: unknown[];
+  try {
+    plugins = parsePluginsFile(await readFile(pluginsPath, 'utf8')).plugins;
+  } catch {
+    return [];
+  }
+  const out: RawUnit[] = [];
+  for (const p of plugins) {
+    if (!p || typeof p !== 'object') continue;
+    const { name, status } = p as Record<string, unknown>;
+    if (status !== true || typeof name !== 'string' || /[\\/]/.test(name)) continue;
+    const file = `js/plugins/${name}.js`;
+    const abs = path.join(root, 'js', 'plugins', `${name}.js`);
+    if (!existsSync(abs)) continue;
+    const { units, error } = extractJsStringsDetailed(await readFile(abs, 'utf8'), file);
+    if (error !== null) warnings.push({ file, message: error });
+    out.push(...units);
+  }
+  return out;
 }
 
 /** Reads units.json written by extractAll. */

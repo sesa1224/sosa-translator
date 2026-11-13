@@ -15,6 +15,7 @@ export function buildSystemPrompt(meta: ProjectMeta, stats: Stats, styleGuide?: 
     '- 잘못 고쳤으면 undo_last 로 되돌린다.',
     '- 용어는 glossary_search 로 찾는다. 용어를 정하거나 바꿀 때는 glossary_set_term 을 쓴다.',
     '- 사용자에게는 한국어로 짧게 답한다.',
+    '- 판단 필요 항목은 list_decisions 로 묶음을 보고 set_decision 으로 정한다. 화면에 보이는 글자라는 근거가 있을 때만 번역함으로 한다.',
   ];
   if (styleGuide && styleGuide.trim()) lines.push('', '번역할 때는 아래 번역 지침을 따른다.', '', '<번역 지침>', styleGuide.trim(), '</번역 지침>');
   return lines.join('\n');
