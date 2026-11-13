@@ -28,6 +28,8 @@ export function TopBar() {
       </div>
       <div className="top-actions">
         <button type="button" className="btn" onClick={() => void useApp.closeProject()}>프로젝트 닫기</button>
+        {/* plan 5: game run */}
+        <GameRunButton />
         <button type="button" className="btn primary" disabled={build.kind === 'running'} onClick={() => void useApp.build()}>패치 빌드</button>
       </div>
     </header>
@@ -58,3 +60,6 @@ export function BuildBanner() {
     </div>
   );
 }
+
+// ---- plan 5 ----
+import { GameRunButton } from './PatchView';

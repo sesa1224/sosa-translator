@@ -184,7 +184,10 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       add: rec('patches.add', (p: NewPatch) => ({ id: 'new-patch', note: '', enabled: true, originalBug: false, createdBy: 'user' as const, createdAt: '', ...p })),
       update: rec('patches.update', (id: string, p: PatchChange) => ({ ...ev().patches.find((x) => x.id === id)!, ...p })),
       remove: rec('patches.remove', () => undefined),
-      setGameFont: rec('patches.setGameFont', () => undefined),
+      setGameFont: rec('patches.setGameFont', (fontPath: string | null, subset: boolean) => {
+        const rest = ev().patches.filter((x) => x.body.kind !== 'font');
+        ev().patches = fontPath ? [...rest, { id: 'font', title: '게임 폰트', note: '', enabled: true, originalBug: false, createdBy: 'user', createdAt: '', body: { kind: 'font', fontPath, subset } }] : rest;
+      }),
       creatorReport: rec('patches.creatorReport', () => ev().report),
     },
     game: {

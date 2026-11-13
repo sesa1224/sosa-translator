@@ -297,7 +297,7 @@ export interface PatchStatus { id: string; state: PatchState; reason?: string }
 - 폰트 스위치 → `patches.setGameFont('<경로>', true)`. 줄이기를 끄고 켜면 `false`. 폰트가 없으면 스위치가 없고 안내 글이 있다
 - "게임 실행" → `game.run`. `game:state` 가 `preparing` 3/10 이면 "게임 준비 중 3 / 10", `running` 이면 "끝내기" 버튼. 오류 글자가 보인다
 
-- [ ] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정 내역 화면과 게임 실행"`
+- [x] 실패하는 시험 쓰기 → 실패 확인 → 구현 → 전체 `npx vitest run` 통과 → `git commit -m "feat: 수정 내역 화면과 게임 실행"`
 
 ### Task 10: 전체 흐름 시험과 실제 CLI 확인
 

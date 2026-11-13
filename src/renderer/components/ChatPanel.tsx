@@ -76,6 +76,11 @@ function Message({ m, rowsById }: { m: ChatMessage; rowsById: Record<string, Row
 export function ChatPanel() {
   const { chat, attachedId, rowsById, settings } = useApp();
   const attachedEvent = useApp().attachedEvent ?? null;
+  const chatDraft = useApp().chatDraft ?? null;
+  useEffect(() => {
+    const d = eventActions.takeChatDraft();
+    if (d !== null) setText(d);
+  }, [chatDraft]);
   const [text, setText] = useState('');
   const [images, setImages] = useState<Attachment[]>([]);
   const [problem, setProblem] = useState<string | null>(null);

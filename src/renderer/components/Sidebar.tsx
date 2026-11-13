@@ -29,6 +29,8 @@ export function Sidebar() {
         onClick={() => eventActions.openEvents()}>
         <span>이벤트</span>
       </button>
+      {/* plan 5: patches */}
+      <PatchNavButton />
 
       <span className="nav-head spaced">범위별 진행률</span>
       {snapshot.scopes.map((s) => {
@@ -54,3 +56,4 @@ export function Sidebar() {
 
 // ---- plan 5 ----
 import { eventActions, mainView } from '../state';
+import { PatchNavButton } from './PatchView';

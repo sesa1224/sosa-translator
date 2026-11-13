@@ -82,7 +82,6 @@ export function App() {
 // ---- plan 5: events and patches screens ----
 import { EventView } from './components/EventView';
 import { mainView } from './state';
-/** Filled in by the patches screen (plan 5, task 9). */
-function PatchView5() {
-  return null;
-}
+/** The patches screen (plan 5). */
+const PatchView5 = PatchView;
+import { PatchView } from './components/PatchView';

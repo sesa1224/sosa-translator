@@ -341,3 +341,17 @@ select.input { padding: 0 12px; }
 .ev-form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ev-num-input { width: 110px; }
 .ev-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
+
+/* ---- plan 5: patches screen, font into the game, game run ---- */
+.patch-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.patch-row:last-child { border-bottom: 0; }
+.patch-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.patch-title { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); font-size: 14px; font-weight: 500; padding: 4px 6px; margin-left: -6px; }
+.patch-title:hover, .patch-title:focus { border-color: var(--line); background: var(--bg); }
+.patch-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.check { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; }
+.btn.danger { border-color: var(--err); color: var(--err); background: var(--err-bg); }
+.report-dialog { width: min(720px, 100%); }
+.report-text { margin: 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.game-run { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.game-state { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; }

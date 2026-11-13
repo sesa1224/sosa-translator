@@ -416,6 +416,8 @@ export interface AppState {
   gameError?: string | null;
   attachedEvent?: AttachedEvent | null;
   eventFocus?: EventFocus | null;
+  /** Text the chat box should take (from "Claude에게 맡기기"). */
+  chatDraft?: string | null;
 }
 
 export function mainView(s: AppState): MainView {
@@ -505,4 +507,13 @@ export const eventActions = {
     }
   },
   stopGame: (): Promise<void> => need().game.stop(),
+  /** Opens the chat with a draft message and, for an event patch, its event attached. */
+  askClaude(text: string, ev: AttachedEvent | null): void {
+    set({ chatDraft: text, rightTab: 'chat', ...(ev ? { attachedEvent: ev } : {}) });
+  },
+  takeChatDraft(): string | null {
+    const d = state.chatDraft ?? null;
+    if (d !== null) set({ chatDraft: null });
+    return d;
+  },
 };
