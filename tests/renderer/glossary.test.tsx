@@ -47,7 +47,9 @@ test('분류 필터와 새 용어', async () => {
   expect(api.calls.at(-1)).toEqual(['glossary.upsertTerm', { source: 'ギルド', target: '길드', category: 'term', status: 'confirmed', candidates: [] }]);
 });
 test('확정과 초안', async () => {
-  await openGlossary({ terms: [] }); await user.click(screen.getByRole('button', { name: '초안 받기' })); expect(api.calls).toContainEqual(['job.draft']);
+  await openGlossary({ terms: [] }); await user.click(screen.getByRole('button', { name: '초안 받기' }));
+  await user.click(screen.getByLabelText('표본만 보고 빠르게 만들기')); await user.click(await screen.findByRole('button', { name: '시작' }));
+  expect(api.calls).toContainEqual(['job.draft', 'sample', { mergeModel: 'claude-fable-5-2' }]);
   await user.click(screen.getByRole('button', { name: '용어집 확정' })); expect(api.calls).toContainEqual(['glossary.confirm']);
 });
 test('화자 줄 패턴 자동 찾기', async () => {
@@ -107,4 +109,23 @@ test('인물 카드의 신음·감탄 스타일', async () => {
   await openGlossary({ characters: [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말' }] });
   await user.type(screen.getByLabelText('リナ 신음·감탄 스타일'), '참다가 새는 짧은 소리'); await user.tab();
   expect(api.calls).toContainEqual(['glossary.setCharacters', [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말', moanStyle: '참다가 새는 짧은 소리' }]]);
+});
+test('초안 대화상자: 추정치, 읽는 양, 두 모델', async () => {
+  await openGlossary({ terms: [] }); await user.click(screen.getByRole('button', { name: '초안 받기' }));
+  expect(await screen.findByText('조각 3개 · 약 48,000자 · 예상 입력 약 62,000 토큰 · 모델 Claude Fable 5.2')).toBeVisible();
+  expect(screen.getByLabelText('대본 읽기')).toBeVisible();
+  await user.click(screen.getByLabelText('많이 (약 10만 자)'));
+  await user.selectOptions(screen.getByLabelText('대본 읽기'), 'claude-haiku-5-5');
+  await user.selectOptions(screen.getByLabelText('용어집 정리'), 'claude-opus-5-5');
+  expect(api.calls.at(-1)).toEqual(['job.draftPlan', 'balanced', { mergeModel: 'claude-opus-5-5', budgetChars: 100000, readModel: 'claude-haiku-5-5' }]);
+  await user.click(screen.getByRole('button', { name: '시작' }));
+  expect(api.calls.at(-1)).toEqual(['job.draft', 'balanced', { mergeModel: 'claude-opus-5-5', budgetChars: 100000, readModel: 'claude-haiku-5-5' }]);
+});
+test('초안 대화상자: 표본 방식은 대본 읽기 칸을 숨기고, 같은 모델이면 이름 하나', async () => {
+  await openGlossary({ terms: [] }); await user.click(screen.getByRole('button', { name: '초안 받기' }));
+  await user.click(screen.getByLabelText('대본 전체를 읽고 만들기'));
+  expect(api.calls.at(-1)).toEqual(['job.draftPlan', 'full', { mergeModel: 'claude-fable-5-2', readModel: 'claude-fable-5-2' }]);
+  await user.click(screen.getByLabelText('표본만 보고 빠르게 만들기'));
+  expect(screen.queryByLabelText('대본 읽기')).toBeNull();
+  expect(await screen.findByText(/^표본 · 약 48,000자/)).toBeVisible();
 });

@@ -68,8 +68,9 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
     this.p.usage = addUsage(this.p.usage, u);
   }
 
-  protected call<T>(o: { system: string; user: string; schema: object; validate: (v: unknown) => v is T; signal: AbortSignal }): Promise<JsonCallResult<T>> {
-    return this.o.call<T>({ command: this.o.claude.command, prefixArgs: this.o.claude.prefixArgs, cwd: this.o.cwd, model: this.o.model, ...o })
+  protected call<T>(o: { system: string; user: string; schema: object; validate: (v: unknown) => v is T; signal: AbortSignal; model?: string }): Promise<JsonCallResult<T>> {
+    const { model, ...rest } = o;
+    return this.o.call<T>({ command: this.o.claude.command, prefixArgs: this.o.claude.prefixArgs, cwd: this.o.cwd, model: model ?? this.o.model, ...rest })
       .then((r) => {
         this.addUsage(r.usage);
         return r;

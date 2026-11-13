@@ -36,6 +36,7 @@ const fakeCall = Object.assign(
       return { ok: true, usage: someUsage, data: { terms: [{ source: 'リナ', category: 'name', candidates: [{ target: '리나', reason: '' }] }], characters: [], styleNotes: '밝은 분위기' } };
     }
     if (keys.includes('problems')) return { ok: true, usage: someUsage, data: { problems: [] } };
+    if (keys.includes('style')) return { ok: true, usage: someUsage, data: { characters: [], terms: [], sfx: [], style: '' } };   // script reading
     return okAll(o);
   },
   { models: [] as string[] },
@@ -123,4 +124,19 @@ test('검수 범위 추정, 검수 받기와 거절, 용어집 조작 IPC', asyn
   expect(await invoke('glossary:detectSpeakerPattern')).toBeNull();
   await invoke('job:review', { scope: 'all' }); await idleJob();
   expect(sent('job:progress').at(-1)).toMatchObject({ kind: 'review', state: 'done', done: 1 });
+});
+test('초안 계획과 단계별 모델: 대본 읽기 칸이 비면 정리 모델과 같다', async () => {
+  const plan = await invoke('job:draftPlan', 'balanced');
+  expect(plan).toMatchObject({ model: 'claude-fable-5-2', readModel: 'claude-fable-5-2' });
+  expect(plan.chunks).toBeGreaterThan(0); expect(plan.estimatedInputTokens).toBeGreaterThan(0);
+  expect((await invoke('job:draftPlan', 'sample')).chunks).toBe(0);
+  await invoke('settings:set', { stageModels: { glossary: 'g', translate: 't', review: 'r', patchNotes: 'p' } });
+  await invoke('job:draft', 'full'); expect(new Set(fakeCall.models)).toEqual(new Set(['g']));
+  fakeCall.models.length = 0;
+  await invoke('settings:set', { stageModels: { glossary: 'g', glossaryRead: 'gr', translate: 't', review: 'r', patchNotes: 'p' } });
+  await invoke('job:draft', 'full', {}); expect(fakeCall.models).toEqual(['g']);   // 같은 대본: 읽은 메모를 다시 쓰고 정리만 한다
+  await invoke('job:draft', 'balanced', { readModel: 'x-read', mergeModel: 'x-merge', budgetChars: 20000 });
+  expect(fakeCall.models.at(-1)).toBe('x-merge');
+  expect((await invoke('job:draftPlan', 'balanced', { readModel: 'x-read' })).readModel).toBe('x-read');
+  expect((await invoke('job:draftPlan', 'balanced')).readModel).toBe('gr');
 });

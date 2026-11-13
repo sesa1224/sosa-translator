@@ -24,8 +24,10 @@ function isModelList(v: unknown): v is AppSettings['models'] {
 }
 
 function readStageModels(v: any, d: StageModels): StageModels {
-  const pick = (k: keyof StageModels) => (v && typeof v === 'object' && typeof v[k] === 'string' && v[k] ? v[k] : d[k]);
-  return { glossary: pick('glossary'), translate: pick('translate'), review: pick('review'), patchNotes: pick('patchNotes') };
+  const pick = (k: 'glossary' | 'translate' | 'review' | 'patchNotes') => (v && typeof v === 'object' && typeof v[k] === 'string' && v[k] ? v[k] : d[k]);
+  const out: StageModels = { glossary: pick('glossary'), translate: pick('translate'), review: pick('review'), patchNotes: pick('patchNotes') };
+  if (v && typeof v.glossaryRead === 'string' && v.glossaryRead) out.glossaryRead = v.glossaryRead;
+  return out;
 }
 
 /** Reads <dir>/settings.json. A missing or broken file (or broken field) gives the default for it. */

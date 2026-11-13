@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { termsIn } from '../../core/glossary/match';
 import { SPEAKER_PRESETS } from '../../core/text/speaker';
-import type { CharacterCard, Glossary, ProjectRules, Row, SpeakerDetection, Term, TermCategory } from '../../shared/api';
+import type { CharacterCard, DraftChoice, DraftMode, Glossary, ProjectRules, Row, SpeakerDetection, Term, TermCategory } from '../../shared/api';
 import { num } from '../format';
 import { orderedRows, useApp } from '../state';
+import { DraftDialog } from './DraftDialog';
 
 const STYLE_SAVE_DELAY = 800;
 const CATEGORY_LABEL: Record<TermCategory, string> = { name: '이름', place: '지명', term: '용어', sfx: '효과음', other: '기타' };
@@ -327,6 +328,7 @@ export function GlossaryView() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const [asking, setAsking] = useState(false);
   if (!glossary) return <div className="empty sub">용어집을 읽는 중…</div>;
   const g: Glossary = glossary;
   const provisional = g.terms.filter((t) => t.status === 'provisional');
@@ -341,11 +343,11 @@ export function GlossaryView() {
       setError(errorText(e));
     }
   };
-  const draft = async () => {
+  const draft = async (mode: DraftMode, choice: DraftChoice) => {
     setError(null);
     setDrafting(true);
     try {
-      await useApp.draftGlossary();
+      await useApp.draftGlossary(mode, choice);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -372,7 +374,7 @@ export function GlossaryView() {
             : `용어 ${num(confirmed)}개 확정`}</span>
         </div>
         <div className="row-gap">
-          <button type="button" className="btn" disabled={drafting} onClick={() => void draft()}>{g.terms.length > 0 ? '초안 다시 받기' : '초안 받기'}</button>
+          <button type="button" className="btn" disabled={drafting} onClick={() => setAsking(true)}>{g.terms.length > 0 ? '초안 다시 받기' : '초안 받기'}</button>
           <button type="button" className={`btn${g.confirmedAt === null || glossaryDirty ? ' primary' : ''}`}
             disabled={g.confirmedAt !== null && !glossaryDirty} onClick={() => void confirm()}>{confirmLabel}</button>
         </div>
@@ -392,6 +394,7 @@ export function GlossaryView() {
         </div>
       ))}
 
+      {asking && <DraftDialog onClose={() => setAsking(false)} onStart={(m, c) => void draft(m, c)} />}
       {provisional.map((t) => <DecisionCard key={t.id} term={t} rows={rows} onChoose={choose} />)}
 
       <div className="glossary-grid">

@@ -109,6 +109,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     },
     job: {
       draft: rec('job.draft', () => undefined),
+      draftPlan: rec('job.draftPlan', (mode: string) => ({ chunks: mode === 'sample' ? 0 : 3, chars: 48000, estimatedInputTokens: 62000, model: 'claude-fable-5-2', readModel: 'claude-fable-5-2' })),
       translate: rec('job.translate', () => undefined),
       reviewPlan: rec('job.reviewPlan', () => fake.reviewPlanValue),
       review: rec('job.review', () => undefined),

@@ -65,6 +65,8 @@ test('용어집 초안 → 확정 → 전체 번역 → 검수 → 빌드', asyn
   await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('한 바퀴'); await w.getByRole('button', { name: '만들기' }).click();
   await nav.getByRole('button', { name: /^용어집/ }).click();
   await w.getByRole('button', { name: '초안 받기' }).click();
+  await expect(w.getByText(/조각 \d+개 · 약/)).toBeVisible();
+  await w.getByRole('button', { name: '시작' }).click();
   await expect(w.getByText('을 어떻게 옮길까요?')).toBeVisible();
   await w.getByRole('button', { name: /^린/ }).click();
   await expect(w.getByText(/リナ → 린/)).toBeVisible();

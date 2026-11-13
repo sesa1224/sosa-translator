@@ -95,3 +95,10 @@ test('바뀐 내용 보기', async () => {
   expect(screen.queryByText('다른 곳에서 이 줄이 바뀌었어요')).toBeNull();
   const nav = screen.getByRole('navigation', { name: '작업 메뉴' }); expect(within(nav).getByRole('button', { name: /용어집/ })).toBeVisible();
 });
+test('설정의 대본 읽기 모델: 비우면 용어집 정리와 같음', async () => {
+  await openSettings();
+  expect((screen.getByLabelText('대본 읽기') as HTMLSelectElement).value).toBe('');
+  await user.selectOptions(screen.getByLabelText('대본 읽기'), 'claude-haiku-5-5');
+  expect((api.calls.at(-1) as any)[1].stageModels.glossaryRead).toBe('claude-haiku-5-5');
+  expect(screen.getByLabelText('용어집 정리')).toBeVisible();
+});

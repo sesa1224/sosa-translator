@@ -44,7 +44,8 @@ const api: Api = {
     defaultStyleGuide: () => call('glossary:defaultStyleGuide'),
   },
   job: {
-    draft: () => call('job:draft'),
+    draft: (mode, choice) => call('job:draft', mode, choice),
+    draftPlan: (mode, choice) => call('job:draftPlan', mode, choice),
     translate: (ids) => call('job:translate', ids),
     reviewPlan: (scope) => call('job:reviewPlan', scope),
     review: (scope) => call('job:review', scope),

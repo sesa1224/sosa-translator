@@ -30,7 +30,11 @@ export type ChatEvent =
   | { type: 'error'; message: string };
 
 export interface ModelOption { id: string; label: string }
-export interface StageModels { glossary: string; translate: string; review: string; patchNotes: string }
+/** glossaryRead: model for reading the script in a draft; missing = the glossary model. */
+export interface StageModels { glossary: string; translate: string; review: string; patchNotes: string; glossaryRead?: string }
+export type DraftMode = 'balanced' | 'full' | 'sample';
+export interface DraftChoice { budgetChars?: number; readModel?: string; mergeModel?: string }
+export interface DraftPlan { chunks: number; chars: number; estimatedInputTokens: number; model: string; readModel: string }
 export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 
@@ -114,7 +118,8 @@ export interface InvokeChannels {
   'glossary:confirm': () => void;
   'glossary:detectSpeakerPattern': () => SpeakerDetection | null;
   'glossary:defaultStyleGuide': () => string;
-  'job:draft': () => void;
+  'job:draft': (mode?: DraftMode, choice?: DraftChoice) => void;
+  'job:draftPlan': (mode: DraftMode, choice?: DraftChoice) => DraftPlan;
   'job:translate': (ids?: string[]) => void;
   'job:reviewPlan': (scope: ReviewScopeArg) => ReviewPlan;
   'job:review': (scope: ReviewScopeArg) => void;
@@ -159,7 +164,7 @@ export interface Api {
     detectSpeakerPattern: Async<InvokeChannels['glossary:detectSpeakerPattern']>; defaultStyleGuide: Async<InvokeChannels['glossary:defaultStyleGuide']>;
   };
   job: {
-    draft: Async<InvokeChannels['job:draft']>; translate: Async<InvokeChannels['job:translate']>;
+    draft: Async<InvokeChannels['job:draft']>; draftPlan: Async<InvokeChannels['job:draftPlan']>; translate: Async<InvokeChannels['job:translate']>;
     reviewPlan: Async<InvokeChannels['job:reviewPlan']>; review: Async<InvokeChannels['job:review']>;
     pause: Async<InvokeChannels['job:pause']>; resume: Async<InvokeChannels['job:resume']>; stop: Async<InvokeChannels['job:stop']>;
     current: Async<InvokeChannels['job:current']>;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AppSettings, StageModels } from '../../shared/api';
 
-const STAGES: [keyof StageModels, string][] = [['glossary', '용어집과 말투 지침'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
+const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 import { useApp } from '../state';
 
 export function SettingsView() {
@@ -57,6 +57,17 @@ export function SettingsView() {
       <section className="card settings-card" aria-labelledby="set-stages">
         <span id="set-stages" className="card-title">단계별 모델</span>
         <div className="stage-grid">
+          <div className="field">
+            <label htmlFor="stage-glossaryRead">대본 읽기</label>
+            <select id="stage-glossaryRead" className="input" value={settings.stageModels.glossaryRead ?? ''}
+              onChange={(e) => {
+                const { glossaryRead: _old, ...rest } = settings.stageModels;
+                void save({ stageModels: e.target.value ? { ...rest, glossaryRead: e.target.value } : rest });
+              }}>
+              <option value="">용어집 정리와 같음</option>
+              {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </div>
           {STAGES.map(([k, label]) => (
             <div key={k} className="field">
               <label htmlFor={`stage-${k}`}>{label}</label>
@@ -68,7 +79,7 @@ export function SettingsView() {
             </div>
           ))}
         </div>
-        <span className="hint">용어집 초안, 전체 번역, 검수를 맡길 때 각각 이 모델을 써요.</span>
+        <span className="hint">용어집 초안(대본 읽기와 정리), 전체 번역, 검수를 맡길 때 각각 이 모델을 써요. 대본 읽기를 비우면 용어집 정리 모델로 읽어요.</span>
       </section>
 
       <section className="card settings-card" aria-labelledby="set-models">

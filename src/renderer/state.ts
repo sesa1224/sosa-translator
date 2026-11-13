@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type {
-  Api, AppSettings, BuildResult, CharacterCard, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
+  Api, AppSettings, BuildResult, CharacterCard, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 
@@ -259,7 +259,8 @@ const actions = {
     await loadGlossary();
   },
   detectSpeakerPattern: (): Promise<SpeakerDetection | null> => need().glossary.detectSpeakerPattern(),
-  draftGlossary: (): Promise<void> => need().job.draft(),
+  draftGlossary: (mode?: DraftMode, choice?: DraftChoice): Promise<void> => need().job.draft(mode, choice),
+  draftPlan: (mode: DraftMode, choice?: DraftChoice): Promise<DraftPlan> => need().job.draftPlan(mode, choice),
 
   /** Sends every untranslated line (or just these ids) to be translated. */
   translate: (ids?: string[]): Promise<void> => need().job.translate(ids),

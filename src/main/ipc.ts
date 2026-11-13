@@ -12,7 +12,7 @@ import type * as glossaryTypes from '../core/glossary/types.js';
 import { DEFAULT_STYLE_GUIDE } from '../core/glossary/store.js';
 import { detectSpeakerPattern } from '../core/text/speaker.js';
 import { runClaudeJson } from './claude/json.js';
-import { DraftJob } from './translate/draft.js';
+import { DraftJob, planDraft, type DraftMode, type DraftOptions } from './translate/draft.js';
 import type { JobLike, JobOptions } from './translate/job.js';
 import { TranslateJob } from './translate/job.js';
 import { planReview, ReviewJob } from './translate/review.js';
@@ -291,9 +291,24 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   }
 
   handle('job:current', () => job?.progress ?? null);
-  handle('job:draft', async () => {
+  const MODES: DraftMode[] = ['balanced', 'full', 'sample'];
+  const pickMode = (m: unknown): DraftMode => (MODES.includes(m as DraftMode) ? (m as DraftMode) : 'balanced');
+  /** Models for the two draft steps: the choice for this run, else settings (reading falls back to the glossary model). */
+  async function draftModels(choice: DraftOptions | undefined): Promise<{ model: string; readModel: string }> {
+    const sm = (await settings()).stageModels;
+    const model = choice?.mergeModel || sm.glossary;
+    return { model, readModel: choice?.readModel || sm.glossaryRead || model };
+  }
+  handle('job:draftPlan', async (mode: DraftMode, choice?: DraftOptions) => {
+    const s = svc();
+    const m = pickMode(mode);
+    return { ...planDraft(s.units(), s.glossary(), m, choice?.budgetChars), ...(await draftModels(choice)) };
+  });
+  handle('job:draft', async (mode?: DraftMode, choice?: DraftOptions) => {
     if (busy()) throw new Error(JOB_BUSY);
-    await launch(new DraftJob(await jobOptions('glossary')));
+    const o = await jobOptions('glossary');
+    const { model, readModel } = await draftModels(choice);
+    await launch(new DraftJob({ ...o, model, mode: pickMode(mode), budgetChars: choice?.budgetChars, readModel, mergeModel: model }));
   });
   handle('job:translate', async (ids?: string[]) => {
     if (busy()) throw new Error(JOB_BUSY);

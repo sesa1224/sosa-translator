@@ -3,7 +3,7 @@
 //    ({ exit?: number, stderr?: string, delayMs?: number, body: object | string }).
 //    The call counter is kept in <FAKE_JSON_SCRIPT>.n; when the script runs out the last answer repeats.
 //    Without FAKE_JSON_SCRIPT it answers by the --json-schema it was given (used by the app smoke test):
-//    glossary draft, translation ('번역' + the item's control codes) or review (a remark on 月光草).
+//    script reading notes, glossary draft, translation ('번역' + the item's control codes) or review (a remark on 月光草).
 //  - FAKE_JSON_LOG: each call appends one JSON line { args, stdin }.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -25,6 +25,8 @@ function auto(args, stdin) {
       characters: [{ source: 'リナ', target: '리나', speech: '밝은 반말' }],
       styleNotes: '밝은 분위기의 약초원 이야기.',
     };
+  } else if (keys.includes('style')) {
+    out = { characters: [{ name: 'アーテル', traits: '차분함', speech: '반말', moans: '짧게 참는 소리' }], terms: [], sfx: [], style: '' };
   } else if (keys.includes('problems')) {
     const hit = user.items.find((x) => x.source === '月光草');
     out = { problems: hit ? [{ i: hit.i, problem: '용어가 어색함', suggestion: '월광초(검수)' }] : [] };
