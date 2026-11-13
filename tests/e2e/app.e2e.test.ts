@@ -8,6 +8,7 @@ import { makeMiniGame } from '../helpers/miniGame.js';
 import { makeTestFont } from '../helpers/testFont.js';
 import { strFromU8, unzipSync } from 'fflate';
 import { MENU_PLUGIN_JS } from '../helpers/miniGame.js';
+import { makePng, readPng } from '../helpers/png.js';
 
 const fakeClaude = path.resolve(__dirname, '../fixtures/fake-claude.mjs');
 const fakeClaudeJson = path.resolve(__dirname, '../fixtures/fake-claude-json.mjs');
@@ -46,7 +47,7 @@ test('가져오기 → 손으로 번역 → 채팅 → 빌드', async () => {
   await expect(w.getByRole('row', { name: /月光草.*월광초.*검토 필요/ })).toBeVisible();
   await w.getByRole('tab', { name: '채팅' }).click(); await w.getByLabel('메시지').fill('안녕'); await w.getByLabel('메시지').press('Enter');
   await expect(w.getByText('받음: 안녕')).toBeVisible();
-  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다 · 파일 1개/)).toBeVisible();
+  await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다 · 파일 3개/)).toBeVisible();
   expect(existsSync(path.join(projectsDir, '약초원/builds/001/약초원_patch_001.zip'))).toBe(true);
   await app.close();
 });
@@ -175,5 +176,61 @@ test('판단 필요: 추천 받기 → 받아들이기 → 번역 → 제목 →
   const list = JSON.parse(strFromU8(zip['data/Map001.json'])).events[1].pages[0].list;
   const cmds = list.filter((c: { code: number }) => c.code === 357).map((c: { parameters: unknown[] }) => c.parameters[3]);
   expect(cmds).toEqual([{ destination: '번역' }, { picture: '立ち絵' }]);
+  await app.close();
+});
+
+// ---- plan 7: one picture by hand, then a build with notes ----
+test('이미지: 영역 만들기 → 문장 → 기본 폰트 → 끝남 → 빌드에 그림과 패치노트', async () => {
+  const game7 = path.join(tmp, 'game7');
+  await makeMiniGame(game7);
+  const menuPng = makePng(200, 80, [30, 40, 90, 255]);
+  await writeFile(path.join(game7, 'img', 'pictures', 'menu.png'), menuPng);
+  const fontDir7 = path.join(tmp, 'fonts7');
+  await mkdir(fontDir7, { recursive: true });
+  const glyphs: Record<string, number> = { ' ': 250 };
+  for (const ch of '이야기가힣뷁') glyphs[ch] = 1000;
+  await makeTestFont(fontDir7, { name: 'E7 Font', nameKo: '그림 글꼴', glyphs });
+
+  const app = await launch({ MVMZ_PICK_DIR: game7, MVMZ_FONT_DIRS: fontDir7 });
+  const w = await app.firstWindow();
+  const nav = w.getByRole('navigation', { name: '작업 메뉴' });
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('그림'); await w.getByRole('button', { name: '만들기' }).click();
+
+  await nav.getByRole('button', { name: /^이미지/ }).click();
+  await expect(w.getByRole('heading', { name: '이미지' })).toBeVisible();
+  await w.getByRole('list', { name: '그림 목록' }).getByRole('button', { name: /menu\.png/ }).click();
+  await expect(w.getByRole('img', { name: '원본' })).toBeVisible();
+
+  // Default picture font first, so the finished recipe has a font.
+  await w.getByRole('button', { name: '바꾸기' }).click();
+  await w.getByRole('dialog', { name: '기본 이미지 폰트' }).getByRole('option', { name: /그림 글꼴/ }).click();
+  await expect(w.getByText(/기본 이미지 폰트: 그림 글꼴/)).toBeVisible();
+
+  const ov = w.getByLabel('원본 위에서 끌어 영역 만들기');
+  const box = (await ov.boundingBox())!;
+  await w.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.2);
+  await w.mouse.down();
+  await w.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, { steps: 4 });
+  await w.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.8, { steps: 4 });
+  await w.mouse.up();
+  await expect(w.getByText('선택한 글자 영역 1 / 1')).toBeVisible();
+  await w.getByLabel('문장').fill('이야기');
+  await w.getByLabel('지우기 방식').selectOption('fill');
+  await expect(w.getByRole('img', { name: '번역본' })).toBeVisible();
+  await w.getByRole('button', { name: '끝남으로 표시' }).click();
+  await expect(w.getByRole('button', { name: '다시 할 것으로' })).toBeVisible();
+
+  await w.getByRole('button', { name: '패치 빌드' }).click();
+  await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
+  const zip = unzipSync(new Uint8Array(await readFile(path.join(projectsDir, '그림/builds/001/그림_patch_001.zip'))));
+  expect(Object.keys(zip)).toEqual(expect.arrayContaining(['img/pictures/menu.png', '패치노트.txt', '설치 방법.txt']));
+  expect(Buffer.from(zip['img/pictures/menu.png']).equals(Buffer.from(menuPng))).toBe(false);
+  const out = readPng(zip['img/pictures/menu.png']);
+  expect([out.width, out.height]).toEqual([200, 80]);
+  expect(strFromU8(zip['패치노트.txt'])).toContain('그림 한국어 패치 빌드 1');
+
+  await w.getByRole('button', { name: '패치노트 보기' }).click();
+  await expect(w.getByRole('heading', { name: '빌드 기록' })).toBeVisible();
+  await expect(w.getByText(/^빌드 1 · /)).toBeVisible();
   await app.close();
 });

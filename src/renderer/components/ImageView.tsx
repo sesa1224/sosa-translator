@@ -558,3 +558,43 @@ export function ImageView() {
     </div>
   );
 }
+
+// ---------------------------------------------------------------- settings
+
+/** Settings section: which game folders are searched for pictures with words in them. */
+export function ImageFolderSettings() {
+  const [text, setText] = useState('');
+  const [defaults, setDefaults] = useState<string[]>([]);
+  const [saved, setSaved] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    window.api.images.folders().then((f) => { setText(f.folders.join('\n')); setSaved(f.folders.join('\n')); setDefaults(f.defaults); }, () => undefined);
+  }, []);
+  const apply = async (folders: string[] | null) => {
+    setError(null);
+    try {
+      await window.api.images.setFolders(folders);
+      const f = await window.api.images.folders();
+      setText(f.folders.join('\n'));
+      setSaved(f.folders.join('\n'));
+      await useApp.loadImages();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <section className="card settings-card" aria-labelledby="set-images">
+      <span id="set-images" className="card-title">이미지</span>
+      <div className="field"><label htmlFor="image-folders">글자가 있을 만한 그림을 찾을 폴더 (한 줄에 하나)</label>
+        <textarea id="image-folders" className="input mono iv-folders" rows={5} value={text} onChange={(e) => setText(e.target.value)} />
+      </div>
+      <div className="row-gap">
+        <button type="button" className="btn small-btn" disabled={text === saved}
+          onClick={() => void apply(text.split('\n').map((l) => l.trim()).filter(Boolean))}>적용</button>
+        <button type="button" className="btn ghost small-btn" onClick={() => void apply(null)}>기본값으로</button>
+        <span className="hint">{`기본값: ${defaults.join(', ')}`}</span>
+      </div>
+      {error && <span className="err-text small" role="alert">{error}</span>}
+    </section>
+  );
+}

@@ -87,7 +87,8 @@ export function formatNotes(diff: BuildDiff, meta: { name: string; version: stri
   }
   if (diff.newImages.length > 0) out.push(`- 새로 번역한 그림 ${diff.newImages.length}장: ${listed(diff.newImages)}`);
   if (diff.changedImages.length > 0) out.push(`- 바뀐 그림 ${diff.changedImages.length}장: ${listed(diff.changedImages)}`);
-  if (diff.addedFiles.length > 0) out.push(`- 더해진 파일 ${diff.addedFiles.length}개: ${listed(diff.addedFiles)}`);
+  // On the first build every file is new; listing them all says nothing.
+  if (diff.previous !== null && diff.addedFiles.length > 0) out.push(`- 더해진 파일 ${diff.addedFiles.length}개: ${listed(diff.addedFiles)}`);
   if (diff.removedFiles.length > 0) out.push(`- 빠진 파일 ${diff.removedFiles.length}개: ${listed(diff.removedFiles)}`);
   for (const [key, x] of Object.entries(diff.extras)) {
     const label = EXTRA_LABEL[key] ?? key;

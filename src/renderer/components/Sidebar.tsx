@@ -29,6 +29,7 @@ export function Sidebar() {
         <span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
       </button>
       <ImagesNavButton />
+      <BuildsNavButton />
 
       <span className="nav-head spaced">범위별 진행률</span>
       {snapshot.scopes.map((s) => {
@@ -60,6 +61,16 @@ function ImagesNavButton() {
     <button type="button" className={`nav-btn${view === 'images' ? ' on' : ''}`} aria-current={view === 'images' ? 'page' : undefined}
       onClick={() => useApp.setView('images')}>
       <span>이미지</span>{todo > 0 && <span className="mono sub small" title="할 것">{num(todo)}</span>}
+    </button>
+  );
+}
+
+function BuildsNavButton() {
+  const { view } = useApp();
+  return (
+    <button type="button" className={`nav-btn${view === 'builds' ? ' on' : ''}`} aria-current={view === 'builds' ? 'page' : undefined}
+      onClick={() => useApp.setView('builds')}>
+      <span>빌드 기록</span>
     </button>
   );
 }
