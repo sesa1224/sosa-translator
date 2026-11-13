@@ -48,3 +48,5 @@ export * from './images/layoutText.js';
 export * from './images/sheet.js';
 export * from './notes/snapshot.js';
 export * from './notes/diff.js';
+export * from './update/types.js';
+export * from './update/diff.js';
