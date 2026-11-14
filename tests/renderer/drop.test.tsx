@@ -59,3 +59,20 @@ test('프로젝트가 열려 있으면 놓아도 확인하지 않는다', async 
   expect(api.calls.some((c) => c[0] === 'project.inspectGameDir')).toBe(false);
   expect(screen.getByText('霧の薬草園')).toBeVisible();
 });
+
+test('뭉친 exe 게임이면 풀기 버튼이 보이고, 풀면 이름 칸으로 이어진다', async () => {
+  const { api, user } = await openPicker();
+  api.inspect = (dir) => (dir.includes('_풀린 게임')
+    ? { ok: true, dir, engine: 'MV', title: '封印の騎士', suggestedName: '封印の騎士' }
+    : { ok: false, error: 'exe 하나로 뭉쳐진 게임입니다. 먼저 풀어야 합니다', packed: { exe: 'C:/games/knight/Game.exe', files: 1234, bytes: 3 * 1024 ** 3 } });
+  dropFiles(screen.getByTestId('picker'), [{ name: 'knight', path: 'C:/games/knight' }]);
+  const box = await screen.findByTestId('packed-game');
+  expect(box).toHaveTextContent('Game.exe · 파일 1,234개 · 3.0GB');
+  expect(screen.queryByRole('button', { name: '만들기' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: '풀고 계속' }));
+  expect(await screen.findByText('MV · 封印の騎士')).toBeVisible();
+  expect(api.calls).toContainEqual(['project.unpackGame', 'C:/games/knight/Game.exe']);
+  expect(screen.queryByTestId('packed-game')).toBeNull();
+  await user.click(screen.getByRole('button', { name: '만들기' }));
+  expect(api.calls).toContainEqual(['project.create', 'C:/projects/_풀린 게임/knight', '封印の騎士']);
+});

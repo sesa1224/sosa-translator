@@ -4,9 +4,10 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { ProjectService } from '../../src/main/projectService.js';
-import { nameFromTitle, registerIpc, type ChatLike, type IpcDeps } from '../../src/main/ipc.js';
+import { nameFromTitle, registerIpc, UNPACKED_FOLDER_NAME, type ChatLike, type IpcDeps } from '../../src/main/ipc.js';
 import { saveSettings, loadSettings } from '../../src/main/settings.js';
 import type { ChatImage, Row } from '../../src/shared/api.js';
+import { currentContainer, fakeExe, itemsFromDir } from '../helpers/evbPack.js';
 import { cleanupTempDirs, makeTempDir } from '../helpers/fs.js';
 import { makeMiniGame } from '../helpers/miniGame.js';
 
@@ -111,4 +112,32 @@ test('게임 폴더 확인: 제목, 이름 다듬기, 파일이면 그 폴더, �
   const notGame = await makeTempDir();
   expect(await invoke('project:inspectGameDir', notGame)).toMatchObject({ ok: false, error: expect.stringContaining('rmmz_core.js') });
   expect(nameFromTitle(' ...', 'folder.')).toBe('folder');
+});
+
+test('뭉친 exe 게임: 폴더 확인이 알려 주고, 풀면 게임 폴더가 된다', async () => {
+  const src = await makeTempDir();
+  await makeMiniGame(src);
+  const shipped = path.join(await makeTempDir(), '뭉친 게임');
+  await mkdir(shipped, { recursive: true });
+  const exe = path.join(shipped, 'Game.exe');
+  writeFileSync(exe, fakeExe(currentContainer(await itemsFromDir(src))));
+  const before = readFileSync(exe);
+
+  const check = await invoke('project:inspectGameDir', shipped);
+  expect(check).toMatchObject({ ok: false, packed: { exe } });
+  expect(check.packed.files).toBeGreaterThan(3);
+  // dropping the exe itself means its folder
+  expect(await invoke('project:inspectGameDir', exe)).toMatchObject({ ok: false, packed: { exe } });
+
+  const dir = await invoke('project:unpackGame', exe);
+  expect(dir).toBe(path.join((await invoke('settings:get')).projectsDir, UNPACKED_FOLDER_NAME, '뭉친 게임'));
+  expect(await invoke('project:inspectGameDir', dir)).toMatchObject({ ok: true, engine: 'MZ' });
+  expect(readFileSync(path.join(dir, 'data', 'System.json')).equals(readFileSync(path.join(src, 'data', 'System.json')))).toBe(true);
+  expect(readFileSync(exe).equals(before)).toBe(true);
+  // a second call uses what is already there
+  expect(await invoke('project:unpackGame', exe)).toBe(dir);
+  // the unpacked games folder is not listed as a project
+  expect((await invoke('project:list')).some((p: { dir: string }) => p.dir.includes(UNPACKED_FOLDER_NAME))).toBe(false);
+
+  await expect(invoke('project:unpackGame', path.join(src, 'data', 'System.json'))).rejects.toThrow('뭉친 exe 가 아닙니다');
 });

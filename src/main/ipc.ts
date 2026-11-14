@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import { readdir, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { detectGame, openProject, originalDir, readJsonFile, type TextUnit, type TranslationStatus } from '../core/index.js';
+import { detectGame, extractEvb, findPackedGame, openProject, originalDir, readEvbTable, readJsonFile, type TextUnit, type TranslationStatus } from '../core/index.js';
 import type * as core from '../core/index.js';
 import type * as shared from '../shared/api.js';
 import {
@@ -127,8 +127,8 @@ export function nameFromTitle(title: string, fallback: string): string {
 
 /** Checks a picked or dropped path: a file means its folder. Never throws. */
 export async function inspectGameDir(input: string): Promise<shared.GameDirCheck> {
+  let dir = path.resolve(String(input ?? ''));
   try {
-    let dir = path.resolve(String(input ?? ''));
     if (!(await stat(dir)).isDirectory()) dir = path.dirname(dir);
     const game = await detectGame(dir);
     let title = '';
@@ -140,8 +140,35 @@ export async function inspectGameDir(input: string): Promise<shared.GameDirCheck
     }
     return { ok: true, dir, engine: game.engine, title, suggestedName: nameFromTitle(title, path.basename(dir)) };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    const error = e instanceof Error ? e.message : String(e);
+    // Not a game folder as it is: it may be a game shipped as one exe, which can be unpacked first.
+    const packed = await findPackedGame(dir).catch(() => null);
+    return packed ? { ok: false, error: 'exe 하나로 뭉쳐진 게임입니다. 먼저 풀어야 합니다', packed } : { ok: false, error };
   }
+}
+
+/** Where unpacked one-exe games go, inside the projects folder (it holds no project.json, so it is never listed as a project). */
+export const UNPACKED_FOLDER_NAME = '_풀린 게임';
+
+/**
+ * Unpacks a one-exe game into <projectsDir>/_풀린 게임/<the exe's folder name> and returns that folder.
+ * A folder that already holds the unpacked game is used as it is. Reads the exe only.
+ */
+export async function unpackGame(exe: string, projectsDir: string): Promise<string> {
+  const src = path.resolve(String(exe ?? ''));
+  if (!(await readEvbTable(src))) throw new Error('Enigma Virtual Box 로 뭉친 exe 가 아닙니다');
+  const out = path.join(projectsDir, UNPACKED_FOLDER_NAME, nameFromTitle(path.basename(path.dirname(src)), path.basename(src, path.extname(src))) || 'game');
+  const ready = () => detectGame(out).then(() => true, () => false);
+  if (existsSync(out) && (await ready())) return out;
+  try {
+    await extractEvb(src, out);
+  } catch (e) {
+    // A half-written game would be taken for a finished one next time.
+    await rm(out, { recursive: true, force: true });
+    throw e;
+  }
+  if (!(await ready())) throw new Error('풀었지만 MV/MZ 게임이 아닙니다');
+  return out;
 }
 
 async function readGameTitle(projectDir: string): Promise<string | null> {
@@ -294,6 +321,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   });
   handle('project:pickGameDir', () => deps.pickDirectory());
   handle('project:inspectGameDir', (dir: string) => inspectGameDir(dir));
+  handle('project:unpackGame', async (exe: string) => unpackGame(exe, (await settings()).projectsDir));
   handle('project:create', async (gameDir: string, name: string) => {
     const clean = String(name ?? '').trim();
     if (!clean) throw new Error('프로젝트 이름을 입력하세요');

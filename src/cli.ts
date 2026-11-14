@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,6 +10,7 @@ import {
   createProject,
   exportUntranslated,
   extractAll,
+  extractEvb,
   importTranslations,
   loadUnits,
   readJsonFile,
@@ -23,7 +24,8 @@ const USAGE = `사용법:
   mvmz apply <projectDir> <file>                     [{id, target}] 번역 파일을 번역표에 넣습니다
   mvmz check <projectDir>                            형식 검사 (오류가 있으면 종료 코드 1)
   mvmz build <projectDir>                            바뀐 파일만 묶은 패치 zip 을 만듭니다
-  mvmz status <projectDir>                           상태별 개수를 보여줍니다`;
+  mvmz status <projectDir>                           상태별 개수를 보여줍니다
+  mvmz unpack <exe> <outDir>                         exe 하나로 뭉쳐진 게임(Enigma Virtual Box)을 폴더로 풉니다`;
 
 function out(line = ''): void {
   console.log(line);
@@ -59,6 +61,18 @@ function buildProgram(setCode: (code: number) => void): Command {
       out(`판단 필요: ${units.filter((u) => u.needsDecision).length}개`);
       out(`경고: ${warnings.length}개`);
       for (const w of warnings) out(`  ${w.file}: ${w.message}`);
+    });
+
+  program
+    .command('unpack')
+    .description('exe 하나로 뭉쳐진 게임(Enigma Virtual Box)을 폴더로 풉니다')
+    .argument('<exe>')
+    .argument('<outDir>')
+    .action(async (exe: string, outDir: string) => {
+      if (existsSync(outDir) && readdirSync(outDir).length > 0) throw new Error('풀 폴더가 비어있지 않습니다');
+      const r = await extractEvb(exe, outDir);
+      out(`파일: ${r.files}개`);
+      out(`크기: ${Math.max(1, Math.round(r.bytes / 1024 / 1024))}MB`);
     });
 
   program

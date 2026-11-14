@@ -62,10 +62,15 @@ export type Origin = 'user' | 'chat' | 'batch' | 'review' | 'external';
 export interface ChangeEvent { ids: string[]; origin: Origin }
 
 export interface ProjectListItem { dir: string; name: string; engine: string }
-/** A checked game folder (dir is the folder actually used: a dropped file's folder). */
+/** A game shipped as one exe (Enigma Virtual Box) that the app can unpack: the exe, and how much is inside. */
+export interface PackedGameInfo { exe: string; files: number; bytes: number }
+/**
+ * A checked game folder (dir is the folder actually used: a dropped file's folder).
+ * packed: the folder is not a game as it is, but it holds an exe that can be unpacked into one.
+ */
 export type GameDirCheck =
   | { ok: true; dir: string; engine: 'MV' | 'MZ'; title: string; suggestedName: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; packed?: PackedGameInfo };
 export interface Snapshot { meta: ProjectMeta; gameTitle: string | null; rows: Row[]; stats: Stats; scopes: Scope[] }
 export interface UnitDetail { row: Row; issues: Issue[]; refs: string[] }
 export interface ProjectChanged { rows: Row[]; stats: Stats; scopes: Scope[]; origin: Origin }
@@ -238,6 +243,8 @@ export interface InvokeChannels {
   'project:list': () => ProjectListItem[];
   'project:pickGameDir': () => string | null;
   'project:inspectGameDir': (dir: string) => GameDirCheck;
+  /** Unpacks a one-exe game into the projects folder and returns the folder it wrote. Reads the exe only. */
+  'project:unpackGame': (exe: string) => string;
   'project:create': (gameDir: string, name: string) => void;
   'project:open': (dir: string) => void;
   'project:close': () => void;
@@ -361,7 +368,7 @@ export interface Api {
   settings: { get: Call<'settings:get'>; set: Call<'settings:set'> };
   project: {
     list: Call<'project:list'>; pickGameDir: Call<'project:pickGameDir'>;
-    inspectGameDir: Call<'project:inspectGameDir'>;
+    inspectGameDir: Call<'project:inspectGameDir'>; unpackGame: Call<'project:unpackGame'>;
     /** Path of a dropped file or folder (Electron webUtils; not an IPC call). */
     pathForDrop(file: File): string;
     create: Call<'project:create'>; open: Call<'project:open'>;

@@ -20,7 +20,7 @@ RPG Maker MV/MZ 게임을 일본어에서 한국어로 번역하는 윈도우용
 
 ```
 src/core/              화면도 Electron도 모르는 순수 라이브러리. 공개 이름은 src/core/index.ts
-  engine/ project/     게임 판별·암호 풀기, 프로젝트 폴더와 원본 사본
+  engine/ project/     게임 판별·암호 풀기·뭉친 exe 풀기, 프로젝트 폴더와 원본 사본
   extract/ store/      문장 추출(units.json), 번역표(translations.json)
   glossary/ text/      용어집·조사 맞춤, 제어문자·일본어·화자 줄
   check/ decisions/    형식 검사, 판단 필요(판단 키, 뼈대 검사)
@@ -76,13 +76,13 @@ tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄
 
 ## 환경
 
-- Windows 11, Node 22(64비트, `C:\Program Files\nodejs`), git, Claude CLI(winget 설치). Python 은 없다.
+- Windows 11, Node 22(64비트, `C:\Program Files\nodejs`), git, Claude CLI(winget 설치). Python 3.12 가 있다(`py` 런처로 부른다. `python` 은 윈도우 스토어 안내용 빈 파일이 먼저 잡힌다). 앱은 Python 을 쓰지 않는다.
 - 셸에 따라 `node` 나 `claude` 가 PATH 에 안 잡힐 수 있다. 그럴 때는 위 경로를 PATH 앞에 붙인다.
 - 배포용 묶기: `npm run dist` → `release/` 에 설치 파일과 zip. 설정은 `electron-builder.yml`. 서명 인증서가 없어 서명은 하지 않는다.
 
 ## 아직 없는 것
 
-- exe 하나로 뭉쳐진 게임(Enigma) 풀기: Python 이 필요해 보류.
+- 뭉친 exe(Enigma Virtual Box) 풀기는 게임 파일만 꺼낸다. 원래 실행 파일은 되살리지 않는다. 압축된 꾸러미는 직접 만든 시험 자료로만 확인했고 실제 게임으로는 아직 못 돌려 봤다(시험 표본 `tests/fixtures/evb` 는 모두 압축 안 된 것). 백신이 표본 exe 를 격리하면 그 시험은 건너뛴다.
 - `.ttc`(폰트 모음 파일): 폰트 목록에 수만 보이고 쓸 수 없다.
 - 코드 서명: 인증서가 없어 배포 파일에 서명하지 않는다.
 - 계획 1~7(3b 포함)은 모두 끝났다. 실제 게임 두 버전으로 업데이트 가져오기를 해 보는 확인은 사람이 할 일로 남아 있다(계획 6 끝의 "사람이 확인할 것").

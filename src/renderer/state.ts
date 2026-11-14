@@ -271,6 +271,7 @@ const actions = {
   },
   pickGameDir: (): Promise<string | null> => need().project.pickGameDir(),
   inspectGameDir: (dir: string): Promise<GameDirCheck> => need().project.inspectGameDir(dir),
+  unpackGame: (exe: string): Promise<string> => need().project.unpackGame(exe),
   pathForDrop: (file: File): string => need().project.pathForDrop(file),
   async createProject(gameDir: string, name: string): Promise<void> {
     await need().project.create(gameDir, name);

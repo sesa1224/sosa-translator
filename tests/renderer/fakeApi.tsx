@@ -94,6 +94,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       list: rec('project.list', () => []),
       pickGameDir: rec('project.pickGameDir', () => 'C:/game'),
       inspectGameDir: rec('project.inspectGameDir', (dir: string) => fake.inspect(dir)),
+      unpackGame: rec('project.unpackGame', (exe: string) => `C:/projects/_풀린 게임/${exe.split('/').slice(-2, -1)[0]}`),
       pathForDrop: (file: File) => { calls.push(['project.pathForDrop', file.name]); return (file as File & { path?: string }).path ?? `C:/dropped/${file.name}`; },
       create: rec('project.create', () => { fake.opened = true; }),
       open: rec('project.open', () => { fake.opened = true; }),

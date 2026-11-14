@@ -20,6 +20,7 @@ const api: Api = {
     list: () => call('project:list'),
     pickGameDir: () => call('project:pickGameDir'),
     inspectGameDir: (dir) => call('project:inspectGameDir', dir),
+    unpackGame: (exe) => call('project:unpackGame', exe),
     pathForDrop: (file) => webUtils.getPathForFile(file),
     create: (gameDir, name) => call('project:create', gameDir, name),
     open: (dir) => call('project:open', dir),

@@ -1,9 +1,13 @@
 import { useState, type DragEvent } from 'react';
-import type { GameDirCheck } from '../../shared/api';
+import type { GameDirCheck, PackedGameInfo } from '../../shared/api';
 import { useApp } from '../state';
 
 function hasFiles(e: DragEvent): boolean {
   return Array.from(e.dataTransfer?.types ?? []).includes('Files');
+}
+
+function sizeText(bytes: number): string {
+  return bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)}GB` : `${Math.max(1, Math.round(bytes / 1024 ** 2))}MB`;
 }
 
 /** Shown when no project is open: existing projects, or create one from a game folder (picked or dropped). */
@@ -14,6 +18,8 @@ export function ProjectPicker() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState(false);
+  const [packed, setPacked] = useState<PackedGameInfo | null>(null);
+  const [unpacking, setUnpacking] = useState(false);
 
   const run = async (job: () => Promise<void>) => {
     setBusy(true);
@@ -30,13 +36,33 @@ export function ProjectPicker() {
   /** Checks the folder and fills the name from the game title; a folder that is not MV/MZ shows its error. */
   const use = (dir: string) => run(async () => {
     setGame(null);
+    setPacked(null);
     const r = await useApp.inspectGameDir(dir);
     if (!r.ok) {
-      setError(r.error);
+      if (r.packed) setPacked(r.packed);
+      else setError(r.error);
       return;
     }
     setGame(r);
     setName(r.suggestedName);
+  });
+
+  /** Unpacks the one-exe game into the projects folder, then goes on with the unpacked folder. */
+  const unpack = (exe: string) => run(async () => {
+    setUnpacking(true);
+    try {
+      const dir = await useApp.unpackGame(exe);
+      setPacked(null);
+      const r = await useApp.inspectGameDir(dir);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setGame(r);
+      setName(r.suggestedName);
+    } finally {
+      setUnpacking(false);
+    }
   });
 
   const pick = () => run(async () => {
@@ -90,7 +116,17 @@ export function ProjectPicker() {
             </div>
           </>
         )}
-        {busy && <span className="sub" role="status">확인하는 중…</span>}
+        {packed && (
+          <div className="picker-packed" data-testid="packed-game">
+            <span className="small">exe 하나로 뭉쳐진 게임이에요. 먼저 풀어야 번역할 수 있어요.</span>
+            <span className="sub">{`${packed.exe.split(/[\\/]/).pop()} · 파일 ${packed.files.toLocaleString()}개 · ${sizeText(packed.bytes)}`}</span>
+            <span className="sub">프로젝트 폴더 안의 "_풀린 게임"에 풀어요. 원본 exe 는 그대로 둬요. 그만큼 디스크 공간이 필요해요.</span>
+            <div className="picker-row">
+              <button type="button" className="btn primary" disabled={busy} onClick={() => unpack(packed.exe)}>풀고 계속</button>
+            </div>
+          </div>
+        )}
+        {busy && <span className="sub" role="status">{unpacking ? '게임을 푸는 중… 큰 게임은 몇 분 걸려요' : '확인하는 중…'}</span>}
         {error && <span className="err-text" role="alert">{error}</span>}
       </section>
 

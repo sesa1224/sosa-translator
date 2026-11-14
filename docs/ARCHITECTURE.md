@@ -33,7 +33,7 @@ Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tool
 
 원본 게임 폴더에는 아무것도 쓰지 않는다. 모든 쓰기는 프로젝트 폴더 안에서, 앱에서는 `ProjectService` 만 한다.
 
-1. **가져오기** — `core/engine/detect.ts` 가 게임 폴더를 알아보고, `core/project/project.ts` 의 `createProject` 가 `data/`, `js/plugins.js`, `js/plugins/*.js` 를 `original/v1/` 로, `core/project/originals.ts` 가 도우미 파일(`files.json`, `index.html`, `package.top.json`, `fonts/gamefont.css`)을 복사한다. 이후 글은 모두 이 사본에서 읽는다(그림, 폰트, 게임 실행은 게임 폴더를 읽기만 한다).
+1. **가져오기** — `core/engine/detect.ts` 가 게임 폴더를 알아보고(게임이 exe 하나로 뭉쳐져 있으면 `core/engine/evb.ts` 가 그 안의 파일 목록을 읽어 알려 주고, 사용자가 누르면 `main/ipc.ts` 의 `unpackGame` 이 프로젝트 폴더의 `_풀린 게임/` 에 풀어 그 폴더를 게임 폴더로 쓴다. 압축된 파일은 `core/engine/aplib.ts` 가 편다), `core/project/project.ts` 의 `createProject` 가 `data/`, `js/plugins.js`, `js/plugins/*.js` 를 `original/v1/` 로, `core/project/originals.ts` 가 도우미 파일(`files.json`, `index.html`, `package.top.json`, `fonts/gamefont.css`)을 복사한다. 이후 글은 모두 이 사본에서 읽는다(그림, 폰트, 게임 실행은 게임 폴더를 읽기만 한다).
 2. **추출** — `core/extract/index.ts` 의 `extractAll` 이 사본에서 문장을 뽑아 `units.json` 을 쓴다. 데이터베이스(`database.ts`), 이벤트(`events.ts`), 플러그인 설정(`plugins.ts`), 메모란(`notes.ts`), 플러그인 JS(`pluginJs.ts`)가 각각 `RawUnit` 을 내고, `mergeUnits` 가 같은 문장을 하나로 합친다. 문장 id 는 종류·화자·원문으로 만든 해시라서 위치가 바뀌어도 그대로다.
 3. **번역표** — `translations.json`(`core/store/translations.ts`)은 문장 id → 번역. 원문으로 만든 id 를 열쇠로 쓰므로 같은 문장은 한 번만 번역하고, 다시 추출하거나 게임을 업데이트해도 번역이 떨어지지 않는다.
 4. **용어집과 판단** — `glossary.json`(`core/glossary/`)은 용어, 인물 카드, 말투 지침, 형식 규칙. `decisions.json`(`core/decisions/`)은 판단 필요 문자열의 결정.
