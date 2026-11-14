@@ -120,3 +120,15 @@ test('옛 기본 지침은 새 문구로 올라가고, 고친 줄과 게임별 �
   expect(upgradeStyleGuide('## 내 지침\n- 자연스럽게\n')).toBe('## 내 지침\n- 자연스럽게\n');
   expect(normalizeGlossary({ styleGuide: old }).styleGuide).toBe(DEFAULT_STYLE_GUIDE);
 });
+
+test('1.3.0 기본 지침에는 말끝 끊김과 말더듬 규칙이 더해진다', () => {
+  const text = readFileSync(path.join(__dirname, '..', 'fixtures', 'style-guide-1.3.0.md'), 'utf8').replace(/\r\n/g, '\n');
+  const old = text.slice(text.search(/^## /m)).trim() + '\n';
+  expect(upgradeStyleGuide(old)).toBe(DEFAULT_STYLE_GUIDE);
+  expect(DEFAULT_STYLE_GUIDE).toContain('닿고 있어읏');
+  expect(DEFAULT_STYLE_GUIDE).toContain('노…… 놓으라고');
+  const mine = old + '\n## 이 게임의 말투\n- 말끝 끊김을 "읏"으로 붙인다.\n';
+  const up = upgradeStyleGuide(mine);
+  expect(up).toContain('## 이 게임의 말투\n- 말끝 끊김을 "읏"으로 붙인다.');
+  expect(upgradeStyleGuide(up)).toBe(up);
+});
