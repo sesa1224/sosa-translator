@@ -5,7 +5,7 @@ import type { Stats } from '../../shared/api.js';
 export function buildSystemPrompt(meta: ProjectMeta, stats: Stats, styleGuide?: string): string {
   const lines = [
     `너는 RPG Maker ${meta.engine} 게임 "${meta.name}" 의 일본어→한국어 번역을 돕는다.`,
-    `현재 상태: 전체 ${stats.total}줄, 미번역 ${stats.untranslated}, 검토 필요 ${stats.needsReview}, 승인 ${stats.approved}, 오류 ${stats.error}, 판단 필요 ${stats.needsDecision}.`,
+    `현재 상태: 전체 ${stats.total}줄, 미번역 ${stats.untranslated}, 번역 완료 ${stats.translated}, 검토 필요 ${stats.needsReview}, 승인 ${stats.approved}, 오류 ${stats.error}, 판단 필요 ${stats.needsDecision}.`,
     '',
     '규칙:',
     '- 게임 파일을 직접 볼 수 없고 mvmz 도구만 쓴다. 파일 읽기나 셸 명령은 없다.',

@@ -21,6 +21,10 @@ export function Sidebar() {
         onClick={() => useApp.setView('glossary')}>
         <span>용어집</span>{undecided > 0 && <span className="mono warn-text small" title="결정 필요">{num(undecided)}</span>}
       </button>
+      <button type="button" className={`nav-btn${view === 'guide' ? ' on' : ''}`} aria-current={view === 'guide' ? 'page' : undefined}
+        onClick={() => useApp.setView('guide')}>
+        <span>번역 지침</span>
+      </button>
       <button type="button" className={`nav-btn${view === 'settings' ? ' on' : ''}`} aria-current={view === 'settings' ? 'page' : undefined}
         onClick={() => useApp.setView('settings')}>
         <span>설정</span>

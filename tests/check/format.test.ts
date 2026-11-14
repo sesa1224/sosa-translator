@@ -38,10 +38,10 @@ test('checkAll: 문제 있는 항목만, error 는 상태를 바꾼다', async (
   store.set('a', '아'); store.set('b', 'いい'); store.set('c', '1\n2\n3\n4\n5', 'approved');
   const r = checkAll(units, store);
   expect(r.map(x => x.id)).toEqual(['b', 'c']);
-  expect(store.get('a').status).toBe('needs-review');
+  expect(store.get('a').status).toBe('translated');
   expect(store.get('b').status).toBe('error');
   expect(store.get('c').status).toBe('approved'); // warning only
   store.set('b', '이이', 'error');
   expect(checkAll(units, store)).toHaveLength(1);
-  expect(store.get('b').status).toBe('needs-review'); // fixed -> no longer error
+  expect(store.get('b').status).toBe('translated'); // fixed -> no longer error
 });

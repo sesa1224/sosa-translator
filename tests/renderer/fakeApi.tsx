@@ -123,6 +123,8 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       confirm: rec('glossary.confirm', () => undefined),
       detectSpeakerPattern: rec('glossary.detectSpeakerPattern', () => fake.speakerDetection),
       defaultStyleGuide: rec('glossary.defaultStyleGuide', () => '기본 지침'),
+      promptText: rec('glossary.promptText', (kind) => `${kind} 머리말\n<번역 지침>\n${fake.glossaryValue.styleGuide}\n</번역 지침>`),
+      setPromptText: rec('glossary.setPromptText', () => undefined),
     },
     job: {
       draft: rec('job.draft', () => undefined),

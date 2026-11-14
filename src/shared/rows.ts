@@ -127,9 +127,10 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
 }
 
 export function computeStats(rows: Row[]): Stats {
-  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0 };
+  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0, translated: 0 };
   for (const r of rows) {
     if (r.status === 'untranslated') s.untranslated++;
+    else if (r.status === 'translated') s.translated++;
     else if (r.status === 'needs-review') s.needsReview++;
     else if (r.status === 'approved') s.approved++;
     else if (r.status === 'error') s.error++;

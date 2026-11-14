@@ -154,7 +154,7 @@ export function ItemPanel() {
         <button type="button" className="btn ghost" disabled={saving || row.target === null}
           onClick={() => void run(() => useApp.clearTranslation(row.id))}>지우기</button>
         {approved
-          ? <button type="button" className="btn" disabled={saving} onClick={() => void run(() => useApp.setStatus(row.id, 'needs-review'))}>승인 취소</button>
+          ? <button type="button" className="btn" disabled={saving} onClick={() => void run(() => useApp.setStatus(row.id, 'translated'))}>승인 취소</button>
           : <button type="button" className="btn primary" disabled={saving || approveBlock !== null}
               onClick={() => void run(() => useApp.setStatus(row.id, 'approved'))}>승인</button>}
       </div>

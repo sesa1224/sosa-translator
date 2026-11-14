@@ -2,7 +2,8 @@ import { termsIn } from '../../core/glossary/match.js';
 import type { Glossary, Term } from '../../core/glossary/types.js';
 import type { TextUnit, TranslationEntry, UnitKind } from '../../core/types.js';
 import { scopeLabel } from '../../shared/rows.js';
-import { formatRulesText, targetBody, unitParts } from './batches.js';
+import { finalPrompt } from '../../core/glossary/prompts.js';
+import { targetBody, unitParts } from './batches.js';
 import { BatchJob, type JobOptions } from './job.js';
 
 export type ReviewScope = 'all' | 'unreviewed' | 'file';
@@ -16,7 +17,7 @@ export function estimateTokens(chars: number): number {
   return Math.ceil(chars * 1.2);
 }
 
-/** Translated units (needs-review or approved) in the scope, grouped per file into batches, with an input-token estimate. */
+/** Translated units (translated, needs-review or approved) in the scope, grouped per file into batches, with an input-token estimate. */
 export function planReview(
   units: TextUnit[],
   entryOf: (id: string) => TranslationEntry,
@@ -32,7 +33,7 @@ export function planReview(
   let chars = 0;
   for (const u of units) {
     const e = entryOf(u.id);
-    if (e.target === null || (e.status !== 'needs-review' && e.status !== 'approved')) continue;
+    if (e.target === null || (e.status !== 'translated' && e.status !== 'needs-review' && e.status !== 'approved')) continue;
     const file = u.refs[0]?.file ?? '';
     if (o.scope === 'file' && file !== o.file) continue;
     if (o.scope === 'unreviewed' && e.reviewedAt && e.reviewedAt >= e.updatedAt) continue;
@@ -56,7 +57,7 @@ export function planReview(
   for (const [file, groups] of byFile) {
     groups.forEach((g, n) => batches.push({ label: `${scopeLabel(file)} (${n + 1}/${groups.length})`, file, items: g }));
   }
-  chars += batches.length * glossary.styleGuide.length;
+  chars += batches.length * finalPrompt('review', glossary).length;
   return { batches, items, estimatedInputTokens: items === 0 ? 0 : estimateTokens(chars) };
 }
 
@@ -89,25 +90,7 @@ function batchTerms(batch: ReviewBatch, terms: Term[]): Term[] {
 }
 
 export function buildReviewPrompt(batch: ReviewBatch, glossary: Glossary): { system: string; user: string } {
-  const system = [
-    '너는 RPG Maker 게임 번역을 검수한다. 아래 번역 지침이 기준이다.',
-    '',
-    '<번역 지침>',
-    glossary.styleGuide.trim(),
-    '</번역 지침>',
-    '',
-    '형식 규칙:',
-    ...formatRulesText(glossary.rules),
-    '',
-    '입력(JSON): terms 는 이 묶음의 용어(source 는 반드시 target 으로 옮긴다), characters 는 인물과 말투, items 는 검수할 항목(source 원문, target 번역, speaker 말하는 인물)이다.',
-    '',
-    '할 일:',
-    '- 문제가 있는 항목만 돌려준다. 문제가 없으면 problems 를 빈 배열로 둔다.',
-    '- 오역, 빠진 내용, 어색한 한국어, 인물 말투와 맞지 않는 어미, 지침의 의성어·신음 원칙에 어긋난 표기, 인물의 성격·신음 스타일과 맞지 않는 신음 표기, 용어집과 다른 용어가 대상이다.',
-    '- 취향 차이만 있는 것은 돌려주지 않는다.',
-    '- problem 에 무엇이 문제인지 한 문장으로 적는다.',
-    '- suggestion 은 고친 번역문 전체이고 제어문자를 그대로 유지한다. 화자 이름은 넣지 않고 target 과 같은 범위만 쓴다.',
-  ].join('\n');
+  const system = finalPrompt('review', glossary);
   const speakers = new Set(batch.items.map((i) => i.speaker).filter((s): s is string => s !== null));
   const user = {
     terms: batchTerms(batch, glossary.terms).map((t) => ({ source: t.source, target: t.target })),

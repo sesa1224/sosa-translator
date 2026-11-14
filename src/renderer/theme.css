@@ -114,6 +114,7 @@ select.input { padding: 0 12px; }
 .empty { padding: 24px 16px; }
 .st { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
 .st-none { background: var(--card); color: var(--sub); }
+.st-done { background: var(--card); color: var(--text); }
 .st-warn { background: var(--warn-bg); color: var(--warn); }
 .st-ok { background: var(--accent-bg); color: var(--accent-text); }
 .st-err { background: var(--err-bg); color: var(--err); }

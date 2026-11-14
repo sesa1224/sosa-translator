@@ -26,7 +26,7 @@ test('만들고 다시 열면 같은 항목', async () => {
 test('번역 쓰기: 저장, 이벤트, 검사', async () => {
   const seen: ChangeEvent[] = []; svc.on('changed', e => seen.push(e));
   expect(await svc.setTranslation(idOf('月光草'), '월광초', 'user')).toEqual([]);
-  expect(svc.entry(idOf('月光草'))).toMatchObject({ target: '월광초', status: 'needs-review' });
+  expect(svc.entry(idOf('月光草'))).toMatchObject({ target: '월광초', status: 'translated' });
   expect(seen).toEqual([{ ids: [idOf('月光草')], origin: 'user' }]);
   expect(JSON.parse(await readFile(path.join(proj, 'translations.json'), 'utf8'))[idOf('月光草')].target).toBe('월광초');
   const issues = await svc.setTranslation(idOf('夜に光る草。\\C[2]貴重\\C[0]だ'), '밤에 빛나는 풀', 'chat');

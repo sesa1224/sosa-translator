@@ -6,7 +6,6 @@ import { num } from '../format';
 import { orderedRows, useApp } from '../state';
 import { DraftDialog } from './DraftDialog';
 
-const STYLE_SAVE_DELAY = 800;
 const CATEGORY_LABEL: Record<TermCategory, string> = { name: '이름', place: '지명', term: '용어', sfx: '효과음', other: '기타' };
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as TermCategory[];
 const EXAMPLES = 2;
@@ -207,36 +206,16 @@ function Characters({ cards }: { cards: CharacterCard[] }) {
   );
 }
 
-function StyleGuide({ text }: { text: string }) {
-  const [value, setValue] = useState(text);
-  const pending = useRef(false);
-  useEffect(() => { if (!pending.current) setValue(text); }, [text]);
-  useEffect(() => {
-    if (!pending.current) return;
-    const t = setTimeout(() => {
-      pending.current = false;
-      void useApp.setStyleGuide(value);
-    }, STYLE_SAVE_DELAY);
-    return () => clearTimeout(t);
-  }, [value]);
-  const reset = async () => {
-    if (!window.confirm('말투 지침을 기본 지침으로 되돌릴까요? 지금 글은 사라져요.')) return;
-    const d = await useApp.defaultStyleGuide();
-    pending.current = false;
-    setValue(d);
-    await useApp.setStyleGuide(d);
-  };
+/** The style guide is edited on its own screen, as part of the whole text that gets sent. */
+function GuideLink() {
   return (
     <section className="card">
       <div className="card-head row-between">
-        <span id="g-style" className="card-title">말투 지침</span>
-        <button type="button" className="btn ghost small-btn" onClick={() => void reset()}>기본 지침으로 되돌리기</button>
+        <span className="card-title">번역 지침</span>
+        <button type="button" className="btn small-btn" onClick={() => useApp.setView('guide')}>번역 지침 열기</button>
       </div>
       <div className="pad">
-        <label htmlFor="g-style-text" className="sr-only">말투 지침</label>
-        <textarea id="g-style-text" className="textbox edit guide" rows={18} value={value}
-          onChange={(e) => { pending.current = true; setValue(e.target.value); }} />
-        <span className="hint">번역을 맡길 때마다 이 글 전체가 모델에게 전달돼요. 고치면 잠시 뒤 저장돼요.</span>
+        <span className="hint">모델과 내보내기 파일에 전달되는 글 전체는 "번역 지침" 화면에서 보고 고쳐요.</span>
       </div>
     </section>
   );
@@ -404,7 +383,7 @@ export function GlossaryView() {
           <Rules rules={g.rules} />
         </div>
       </div>
-      <StyleGuide text={g.styleGuide} />
+      <GuideLink />
     </div>
   );
 }

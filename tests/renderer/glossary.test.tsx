@@ -80,14 +80,10 @@ test('보기 누르면 그 줄만 보인다, 확정 날짜', async () => {
   expect(useApp.get().view).toBe('text');
   expect(await screen.findByText('2줄')).toBeVisible();
 });
-test('말투 지침, 인물 카드, 형식 규칙', async () => {
+test('인물 카드, 형식 규칙, 번역 지침으로 가기', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   try {
     await openGlossary({ characters: [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말' }] });
-    const guide = screen.getByLabelText('말투 지침');
-    await user.type(guide, '추가');
-    await act(async () => { vi.advanceTimersByTime(900); });
-    expect(api.calls.some(c => c[0] === 'glossary.setStyleGuide' && String(c[1]).endsWith('추가'))).toBe(true);
     const speech = screen.getByLabelText('リナ 말투');
     await user.clear(speech); await user.type(speech, '존댓말'); await user.tab();
     expect(api.calls).toContainEqual(['glossary.setCharacters', [{ id: 'c1', source: 'リナ', target: '리나', speech: '존댓말' }]]);
@@ -98,9 +94,7 @@ test('말투 지침, 인물 카드, 형식 규칙', async () => {
     expect(api.calls).toContainEqual(['glossary.setRules', { maxLineWidthChars: 28 }]);
     await user.selectOptions(screen.getByLabelText('화자 줄 패턴'), 'bracket');
     expect(api.calls.at(-1)?.[0]).toBe('glossary.setRules');
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await user.click(screen.getByRole('button', { name: '기본 지침으로 되돌리기' }));
-    expect(api.calls).toContainEqual(['glossary.setStyleGuide', '기본 지침']);
+    await user.click(screen.getByRole('button', { name: '번역 지침 열기' })); expect(useApp.get().view).toBe('guide');
   } finally {
     vi.useRealTimers();
   }

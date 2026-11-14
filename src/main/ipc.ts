@@ -15,6 +15,7 @@ import {
   type ReviewScopeArg, type Row, type Snapshot, type UnitDetail,
 } from '../shared/api.js';
 import type * as glossaryTypes from '../core/glossary/types.js';
+import { PROMPT_KINDS } from '../core/glossary/prompts.js';
 import { DEFAULT_STYLE_GUIDE } from '../core/glossary/store.js';
 import { detectSpeakerPattern } from '../core/text/speaker.js';
 import type { ImportPlan as ExchangeImportPlan } from '../core/exchange/package.js';
@@ -179,6 +180,12 @@ async function readGameTitle(projectDir: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function promptKind(v: unknown): glossaryTypes.PromptKind {
+  const kind = PROMPT_KINDS.find((k) => k === v);
+  if (!kind) throw new Error('없는 지침 종류입니다');
+  return kind;
 }
 
 function attachedPrefix(row: Row): string {
@@ -389,6 +396,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('glossary:confirm', () => svc().confirmGlossary());
   handle('glossary:detectSpeakerPattern', () => detectSpeakerPattern(svc().units()));
   handle('glossary:defaultStyleGuide', () => DEFAULT_STYLE_GUIDE);
+  handle('glossary:promptText', (kind: glossaryTypes.PromptKind) => svc().promptText(promptKind(kind)));
+  handle('glossary:setPromptText', (kind: glossaryTypes.PromptKind, text: string | null) => svc().setPromptText(promptKind(kind), typeof text === 'string' ? text : null));
   handle('unit:acceptReview', (id: string) => svc().acceptReview(id));
   handle('unit:rejectReview', (id: string) => svc().rejectReview(id));
 

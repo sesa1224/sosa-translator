@@ -117,7 +117,7 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
 
 /**
  * Checks every translated unit. Returns only units with issues.
- * Units with an error get status 'error'; a unit marked 'error' that now passes goes back to 'needs-review'.
+ * Units with an error get status 'error'; a unit marked 'error' that now passes goes back to 'translated'.
  */
 export function checkAll(
   units: TextUnit[],
@@ -134,7 +134,7 @@ export function checkAll(
     const issues = checkTranslation(u, entry.target, rules, undefined, dec?.translate ? dec.keep : undefined);
     const hasError = issues.some((i) => i.severity === 'error');
     if (hasError && entry.status !== 'error') store.setStatus(u.id, 'error');
-    else if (!hasError && entry.status === 'error') store.setStatus(u.id, 'needs-review');
+    else if (!hasError && entry.status === 'error') store.setStatus(u.id, 'translated');
     if (issues.length > 0) out.push({ id: u.id, issues });
   }
   return out;

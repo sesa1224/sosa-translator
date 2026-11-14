@@ -28,7 +28,7 @@ function mk(call: FakeCall, o: { ids?: string[]; maxItems?: number } = {}): Tran
   return new TranslateJob({ svc, call: call as any, claude: { command: 'claude' }, model: 'm', cwd: '.', ...o });
 }
 /** Ids of the job's first batch (planned as if nothing were translated yet). */
-const firstBatchIds = () => planBatches(svc.units(), id => svc.entry(id), svc.glossary(), { includeStatuses: ['untranslated', 'needs-review', 'approved', 'error', 'declined'] })[0].items.map(i => i.id);
+const firstBatchIds = () => planBatches(svc.units(), id => svc.entry(id), svc.glossary(), { includeStatuses: ['untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined'] })[0].items.map(i => i.id);
 async function withSpeakerGlossary(names: Record<string, string>) {
   const g = svc.glossary();
   g.rules.speakerPattern = SPEAKER_PRESETS.find(p => p.id === 'bracket')!.pattern;
@@ -39,7 +39,7 @@ async function withSpeakerGlossary(names: Record<string, string>) {
 test('전부 번역', async () => {
   const job = mk(answer(u => ({ items: u.items.map((x: any) => ({ i: x.i, t: 'KO:' + x.i })) }))); await job.start();
   expect(job.progress).toMatchObject({ state: 'done', done: total, total, declined: 0 });
-  expect(svc.entry(idOf('月光草'))).toMatchObject({ status: 'needs-review' }); expect(svc.entry(needsDecisionId).target).toBeNull();
+  expect(svc.entry(idOf('月光草'))).toMatchObject({ status: 'translated' }); expect(svc.entry(needsDecisionId).target).toBeNull();
 });
 test('화자 줄을 다시 붙인다', async () => {
   await withSpeakerGlossary({ 'アーテル': '아텔' }); await mk(answer(u => ({ items: u.items.map((x: any) => ({ i: x.i, t: '「응?」' })) }))).start();
@@ -51,7 +51,7 @@ test('빼먹은 번호와 없는 번호', async () => {
 });
 test('검사 오류는 한 번 다시 보낸다', async () => {
   const seen: any[] = []; await mk(answer(u => { seen.push(u); return { items: u.items.map((x: any) => ({ i: x.i, t: x.previous ? '밤에 빛나는 풀. \\C[2]귀하다\\C[0]' : '밤에 빛나는 풀' })) }; }), { ids: [codeId] }).start();
-  expect(seen).toHaveLength(2); expect(seen[1].items[0].problems[0]).toContain('제어'); expect(svc.entry(codeId).status).toBe('needs-review');
+  expect(seen).toHaveLength(2); expect(seen[1].items[0].problems[0]).toContain('제어'); expect(svc.entry(codeId).status).toBe('translated');
 });
 test('거절과 새 용어', async () => {
   const first = firstBatchIds();
@@ -107,7 +107,7 @@ test('글자 \\n 으로 온 줄바꿈은 실제 줄바꿈으로 고친다', asyn
   // Seen with the real CLI: the model wrote a line break as backslash + n.
   const id = idOf('あれ？\\N[1]じゃない！\nこんな夜に来るなんて');
   await mk(answer(u => ({ items: u.items.map((x: any) => ({ i: x.i, t: '어라? \\N[1] 아니잖아!\\n이런 밤에 오다니' })) })), { ids: [id] }).start();
-  expect(svc.entry(id)).toMatchObject({ target: '어라? \\N[1] 아니잖아!\n이런 밤에 오다니', status: 'needs-review' });
+  expect(svc.entry(id)).toMatchObject({ target: '어라? \\N[1] 아니잖아!\n이런 밤에 오다니', status: 'translated' });
   expect(fixLiteralBreaks('가\\n나 \\n[1] \\n<x>', 'あ')).toBe('가\n나 \\n[1] \\n<x>');
   expect(fixLiteralBreaks('a\\nb', 'あ\\nい')).toBe('a\\nb');
 });

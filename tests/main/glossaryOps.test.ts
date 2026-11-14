@@ -119,6 +119,10 @@ test('검수 범위 추정, 검수 받기와 거절, 용어집 조작 IPC', asyn
   await invoke('glossary:setRules', { maxLineWidthChars: 20 }); expect((await invoke('glossary:get')).rules.maxLineWidthChars).toBe(20);
   await invoke('glossary:setStyleGuide', '짧은 지침'); expect((await invoke('glossary:get')).styleGuide).toBe('짧은 지침');
   expect(await invoke('glossary:defaultStyleGuide')).toContain('의성어');
+  expect(await invoke('glossary:promptText', 'export')).toContain('<번역 지침>\n짧은 지침\n</번역 지침>');
+  await invoke('glossary:setPromptText', 'export', '이 글만'); expect(await invoke('glossary:promptText', 'export')).toBe('이 글만');
+  await invoke('glossary:setPromptText', 'export', null); expect(await invoke('glossary:promptText', 'export')).toContain('돌려줄 형식');
+  await expect(invoke('glossary:promptText', 'nope')).rejects.toThrow('없는 지침 종류');
   await invoke('glossary:setCharacters', [{ id: '', source: 'リナ', target: '리나', speech: '반말' }]);
   expect((await invoke('glossary:get')).characters[0].id).toBe(termId('リナ'));
   expect(await invoke('glossary:detectSpeakerPattern')).toBeNull();

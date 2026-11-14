@@ -77,7 +77,7 @@ test('폰트가 없으면 layoutFor 는 null, 검사는 글자 수 방식', asyn
   expect(issues.map((i) => i.rule)).toEqual(['line-width']);
 });
 
-test('폰트를 정하면 창을 넘는 번역에 line-width-px 경고, 상태는 needs-review', async () => {
+test('폰트를 정하면 창을 넘는 번역에 line-width-px 경고, 상태는 translated', async () => {
   const { svc, preview, idOf } = await start([say('', 'ながい')]);
   const f = await font(await makeTempDir(), 'Wide', 1000);
   const seen: ChangeEvent[] = [];
@@ -89,7 +89,7 @@ test('폰트를 정하면 창을 넘는 번역에 line-width-px 경고, 상태�
   const issues = await svc.setTranslation(idOf('ながい'), LONG, 'user');
   expect(issues).toEqual([{ rule: 'line-width-px', severity: 'warning', message: '1번째 줄이 창을 12px 넘어요' }]);
   expect(svc.issues(idOf('ながい'))).toEqual(issues);
-  expect(svc.entry(idOf('ながい')).status).toBe('needs-review');
+  expect(svc.entry(idOf('ながい')).status).toBe('translated');
   const l = preview.layoutFor(idOf('ながい'))!;
   expect(l.maxWidth).toBe(780);
   expect(l.available).toBe(768);

@@ -17,7 +17,7 @@ afterAll(async () => { await cleanupTempDirs(); });
 test('검색하고 번역을 쓴다', async () => {
   const r = await callTool(svc, 'search_units', { query: '月光草' }); expect(r.ok).toBe(true);
   const id = (r as any).data.items[0].id;
-  expect(await callTool(svc, 'set_translation', { id, target: '월광초' })).toEqual({ ok: true, data: { status: 'needs-review', issues: [] } });
+  expect(await callTool(svc, 'set_translation', { id, target: '월광초' })).toEqual({ ok: true, data: { status: 'translated', issues: [] } });
   expect(svc.entry(id).target).toBe('월광초');
 });
 test('limit 은 50을 넘지 않는다', async () => { expect(((await callTool(svc, 'search_units', { query: '', limit: 999 })) as any).data.items.length).toBeLessThanOrEqual(50); });
@@ -48,7 +48,7 @@ test('도구 목록, 상태, 상태 바꾸기, 쓰기 출처는 chat', async () 
   expect(await callTool(svc, 'set_status', { id, status: 'error' })).toMatchObject({ ok: false });
   expect(seen).toEqual(['chat', 'chat']);
   expect(await callTool(svc, 'undo_last', {})).toEqual({ ok: true, data: { ids: [id] } });
-  expect(svc.entry(id).status).toBe('needs-review');
+  expect(svc.entry(id).status).toBe('translated');
   const s = (await callTool(svc, 'search_units', { query: 'リナ', status: 'untranslated' })) as any;
   expect(s.data.total).toBeGreaterThan(1);
   expect(s.data.items[0]).toEqual(expect.objectContaining({ id: expect.any(String), location: expect.any(String), needsDecision: false }));

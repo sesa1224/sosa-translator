@@ -49,8 +49,12 @@ export interface TextUnit {
   decisionKey?: string;   // groups needs-decision units judged together (src/core/decisions/keys.ts)
 }
 
-/** declined: the model would not translate it (declinedReason says why). */
-export type TranslationStatus = 'untranslated' | 'needs-review' | 'approved' | 'error' | 'declined';
+/**
+ * translated: has a translation nobody raised a doubt about (where every new translation starts).
+ * needs-review: someone should look: a reviewer's remark, a carried translation, an uncertain particle fix, or sent back by hand.
+ * declined: the model would not translate it (declinedReason says why).
+ */
+export type TranslationStatus = 'untranslated' | 'translated' | 'needs-review' | 'approved' | 'error' | 'declined';
 export interface ReviewNote { problem: string; suggestion: string; model: string }
 /** One row of translations.json, keyed by TextUnit.id. */
 export interface TranslationEntry {
@@ -61,6 +65,7 @@ export interface TranslationEntry {
   external?: true;           // came in from an outside translator's package
   previous?: { source: string; target: string | null; version: string };   // a changed sentence's source and translation in an older version
   carried?: true;            // the older translation was filled in (only punctuation or the speaker changed); waits for a look
+  flagged?: true;            // put in 'needs-review' on purpose; tells it apart from the old default status of every translation
 }
 
 /** A problem the format check found in a translation. Errors keep it out of the build; warnings do not. */

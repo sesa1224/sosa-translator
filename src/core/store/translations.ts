@@ -19,6 +19,11 @@ export class TranslationStore {
   static async load(projectDir: string): Promise<TranslationStore> {
     const file = path.join(projectDir, TRANSLATIONS_FILE);
     const table = existsSync(file) ? ((await readJsonFile(file)) as Record<string, TranslationEntry>) : {};
+    // 'needs-review' used to be where every translation started. Entries nobody sent there on purpose
+    // (no remark, not carried, not flagged) are plain translations now.
+    for (const e of Object.values(table)) {
+      if (e && e.status === 'needs-review' && !e.review && !e.carried && !e.flagged) e.status = 'translated';
+    }
     return new TranslationStore(projectDir, table);
   }
 
@@ -28,9 +33,12 @@ export class TranslationStore {
   }
 
   /** A new translation. The older version's sentence (previous) stays as a reference; a carried mark goes. */
-  set(id: string, target: string, status: TranslationStatus = 'needs-review'): void {
+  set(id: string, target: string, status: TranslationStatus = 'translated'): void {
     const previous = this.table[id]?.previous;
-    this.table[id] = { target, status, updatedAt: new Date().toISOString(), ...(previous ? { previous } : {}) };
+    this.table[id] = {
+      target, status, updatedAt: new Date().toISOString(),
+      ...(previous ? { previous } : {}), ...(status === 'needs-review' ? { flagged: true as const } : {}),
+    };
   }
 
   /** Approving a carried translation means someone looked at it: the carried mark goes. */
@@ -38,6 +46,8 @@ export class TranslationStore {
     const e = this.get(id);
     const next: TranslationEntry = { ...e, status, updatedAt: new Date().toISOString() };
     if (status === 'approved') delete next.carried;
+    if (status === 'needs-review') next.flagged = true;
+    else delete next.flagged;
     this.table[id] = next;
   }
 

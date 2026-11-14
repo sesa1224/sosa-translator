@@ -6,6 +6,7 @@ import { keepPieces } from '../decisions/keys.js';
 import { confirmedDecisionFor } from '../decisions/store.js';
 import type { Decisions, KeepRule } from '../decisions/types.js';
 import { termsIn } from '../glossary/match.js';
+import { finalPrompt } from '../glossary/prompts.js';
 import type { Glossary } from '../glossary/types.js';
 import type { ProjectMeta } from '../project/project.js';
 import { composeSpeaker, splitSpeaker } from '../text/speaker.js';
@@ -63,29 +64,6 @@ function keepOf(u: TextUnit, d: Decisions): KeepRule | undefined {
   return dec?.translate ? dec.keep : undefined;
 }
 
-function instructionsText(g: Glossary): string {
-  const rules: string[] = [];
-  if (g.rules.controlCodes) rules.push('- 제어문자(\\C[2], \\N[1], \\V[3], \\{, \\. 같은 것)와 %1 같은 자리표시는 종류와 개수를 원문 그대로 둔다.');
-  if (g.rules.noLeftoverJapanese) rules.push('- 번역문에 일본어 글자(가나, 한자)를 남기지 않는다.');
-  rules.push('- text 안의 줄바꿈은 번역에서도 줄바꿈으로 둔다.');
-  if (g.rules.sameLineCount) rules.push('- 줄 수를 원문과 똑같이 맞춘다.');
-  if (g.rules.maxLines !== null) rules.push(`- 대사(kind 가 dialogue)는 ${g.rules.maxLines}줄을 넘기지 않는다.`);
-  if (g.rules.maxLineWidthChars !== null) rules.push(`- 한 줄은 한글 ${g.rules.maxLineWidthChars}자를 넘기지 않는다(영문, 숫자, 공백은 0.5자).`);
-  rules.push('- keep 이 있는 항목은 keep 의 글들을 한 글자도 바꾸지 않고 같은 순서로 남긴다. text 전체를 돌려주되 그 사이의 글자만 번역한다.');
-  rules.push('- 용어(terms)의 source 가 원문에 있으면 target 으로 옮긴다. 인물(characters)의 대사는 speech 의 말투를 따른다.');
-  return [
-    '<번역 지침>',
-    g.styleGuide.trim(),
-    '</번역 지침>',
-    '',
-    '형식 규칙:',
-    ...rules,
-    '',
-    '돌려줄 형식: items 의 항목마다 { "id": 그 항목의 id, "target": text 의 번역 } 을 담은 JSON 배열. 화자 이름(speaker)은 번역하지 않고 text 만 옮긴다.',
-    'before/after 는 앞뒤 대사로 참고만 한다.',
-  ].join('\n');
-}
-
 /** Builds the exchange package for the given unit ids (in units order). */
 export function buildPackage(o: {
   meta: ProjectMeta; units: TextUnit[]; entryOf: (id: string) => TranslationEntry; glossary: Glossary; decisions: Decisions; ids: string[];
@@ -133,7 +111,7 @@ export function buildPackage(o: {
     project: o.meta.name,
     sourceLang: o.meta.sourceLang,
     targetLang: o.meta.targetLang,
-    instructions: instructionsText(g),
+    instructions: finalPrompt('export', g),
     terms: g.terms.filter((t) => found.has(t.id)).map((t) => ({ source: t.source, target: t.target })),
     characters: g.characters.filter((c) => speakers.has(c.source) || all.includes(c.source)).map((c) => {
       const out: ExchangePackage['characters'][number] = { name: c.source, target: c.target, speech: c.speech };

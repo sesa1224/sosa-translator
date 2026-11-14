@@ -62,7 +62,7 @@ test('만들고, 고치면 변경 알림에 바뀐 행만 온다', async () => {
   await invoke('project:create', game, '약초원'); const snap = await invoke('project:snapshot');
   expect(snap.rows.length).toBeGreaterThan(5); id = snap.rows.find((r: Row) => r.source === '月光草').id;
   await invoke('unit:setTranslation', id, '월광초');
-  expect(sent('project:changed').at(-1)).toMatchObject({ origin: 'user', rows: [{ id, target: '월광초' }], stats: { needsReview: 1 } });
+  expect(sent('project:changed').at(-1)).toMatchObject({ origin: 'user', rows: [{ id, target: '월광초' }], stats: { translated: 1, needsReview: 0 } });
 });
 test('붙은 항목이 채팅 글 앞에 들어간다', async () => {
   await invoke('chat:send', '이 줄 좀 더 밝게', [], id);

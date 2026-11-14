@@ -44,7 +44,7 @@ test('가져오기 → 손으로 번역 → 채팅 → 빌드', async () => {
   const w = await app.firstWindow();
   await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('약초원'); await w.getByRole('button', { name: '만들기' }).click();
   await w.getByText('月光草', { exact: true }).click(); await w.getByLabel('번역').fill('월광초'); await w.getByLabel('번역').press('Control+Enter');
-  await expect(w.getByRole('row', { name: /月光草.*월광초.*검토 필요/ })).toBeVisible();
+  await expect(w.getByRole('row', { name: /月光草.*월광초.*번역 완료/ })).toBeVisible();
   await w.getByRole('tab', { name: '채팅' }).click(); await w.getByLabel('메시지').fill('안녕'); await w.getByLabel('메시지').press('Enter');
   await expect(w.getByText('받음: 안녕')).toBeVisible();
   await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다 · 파일 3개/)).toBeVisible();

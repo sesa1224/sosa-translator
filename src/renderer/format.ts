@@ -14,6 +14,7 @@ export function clock(d: Date): string {
 
 export const STATUS_LABEL = {
   untranslated: '미번역',
+  translated: '번역 완료',
   'needs-review': '검토 필요',
   approved: '승인됨',
   error: '오류',

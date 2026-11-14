@@ -103,7 +103,7 @@ test.skipIf(!process.env.MVMZ_REAL_CLI)('실제 CLI 로 초안 → 확정 → �
   if (process.env.MVMZ_REAL_FLOW_OUT) await writeFile(process.env.MVMZ_REAL_FLOW_OUT, JSON.stringify(report, null, 2), 'utf8');
 
   expect(tj.progress.state).toBe('done');
-  for (const e of afterTranslate) expect(['needs-review', 'declined', 'error'], e.source).toContain(e.status);
+  for (const e of afterTranslate) expect(['translated', 'declined', 'error'], e.source).toContain(e.status);
   for (const u of targets) {
     const t = afterTranslate.find((x) => x.source === u.source)!.target;
     if (t === null) continue;

@@ -8,7 +8,7 @@ export function TopBar() {
   if (!snapshot) return null;
   const { stats, meta } = snapshot;
   const done = stats.total - stats.untranslated;
-  const good = stats.needsReview + stats.approved;
+  const good = (stats.translated ?? 0) + stats.needsReview + stats.approved;
   const p = pct(done, stats.total);
   return (
     <header className="topbar">

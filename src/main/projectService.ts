@@ -27,8 +27,9 @@ import type { PathSeg } from '../core/types.js';
 import { readJsonFile } from '../core/util/json.js';
 import { loadGlossary, saveGlossary, termId } from '../core/glossary/store.js';
 import { termsIn } from '../core/glossary/match.js';
+import { promptText, withPromptText } from '../core/glossary/prompts.js';
 import { planRename } from '../core/glossary/rename.js';
-import type { CharacterCard, Glossary, ProjectRules, Term } from '../core/glossary/types.js';
+import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term } from '../core/glossary/types.js';
 import type { PxCheck } from '../core/check/format.js';
 import { groupDecisions } from '../core/decisions/keys.js';
 import { mergeSuggestions } from '../core/decisions/auto.js';
@@ -245,7 +246,7 @@ export class ProjectService extends EventEmitter {
       for (const t of todo) {
         const unit = this.byId.get(t.id);
         if (!unit) continue;
-        const status: TranslationStatus = this.check(unit, t.target).some((i) => i.severity === 'error') ? 'error' : 'needs-review';
+        const status: TranslationStatus = this.check(unit, t.target).some((i) => i.severity === 'error') ? 'error' : 'translated';
         this.remember(t.id, 'external');
         this.store.restore(t.id, { target: t.target, status, updatedAt: new Date().toISOString(), external: true });
         ids.push(t.id);
@@ -378,7 +379,7 @@ export class ProjectService extends EventEmitter {
         const unit = this.require(p.id);
         const before = this.store.get(p.id);
         const hasError = this.check(unit, p.newTarget).some((i) => i.severity === 'error');
-        const status: TranslationStatus = hasError ? 'error' : !p.certain ? 'needs-review' : before.status === 'error' ? 'needs-review' : before.status;
+        const status: TranslationStatus = hasError ? 'error' : !p.certain ? 'needs-review' : before.status === 'error' ? 'translated' : before.status;
         this.remember(p.id, 'user');
         this.store.set(p.id, p.newTarget, status);
         changed.push(p.id);
@@ -394,6 +395,16 @@ export class ProjectService extends EventEmitter {
 
   setStyleGuide(text: string): Promise<void> {
     return this.setGlossary({ ...this.gloss, styleGuide: text });
+  }
+
+  /** The whole instruction text of a kind, exactly as it is sent. */
+  promptText(kind: PromptKind): string {
+    return promptText(kind, this.gloss);
+  }
+
+  /** Saves an edited instruction text (the part between the guide tags is the shared style guide); null = back to the default. */
+  setPromptText(kind: PromptKind, text: string | null): Promise<void> {
+    return this.setGlossary(withPromptText(this.gloss, kind, text));
   }
 
   setRules(rules: Partial<ProjectRules>): Promise<void> {
@@ -442,7 +453,7 @@ export class ProjectService extends EventEmitter {
       const e = this.store.get(id);
       if (!e.review) throw new Error('검수 의견이 없습니다');
       const issues = this.check(unit, e.review.suggestion);
-      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'needs-review';
+      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'translated';
       this.remember(id, 'review');
       const now = new Date().toISOString();
       this.store.restore(id, { target: e.review.suggestion, status, updatedAt: now, reviewedAt: now });
@@ -450,15 +461,16 @@ export class ProjectService extends EventEmitter {
     });
   }
 
-  /** Removes the reviewer's remark and keeps the translation. */
+  /** Removes the reviewer's remark and keeps the translation: it has been looked at, so it is a plain translation again. */
   rejectReview(id: string): Promise<void> {
     return this.mutate('user', () => {
       this.require(id);
       const e = this.store.get(id);
       if (!e.review) return { ids: [], result: undefined };
       this.remember(id, 'user');
-      const { review: _dropped, ...rest } = e;
-      this.store.restore(id, rest);
+      const { review: _dropped, flagged: _looked, ...rest } = e;
+      // A carried translation still waits for its own look.
+      this.store.restore(id, rest.status === 'needs-review' && !rest.carried ? { ...rest, status: 'translated' } : rest);
       return { ids: [id], result: undefined };
     });
   }
@@ -493,7 +505,7 @@ export class ProjectService extends EventEmitter {
     return this.mutate(origin, () => {
       const unit = this.require(id);
       const issues = this.check(unit, target);
-      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'needs-review';
+      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'translated';
       this.remember(id, origin);
       this.store.set(id, target, status);
       return { ids: [id], result: issues };

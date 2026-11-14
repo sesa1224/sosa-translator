@@ -1,11 +1,14 @@
 import { termsIn } from '../../core/glossary/match.js';
-import type { Glossary, ProjectRules, Term } from '../../core/glossary/types.js';
+import { finalPrompt } from '../../core/glossary/prompts.js';
+import type { Glossary, Term } from '../../core/glossary/types.js';
 import { splitSpeaker } from '../../core/text/speaker.js';
 import type { TextUnit, TranslationEntry, TranslationStatus, UnitKind } from '../../core/types.js';
 import { scopeLabel } from '../../shared/rows.js';
 import { keepPieces } from '../../core/decisions/keys.js';
 import { confirmedDecisionFor, isTranslatable } from '../../core/decisions/store.js';
 import type { Decisions } from '../../core/decisions/types.js';
+
+export { formatRulesText } from '../../core/glossary/prompts.js';
 
 /** One unit as sent to the model. text is the body with the speaker line taken off. */
 export interface BatchItem {
@@ -144,18 +147,6 @@ export function fixLiteralBreaks(t: string, source: string): string {
   return t.replace(lone, '\n');
 }
 
-/** The format rules written out for the model. */
-export function formatRulesText(rules: ProjectRules): string[] {
-  const out: string[] = [];
-  if (rules.controlCodes) out.push('- 제어문자(\\C[2], \\N[1], \\V[3], \\{, \\. 같은 것)와 %1 같은 자리표시는 종류와 개수를 원문 그대로 둔다. 색 코드는 원문에서 감싸던 말과 같은 말을 감싸게 한다.');
-  if (rules.noLeftoverJapanese) out.push('- 번역문에 일본어 글자(가나, 한자)를 남기지 않는다.');
-  out.push('- text 안의 줄바꿈은 번역에서도 실제 줄바꿈으로 둔다. 역슬래시와 n 두 글자로 바꿔 쓰지 않는다.');
-  if (rules.sameLineCount) out.push('- 줄 수를 원문과 똑같이 맞춘다.');
-  if (rules.maxLines !== null) out.push(`- 대사(kind 가 dialogue)는 ${rules.maxLines}줄을 넘기지 않는다.`);
-  if (rules.maxLineWidthChars !== null) out.push(`- 한 줄은 한글 ${rules.maxLineWidthChars}자를 넘기지 않는다(영문, 숫자, 공백은 0.5자로 센다). 넘치면 줄을 나눈다.`);
-  return out;
-}
-
 function speakersOf(batch: Batch): Set<string> {
   return new Set(batch.items.map((i) => i.speaker).filter((s): s is string => s !== null));
 }
@@ -167,34 +158,8 @@ function batchTerms(batch: Batch, terms: Term[]): Term[] {
 }
 
 export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system: string; user: string } {
-  const system = [
-    '너는 RPG Maker 게임의 원문을 아래 번역 지침에 따라 번역한다.',
-    '',
-    '<번역 지침>',
-    glossary.styleGuide.trim(),
-    '</번역 지침>',
-    '',
-    '형식 규칙:',
-    ...formatRulesText(glossary.rules),
-    '',
-    '입력(JSON):',
-    '- terms: 이 묶음에 나오는 용어. 원문에 source 가 있으면 반드시 target 으로 옮긴다.',
-    '- characters: 이 묶음에 나오는 인물. name 은 원문 이름, target 은 번역 이름, speech 는 말투다. 그 인물의 대사는 이 말투를 따른다. moanStyle 이 있으면 그 인물의 신음·감탄 소리는 그 결을 따른다.',
-    '- context: 이 묶음 바로 앞의 대사(참고만 하고 번역해서 돌려주지 않는다). target 이 있으면 이미 번역된 것이다.',
-    '- items: 번역할 항목. speaker 는 그 대사를 말하는 인물이다.',
-    '- 항목에 previous 와 problems 가 있으면 직전 번역이 검사에 걸린 것이다. problems 를 고쳐 다시 옮긴다.',
-    '',
-    '출력 규칙:',
-    '- 항목마다 i 와 번역 t 를 돌려준다. 모든 항목을 빠짐없이 돌려준다.',
-    '- 번역할 수 없는 항목은 t 를 null 로 하고 declined 에 이유를 적는다.',
-    '- 용어집에 없는 고유명사를 새로 옮겼으면 그 항목의 newTerms 에 source(원문)와 target(번역)을 적는다.',
-    '- 화자 이름은 번역하지 않는다. text 의 본문만 옮긴다.',
-    '- keep 이 있으면 그 글들은 한 글자도 바꾸지 않고 같은 순서로 남긴다. text 전체를 돌려주되 그 사이의 글자만 번역한다.',
-    // Only batches with a changed sentence get this line, so every other prompt stays exactly as it was.
-    ...(batch.items.some((i) => i.previous) ? [
-      '- previous 가 있으면 원문이 조금 바뀐 문장이다. 바뀐 부분만 반영하고 나머지는 이전 번역의 표현과 말투를 그대로 둔다. (이때 previous 의 source 는 게임 이전 버전의 원문, target 은 그때의 번역이다. problems 와 함께 오는 previous 는 위에 적은 직전 번역이다.)',
-    ] : []),
-  ].join('\n');
+  // Only batches with a changed sentence get the line about it, so every other prompt stays exactly as it was.
+  const system = finalPrompt('translate', glossary, { previous: batch.items.some((i) => i.previous) });
 
   const speakers = speakersOf(batch);
   const user = {

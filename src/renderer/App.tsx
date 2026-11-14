@@ -5,6 +5,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { DecisionView } from './components/DecisionView';
 import { EventView } from './components/EventView';
 import { GlossaryView } from './components/GlossaryView';
+import { GuideView } from './components/GuideView';
 import { ImageView } from './components/ImageView';
 import { ItemPanel } from './components/ItemPanel';
 import { JobBar } from './components/JobBar';
@@ -46,6 +47,7 @@ function RightPanel() {
 const SCREENS: Record<AppState['view'], ComponentType> = {
   text: TextTable,
   glossary: GlossaryView,
+  guide: GuideView,
   settings: SettingsView,
   decisions: DecisionView,
   images: ImageView,

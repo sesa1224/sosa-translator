@@ -23,7 +23,7 @@ const SEARCH_DELAY = 200;
 
 function statusChip(r: Row): { label: string; cls: string } {
   if (r.status === 'untranslated' && r.needsDecision) return { label: '판단 필요', cls: 'st-warn' };
-  const cls = { untranslated: 'st-none', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err', declined: 'st-err' }[r.status];
+  const cls = { untranslated: 'st-none', translated: 'st-done', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err', declined: 'st-err' }[r.status];
   return { label: STATUS_LABEL[r.status], cls };
 }
 
@@ -74,7 +74,8 @@ function FilterBar() {
   if (!snapshot) return null;
   const s = snapshot.stats;
   const chips: [StatusFilter, string, number][] = [
-    ['all', '전체', s.total], ['untranslated', '미번역', s.untranslated], ['needs-review', '검토 필요', s.needsReview],
+    ['all', '전체', s.total], ['untranslated', '미번역', s.untranslated], ['translated', '번역 완료', s.translated ?? 0],
+    ['needs-review', '검토 필요', s.needsReview],
     ['approved', '승인됨', s.approved], ['error', '오류', s.error], ['needs-decision', '판단 필요', s.needsDecision],
   ];
   if (s.declined > 0) chips.push(['declined', '거절됨', s.declined]);

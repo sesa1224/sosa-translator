@@ -49,6 +49,8 @@ const api: Api = {
     confirm: () => call('glossary:confirm'),
     detectSpeakerPattern: () => call('glossary:detectSpeakerPattern'),
     defaultStyleGuide: () => call('glossary:defaultStyleGuide'),
+    promptText: (kind) => call('glossary:promptText', kind),
+    setPromptText: (kind, text) => call('glossary:setPromptText', kind, text),
   },
   job: {
     draft: (mode, choice) => call('job:draft', mode, choice),

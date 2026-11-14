@@ -54,6 +54,8 @@ export interface Stats {
   total: number; untranslated: number; needsReview: number; approved: number; error: number; needsDecision: number; declined: number; provisional: number;
   external: number; undecided: number;
   changed: number; carried: number;
+  /** Rows with a translation nobody raised a doubt about. needsReview counts only the ones waiting for a look. */
+  translated: number;
 }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
@@ -135,7 +137,11 @@ export interface ProjectRules {
   controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
   maxLineWidthChars: number | null; speakerPattern: string | null;
 }
-export interface Glossary { terms: Term[]; characters: CharacterCard[]; styleGuide: string; rules: ProjectRules; confirmedAt: string | null }
+export type PromptKind = 'translate' | 'review' | 'export';
+export interface Glossary {
+  terms: Term[]; characters: CharacterCard[]; styleGuide: string; rules: ProjectRules; confirmedAt: string | null;
+  prompts?: Partial<Record<PromptKind, string>>;
+}
 export interface SpeakerDetection { pattern: string; presetId: string; coverage: number }
 /** Result of choosing a term's candidate: rows rewritten with it, and the uncertain rewrites sent back to needs-review. */
 export interface ChooseResult { changed: string[]; uncertain: string[] }
@@ -270,6 +276,10 @@ export interface InvokeChannels {
   'glossary:confirm': () => void;
   'glossary:detectSpeakerPattern': () => SpeakerDetection | null;
   'glossary:defaultStyleGuide': () => string;
+  /** The whole instruction text of a kind, exactly as it is sent (for the guide screen). */
+  'glossary:promptText': (kind: PromptKind) => string;
+  /** Saves an edited instruction text; null puts the kind back on the default. */
+  'glossary:setPromptText': (kind: PromptKind, text: string | null) => void;
 
   'job:draft': (mode?: DraftMode, choice?: DraftChoice) => void;
   'job:draftPlan': (mode: DraftMode, choice?: DraftChoice) => DraftPlan;
@@ -391,6 +401,7 @@ export interface Api {
     setCharacters: Call<'glossary:setCharacters'>; setStyleGuide: Call<'glossary:setStyleGuide'>;
     setRules: Call<'glossary:setRules'>; confirm: Call<'glossary:confirm'>;
     detectSpeakerPattern: Call<'glossary:detectSpeakerPattern'>; defaultStyleGuide: Call<'glossary:defaultStyleGuide'>;
+    promptText: Call<'glossary:promptText'>; setPromptText: Call<'glossary:setPromptText'>;
   };
   job: {
     draft: Call<'job:draft'>; draftPlan: Call<'job:draftPlan'>; translate: Call<'job:translate'>;

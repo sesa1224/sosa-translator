@@ -54,7 +54,7 @@ test('뼈대가 깨진 답은 한 번 다시 보내고, 또 깨지면 error', as
   expect(svc.entry(id)).toMatchObject({ target: '기록 보기', status: 'error' });
   const ok = new TranslateJob({ svc, call: answer((u) => ({ items: u.items.map((x: any) => ({ i: x.i, t: 'ShowRecord 기록' })) })) as any, claude: { command: 'claude' }, model: 'm', cwd: '.', ids: [id] });
   await ok.start();
-  expect(svc.entry(id)).toMatchObject({ target: 'ShowRecord 기록', status: 'needs-review' });
+  expect(svc.entry(id)).toMatchObject({ target: 'ShowRecord 기록', status: 'translated' });
 });
 
 test('게임 제목: approved 로 쓰이고 빌드에 index.html 이 들어간다', async () => {

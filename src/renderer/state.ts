@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
-  JobProgress, ProjectListItem, ProjectMeta, ProjectRules, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
+  JobProgress, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type {
   BuildRecord, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
@@ -39,7 +39,7 @@ export interface AppState {
   detail: UnitDetail | null;
   query: RowQuery;
   /** The main screen. 'update' is the result of the last game update. */
-  view: 'text' | 'settings' | 'glossary' | 'decisions' | 'images' | 'builds' | 'events' | 'patches' | 'update';
+  view: 'text' | 'settings' | 'glossary' | 'guide' | 'decisions' | 'images' | 'builds' | 'events' | 'patches' | 'update';
   glossary: Glossary | null;
   /** The glossary was edited after it was confirmed (this session). */
   glossaryDirty: boolean;
@@ -313,6 +313,8 @@ const actions = {
   setCharacters: (cards: CharacterCard[]): Promise<void> => need().glossary.setCharacters(cards),
   setStyleGuide: (text: string): Promise<void> => need().glossary.setStyleGuide(text),
   defaultStyleGuide: (): Promise<string> => need().glossary.defaultStyleGuide(),
+  promptText: (kind: PromptKind): Promise<string> => need().glossary.promptText(kind),
+  setPromptText: (kind: PromptKind, text: string | null): Promise<void> => need().glossary.setPromptText(kind, text),
   setRules: (rules: Partial<ProjectRules>): Promise<void> => need().glossary.setRules(rules),
   async confirmGlossary(): Promise<void> {
     await need().glossary.confirm();

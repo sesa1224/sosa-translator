@@ -13,7 +13,7 @@ import { buildTranslatePrompt, fixLiteralBreaks, isTranslateAnswer, planBatches,
 
 export const REFUSED_REASON = '모델이 번역을 거절했습니다';
 export const NO_REASON = '이유 없음';
-const ALL_STATUSES: TranslationStatus[] = ['untranslated', 'needs-review', 'approved', 'error', 'declined'];
+const ALL_STATUSES: TranslationStatus[] = ['untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined'];
 
 export interface JobOptions {
   svc: ProjectService;

@@ -14,4 +14,10 @@ export interface ProjectRules extends FormatRules {
   maxLineWidthChars: number | null;   // width in Korean characters (half-width counts 0.5); for dialogue the pixel check replaces it once a game font is set
   speakerPattern: string | null;      // regex source; the first group is the speaker name
 }
-export interface Glossary { terms: Term[]; characters: CharacterCard[]; styleGuide: string; rules: ProjectRules; confirmedAt: string | null }
+/** Who the instruction text is for: the translate job, the review job, or an exported package. */
+export type PromptKind = 'translate' | 'review' | 'export';
+/** prompts: instruction texts the user edited, as templates (src/core/glossary/prompts.ts); a missing kind uses the default. */
+export interface Glossary {
+  terms: Term[]; characters: CharacterCard[]; styleGuide: string; rules: ProjectRules; confirmedAt: string | null;
+  prompts?: Partial<Record<PromptKind, string>>;
+}

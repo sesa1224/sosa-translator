@@ -27,7 +27,7 @@ const SEARCH_DEFAULT = 20;
 const SEARCH_MAX = 50;
 const CONTEXT_KINDS = new Set(['dialogue', 'scroll']);
 
-const statusFilter = z.enum(['all', 'untranslated', 'needs-review', 'approved', 'error', 'declined', 'needs-decision', 'provisional']);
+const statusFilter = z.enum(['all', 'untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined', 'needs-decision', 'provisional']);
 const termCategory = z.enum(['name', 'place', 'term', 'sfx', 'other']);
 const GLOSSARY_SEARCH_MAX = 30;
 
@@ -58,8 +58,8 @@ export const TOOL_DEFS: ToolDef[] = [
   },
   {
     name: 'set_status',
-    description: '한 항목을 승인하거나 다시 검토 필요로 돌릴 때 쓴다.',
-    inputSchema: z.object({ id: z.string().describe('항목 id'), status: z.enum(['approved', 'needs-review']) }),
+    description: '한 항목을 승인하거나(approved), 사람이 다시 봐야 할 때 검토 필요로 올리거나(needs-review), 번역 완료로 되돌릴 때(translated) 쓴다.',
+    inputSchema: z.object({ id: z.string().describe('항목 id'), status: z.enum(['approved', 'needs-review', 'translated']) }),
   },
   {
     name: 'undo_last',
@@ -143,7 +143,7 @@ const HANDLERS: Record<string, Handler> = {
     const issues = await svc.setTranslation(input.id, input.target, 'chat');
     return { status: svc.entry(input.id).status, issues };
   },
-  async set_status(svc, input: { id: string; status: 'approved' | 'needs-review' }) {
+  async set_status(svc, input: { id: string; status: 'approved' | 'needs-review' | 'translated' }) {
     await svc.setStatus(input.id, input.status, 'chat');
     return { status: svc.entry(input.id).status };
   },

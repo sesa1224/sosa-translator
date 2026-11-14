@@ -1,12 +1,12 @@
-// glossary.json: terms (with candidates while a term is provisional), character cards, the style guide and
-// the project's format rules. A new project starts from docs/default-style-guide.md (defaultGuide.ts).
+// glossary.json: terms (with candidates while a term is provisional), character cards, the style guide,
+// the project's format rules and the instruction texts the user edited (prompts.ts). A new project starts from docs/default-style-guide.md (defaultGuide.ts).
 // match.ts finds terms in text, josa.ts fixes Korean particles after a renamed term, rename.ts plans that rename.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { readJsonFile, writeJsonFile } from '../util/json.js';
 import { DEFAULT_STYLE_GUIDE } from './defaultGuide.js';
-import type { CharacterCard, Glossary, ProjectRules, Term, TermCategory } from './types.js';
+import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term, TermCategory } from './types.js';
 
 export { DEFAULT_STYLE_GUIDE };
 export const GLOSSARY_FILE = 'glossary.json';
@@ -58,6 +58,8 @@ export function normalizeGlossary(raw: unknown): Glossary {
   if (!raw || typeof raw !== 'object') return d;
   const r = raw as any;
   const rr = r.rules && typeof r.rules === 'object' ? r.rules : {};
+  const prompts: Partial<Record<PromptKind, string>> = {};
+  for (const k of ['translate', 'review', 'export'] as const) if (r.prompts && typeof r.prompts === 'object' && str(r.prompts[k]) && r.prompts[k].trim()) prompts[k] = r.prompts[k];
   return {
     terms: Array.isArray(r.terms) ? r.terms.map(readTerm).filter((t: Term | null): t is Term => t !== null) : d.terms,
     characters: Array.isArray(r.characters) ? r.characters.map(readCharacter).filter((c: CharacterCard | null): c is CharacterCard => c !== null) : d.characters,
@@ -71,6 +73,7 @@ export function normalizeGlossary(raw: unknown): Glossary {
       speakerPattern: rr.speakerPattern === null ? null : str(rr.speakerPattern) && rr.speakerPattern ? rr.speakerPattern : d.rules.speakerPattern,
     },
     confirmedAt: str(r.confirmedAt) && r.confirmedAt ? r.confirmedAt : null,
+    ...(Object.keys(prompts).length > 0 ? { prompts } : {}),
   };
 }
 
