@@ -87,6 +87,13 @@ function TermRow({ term }: { term: Term }) {
         onChange={(e) => void useApp.upsertTerm({ ...rest, category: e.target.value as TermCategory })}>
         {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
       </select>
+      {term.category === 'name' ? (
+        <label className="scope-check small" title="켜면 화자 이름 자리(【 】 안, 이름 칸)에만 이 번역을 맞춰요. 대사 안에서 호칭으로 쓰인 것은 인물 카드를 따라요.">
+          <input type="checkbox" aria-label={`${term.source} 화자 이름에만 적용`} checked={term.scope === 'speaker'}
+            onChange={(e) => { const { scope: _scope, ...plain } = rest; void useApp.upsertTerm(e.target.checked ? { ...plain, scope: 'speaker' } : plain); }} />
+          화자만
+        </label>
+      ) : <span />}
       {term.status === 'provisional' ? <span className="chip warn small">추천안</span> : <span />}
       <button type="button" className="btn ghost small-btn" aria-label={`${term.source} 삭제`} onClick={() => void useApp.removeTerm(term.id)}>삭제</button>
     </div>
@@ -138,6 +145,7 @@ function TermList({ terms }: { terms: Term[] }) {
           <select id="g-new-cat" className="input" value={newCat} onChange={(e) => setNewCat(e.target.value as TermCategory)}>
             {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
           </select>
+          <span />
           <span />
           <button type="button" className="btn small-btn" disabled={!src.trim() || !dst.trim()} onClick={() => void add()}>추가</button>
         </div>
@@ -248,7 +256,7 @@ function Rules({ rules }: { rules: ProjectRules }) {
   const [mode, setMode] = useState(presetId);
   useEffect(() => { setMode(presetId); }, [presetId]);
   const detect = async () => setFound(await useApp.detectSpeakerPattern());
-  const toggles: [keyof ProjectRules, string][] = [['controlCodes', '제어 코드 유지'], ['noLeftoverJapanese', '일본어 글자 남기지 않기'], ['sameLineCount', '줄 수를 원문과 같게']];
+  const toggles: [keyof ProjectRules, string][] = [['controlCodes', '제어 코드 유지'], ['noLeftoverJapanese', '일본어 글자 남기지 않기'], ['sameLineCount', '줄 수를 원문과 같게'], ['halfWidth', '문장부호·숫자·영문을 반각으로']];
   return (
     <section className="card" aria-labelledby="g-rules">
       <div className="card-head"><span id="g-rules" className="card-title">형식 규칙 · 프로그램이 검사</span></div>

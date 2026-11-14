@@ -123,3 +123,13 @@ test('초안 대화상자: 표본 방식은 대본 읽기 칸을 숨기고, 같�
   expect(screen.queryByLabelText('대본 읽기')).toBeNull();
   expect(await screen.findByText(/^표본 · 약 48,000자/)).toBeVisible();
 });
+test('이름 용어를 화자 이름에만 적용하게 켜고 끈다', async () => {
+  await openGlossary({ terms: fiveTerms });
+  expect(screen.queryByLabelText('薬草園 화자 이름에만 적용')).toBeNull();
+  await user.click(screen.getByLabelText('リナ 화자 이름에만 적용'));
+  expect(api.calls.at(-1)).toEqual(['glossary.upsertTerm', { source: 'リナ', target: '리나', category: 'name', status: 'confirmed', candidates: [], scope: 'speaker' }]);
+  await openGlossary({ terms: [{ ...fiveTerms[0], scope: 'speaker' }] });
+  expect(screen.getByLabelText('リナ 화자 이름에만 적용')).toBeChecked();
+  await user.click(screen.getByLabelText('リナ 화자 이름에만 적용'));
+  expect(api.calls.at(-1)).toEqual(['glossary.upsertTerm', { source: 'リナ', target: '리나', category: 'name', status: 'confirmed', candidates: [] }]);
+});

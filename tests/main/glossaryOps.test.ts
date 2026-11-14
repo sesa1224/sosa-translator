@@ -144,3 +144,16 @@ test('초안 계획과 단계별 모델: 대본 읽기 칸이 비면 정리 모�
   expect((await invoke('job:draftPlan', 'balanced', { readModel: 'x-read' })).readModel).toBe('x-read');
   expect((await invoke('job:draftPlan', 'balanced')).readModel).toBe('gr');
 });
+test('화자 이름에만 쓰는 용어는 화자 줄의 번역만 따라 바뀐다', async () => {
+  const pattern = '^【(.+?)】$';
+  await svc.setRules({ speakerPattern: pattern });
+  await callTool(svc, 'glossary_set_term', { source: 'リナ', target: '리나', category: 'name', scope: 'speaker' });
+  expect(svc.glossary().terms.find((t) => t.source === 'リナ')!.scope).toBe('speaker');
+  expect(((await callTool(svc, 'glossary_search', { query: 'リナ' })) as any).data.terms[0].scope).toBe('speaker');
+  await svc.setTranslation(profileId, '리나는 약초원의 견습생', 'user');
+  const r: any = await callTool(svc, 'glossary_set_term', { source: 'リナ', target: '린' });
+  expect(r.data.changed).toEqual([]); expect(svc.entry(profileId).target).toBe('리나는 약초원의 견습생');
+  await callTool(svc, 'glossary_set_term', { source: 'リナ', target: '린', scope: 'all' });
+  expect('scope' in svc.glossary().terms.find((t) => t.source === 'リナ')!).toBe(false);
+  await svc.removeTerm(termId('リナ')); await svc.setRules({ speakerPattern: null });
+});

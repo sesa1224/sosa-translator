@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { readJsonFile, writeJsonFile } from '../util/json.js';
 import { DEFAULT_STYLE_GUIDE } from './defaultGuide.js';
+import { upgradeStyleGuide } from './guideUpgrade.js';
 import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term, TermCategory } from './types.js';
 
 export { DEFAULT_STYLE_GUIDE };
@@ -16,7 +17,7 @@ export function termId(source: string): string {
 }
 
 export function defaultRules(): ProjectRules {
-  return { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null };
+  return { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true };
 }
 
 export function defaultGlossary(): Glossary {
@@ -40,6 +41,7 @@ function readTerm(v: any): Term | null {
     candidates,
   };
   if (str(v.note) && v.note) t.note = v.note;
+  if (v.scope === 'speaker') t.scope = 'speaker';
   return t;
 }
 
@@ -63,7 +65,7 @@ export function normalizeGlossary(raw: unknown): Glossary {
   return {
     terms: Array.isArray(r.terms) ? r.terms.map(readTerm).filter((t: Term | null): t is Term => t !== null) : d.terms,
     characters: Array.isArray(r.characters) ? r.characters.map(readCharacter).filter((c: CharacterCard | null): c is CharacterCard => c !== null) : d.characters,
-    styleGuide: str(r.styleGuide) ? r.styleGuide : d.styleGuide,
+    styleGuide: str(r.styleGuide) ? upgradeStyleGuide(r.styleGuide) : d.styleGuide,
     rules: {
       controlCodes: bool(rr.controlCodes, d.rules.controlCodes),
       noLeftoverJapanese: bool(rr.noLeftoverJapanese, d.rules.noLeftoverJapanese),
@@ -71,6 +73,7 @@ export function normalizeGlossary(raw: unknown): Glossary {
       maxLines: numOrNull(rr.maxLines, d.rules.maxLines),
       maxLineWidthChars: numOrNull(rr.maxLineWidthChars, d.rules.maxLineWidthChars),
       speakerPattern: rr.speakerPattern === null ? null : str(rr.speakerPattern) && rr.speakerPattern ? rr.speakerPattern : d.rules.speakerPattern,
+      halfWidth: bool(rr.halfWidth, d.rules.halfWidth),
     },
     confirmedAt: str(r.confirmedAt) && r.confirmedAt ? r.confirmedAt : null,
     ...(Object.keys(prompts).length > 0 ? { prompts } : {}),

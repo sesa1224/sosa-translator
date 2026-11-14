@@ -111,3 +111,12 @@ test('글자 \\n 으로 온 줄바꿈은 실제 줄바꿈으로 고친다', asyn
   expect(fixLiteralBreaks('가\\n나 \\n[1] \\n<x>', 'あ')).toBe('가\n나 \\n[1] \\n<x>');
   expect(fixLiteralBreaks('a\\nb', 'あ\\nい')).toBe('a\\nb');
 });
+test('전각 문장부호는 반각으로 적힌다 (규칙을 끄면 그대로)', async () => {
+  await withSpeakerGlossary({ 'アーテル': '아텔' });
+  const call = answer(u => ({ items: u.items.map((x: any) => ({ i: x.i, t: x.speaker ? '「응？」' : '번역！？' + (x.text.match(/\[A-Za-z]+\[\d+\]/g) ?? []).join('') })) }));
+  await mk(call).start();
+  expect(svc.entry(idOf('【アーテル】\n「え？」')).target).toBe('【아텔】\n「응?」');
+  expect(svc.entry(idOf('月光草')).target).toBe('번역!?');
+  await svc.setRules({ halfWidth: false }); await mk(call, { ids: [idOf('月光草')] }).start();
+  expect(svc.entry(idOf('月光草')).target).toBe('번역！？');
+});

@@ -127,15 +127,16 @@ export interface ReviewPlan { items: number; estimatedInputTokens: number; model
 // ---- Glossary (copies of src/core/glossary/types.ts, checked in src/main/ipc.ts) ----
 
 export type TermCategory = 'name' | 'place' | 'term' | 'sfx' | 'other';
+export type TermScope = 'speaker';
 export interface TermCandidate { target: string; reason: string }
 export interface Term {
   id: string; source: string; target: string; category: TermCategory;
-  status: 'confirmed' | 'provisional'; candidates: TermCandidate[]; note?: string;
+  status: 'confirmed' | 'provisional'; candidates: TermCandidate[]; note?: string; scope?: TermScope;
 }
 export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }
 export interface ProjectRules {
   controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
-  maxLineWidthChars: number | null; speakerPattern: string | null;
+  maxLineWidthChars: number | null; speakerPattern: string | null; halfWidth: boolean;
 }
 export type PromptKind = 'translate' | 'review' | 'export';
 export interface Glossary {

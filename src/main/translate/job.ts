@@ -4,6 +4,7 @@
 import { EventEmitter } from 'node:events';
 import type { Glossary } from '../../core/glossary/types.js';
 import { composeSpeaker } from '../../core/text/speaker.js';
+import { toHalfWidth } from '../../core/text/width.js';
 import type { TranslationStatus } from '../../core/types.js';
 import type { ChatUsage, JobKind, JobProgress } from '../../shared/api.js';
 import { NEED_LOGIN } from '../claude/chat.js';
@@ -249,7 +250,9 @@ export class TranslateJob extends BatchJob<Batch> {
         this.p.declined++;
         continue;
       }
-      const body = fixLiteralBreaks(a.t, item.text);
+      const broken = fixLiteralBreaks(a.t, item.text);
+      // The model mixes ？ and ? within one game; a value with kept pieces is left as it came.
+      const body = g.rules.halfWidth && !item.keep ? toHalfWidth(broken) : broken;
       const full = item.speakerLine !== null && item.speaker !== null
         ? composeSpeaker(item.speakerLine, item.speaker, this.speakerTarget(item.speaker, g), body)
         : body;

@@ -1,7 +1,7 @@
 // The format check run on every translation: control codes, leftover Japanese, line count and width, glossary
 // terms, and for needs-decision values the skeleton check. ProjectService runs it on every write and marks
 // a translation with an error as 'error' (left out of builds); the CLI's check command runs checkAll.
-import { checkGlossary, lineWidthChars } from '../glossary/match.js';
+import { bodyTerms, checkGlossary, checkSpeakerTerms, lineWidthChars } from '../glossary/match.js';
 import { splitSpeaker } from '../text/speaker.js';
 import type { Term } from '../glossary/types.js';
 import type { TranslationStore } from '../store/translations.js';
@@ -91,8 +91,16 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
   }
   if (glossary) {
     // Moans in a character's line follow that character's style, so sound-effect terms are not enforced there.
-    const spoken = unit.kind === 'dialogue' && (!!unit.speaker || splitSpeaker(unit.source, glossary.speakerPattern ?? null).speaker !== null);
-    issues.push(...checkGlossary(unit.source, target, spoken ? glossary.terms.filter((t) => t.category !== 'sfx') : glossary.terms));
+    const said = splitSpeaker(unit.source, unit.kind === 'dialogue' ? glossary.speakerPattern ?? null : null);
+    const spoken = unit.kind === 'dialogue' && (!!unit.speaker || said.speaker !== null);
+    const everywhere = bodyTerms(glossary.terms);
+    issues.push(...checkGlossary(unit.source, target, spoken ? everywhere.filter((t) => t.category !== 'sfx') : everywhere));
+    // A speaker-only term is held to the places where it is the speaker's name; as a form of address in the text the character card decides.
+    if (said.speaker !== null) {
+      const name = splitSpeaker(target, glossary.speakerPattern ?? null).speaker;
+      // A first line the pattern no longer reads is a different problem; the name check needs the name.
+      if (name !== null) issues.push(...checkSpeakerTerms(said.speaker, name, glossary.terms));
+    } else if (unit.kind !== 'dialogue') issues.push(...checkSpeakerTerms(unit.source.trim(), target.trim(), glossary.terms));
     const max = glossary.maxLineWidthChars;
     if (max !== null) {
       const srcLines = unit.source.split('\n');

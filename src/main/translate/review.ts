@@ -1,4 +1,5 @@
-import { termsIn } from '../../core/glossary/match.js';
+import { bodyTerms, termsIn } from '../../core/glossary/match.js';
+import { toHalfWidth } from '../../core/text/width.js';
 import type { Glossary, Term } from '../../core/glossary/types.js';
 import type { TextUnit, TranslationEntry, UnitKind } from '../../core/types.js';
 import { scopeLabel } from '../../shared/rows.js';
@@ -93,8 +94,11 @@ export function buildReviewPrompt(batch: ReviewBatch, glossary: Glossary): { sys
   const system = finalPrompt('review', glossary);
   const speakers = new Set(batch.items.map((i) => i.speaker).filter((s): s is string => s !== null));
   const user = {
-    terms: batchTerms(batch, glossary.terms).map((t) => ({ source: t.source, target: t.target })),
-    characters: glossary.characters.filter((c) => speakers.has(c.source)).map((c) => ({ name: c.source, target: c.target, speech: c.speech, ...(c.moanStyle ? { moanStyle: c.moanStyle } : {}) })),
+    terms: batchTerms(batch, bodyTerms(glossary.terms)).map((t) => ({ source: t.source, target: t.target })),
+    characters: glossary.characters.filter((c) => speakers.has(c.source)).map((c) => ({
+      name: c.source, target: c.target, speech: c.speech,
+      ...(c.firstPerson ? { firstPerson: c.firstPerson } : {}), ...(c.addressing ? { addressing: c.addressing } : {}), ...(c.moanStyle ? { moanStyle: c.moanStyle } : {}),
+    })),
     items: batch.items.map((i) => ({ i: i.i, kind: i.kind, speaker: i.speaker, source: i.source, target: i.target })),
   };
   return { system, user: JSON.stringify(user) };
@@ -150,7 +154,9 @@ export class ReviewJob extends BatchJob<ReviewBatch> {
       if (current === null) continue;
       flagged.add(item.id);
       // Only the body was reviewed: the translated speaker line is put back in front.
-      const suggestion = item.speakerLine !== null && current.includes('\n') ? current.slice(0, current.indexOf('\n') + 1) + p.suggestion : p.suggestion;
+      // A value with pieces that must stay as they are (needs-decision) is not touched.
+      const body = svc.glossary().rules.halfWidth && !svc.unit(item.id)?.needsDecision ? toHalfWidth(p.suggestion) : p.suggestion;
+      const suggestion = item.speakerLine !== null && current.includes('\n') ? current.slice(0, current.indexOf('\n') + 1) + body : body;
       await svc.setReview(item.id, { problem: p.problem, suggestion, model: this.o.model }, 'review');
     }
     const rest = batch.items.map((i) => i.id).filter((id) => !flagged.has(id));

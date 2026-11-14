@@ -369,7 +369,7 @@ export class ProjectService extends EventEmitter {
     if (!term) throw new Error(`없는 용어입니다: ${id}`);
     const next = target.trim();
     if (!next) throw new Error('번역을 입력하세요');
-    const plan = planRename(term, next, this.unitList, (uid) => this.store.get(uid));
+    const plan = planRename(term, next, this.unitList, (uid) => this.store.get(uid), this.gloss.rules.speakerPattern);
     await this.setGlossary({ ...this.gloss, terms: this.gloss.terms.map((t) => (t.id === id ? { ...t, target: next, status: 'confirmed' } : t)) });
     if (plan.length === 0) return { changed: [], uncertain: [] };
     return this.mutate('user', () => {

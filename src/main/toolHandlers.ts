@@ -73,11 +73,12 @@ export const TOOL_DEFS: ToolDef[] = [
   },
   {
     name: 'glossary_set_term',
-    description: '용어의 번역을 정하거나 바꿀 때 쓴다. 확정 상태로 저장되고, 번역이 바뀌면 그 용어가 들어간 번역문도 조사까지 맞춰 바뀐다.',
+    description: '용어의 번역을 정하거나 바꿀 때 쓴다. 확정 상태로 저장되고, 번역이 바뀌면 그 용어가 들어간 번역문도 조사까지 맞춰 바뀐다. scope 가 speaker 인 용어는 화자 이름 자리의 번역문만 바뀐다.',
     inputSchema: z.object({
       source: z.string().describe('원문 용어'),
       target: z.string().describe('번역'),
       category: termCategory.optional().describe('name 이름, place 지명, term 용어, sfx 효과음, other 기타 (새 용어의 기본값 term)'),
+      scope: z.enum(['all', 'speaker']).optional().describe('speaker: 화자 이름 자리(화자 줄, 이름 칸)에만 맞춘다. 先生 처럼 남들이 호칭으로도 쓰는 화자 이름에 쓴다. all: 어디서나(기본)'),
     }),
   },
   {
@@ -155,19 +156,25 @@ const HANDLERS: Record<string, Handler> = {
     const g = svc.glossary();
     const has = (...s: (string | undefined)[]) => q === '' || s.some((x) => x !== undefined && x.toLowerCase().includes(q));
     const terms = g.terms.filter((t) => has(t.source, t.target)).slice(0, GLOSSARY_SEARCH_MAX)
-      .map((t) => ({ source: t.source, target: t.target, category: t.category, status: t.status, candidates: t.candidates }));
+      .map((t) => ({ source: t.source, target: t.target, category: t.category, status: t.status, candidates: t.candidates, ...(t.scope ? { scope: t.scope } : {}) }));
     const characters = g.characters.filter((c) => has(c.source, c.target)).slice(0, GLOSSARY_SEARCH_MAX)
       .map(({ id: _id, ...c }) => c);
     return { terms, characters };
   },
-  async glossary_set_term(svc, input: { source: string; target: string; category?: z.infer<typeof termCategory> }) {
+  async glossary_set_term(svc, input: { source: string; target: string; category?: z.infer<typeof termCategory>; scope?: 'all' | 'speaker' }) {
     const source = input.source.trim();
     const existing = svc.glossary().terms.find((t) => t.source === source);
+    const scope = input.scope === 'speaker' ? { scope: 'speaker' as const } : {};
     if (!existing) {
-      const t = await svc.upsertTerm({ source, target: input.target, category: input.category ?? 'term', status: 'confirmed', candidates: [] });
+      const t = await svc.upsertTerm({ source, target: input.target, category: input.category ?? 'term', status: 'confirmed', candidates: [], ...scope });
       return { term: t, changed: [], uncertain: [] };
     }
-    if (input.category && input.category !== existing.category) await svc.upsertTerm({ ...existing, category: input.category });
+    const wanted = input.scope === undefined ? existing.scope : input.scope === 'speaker' ? 'speaker' : undefined;
+    if ((input.category && input.category !== existing.category) || wanted !== existing.scope) {
+      const { scope: _old, ...plain } = existing;
+      // The scope is set before the rename, so the rename already follows it.
+      await svc.upsertTerm({ ...plain, category: input.category ?? existing.category, ...(wanted ? { scope: wanted } : {}) });
+    }
     const r = await svc.chooseCandidate(existing.id, input.target);
     return { term: svc.glossary().terms.find((t) => t.id === existing.id), ...r };
   },

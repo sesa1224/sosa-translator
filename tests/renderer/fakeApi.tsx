@@ -47,7 +47,7 @@ export function manyRows(n: number): Row[] {
 
 export const defaultFakeGlossary = (): Glossary => ({
   terms: [], characters: [], styleGuide: '## 기본 태도\n- 자연스럽게', confirmedAt: null,
-  rules: { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null },
+  rules: { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true },
 });
 
 export type FakeApi = Api & {

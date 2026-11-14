@@ -5,7 +5,7 @@ import { checkTranslation } from '../check/format.js';
 import { keepPieces } from '../decisions/keys.js';
 import { confirmedDecisionFor } from '../decisions/store.js';
 import type { Decisions, KeepRule } from '../decisions/types.js';
-import { termsIn } from '../glossary/match.js';
+import { bodyTerms, termsIn } from '../glossary/match.js';
 import { finalPrompt } from '../glossary/prompts.js';
 import type { Glossary } from '../glossary/types.js';
 import type { ProjectMeta } from '../project/project.js';
@@ -22,7 +22,7 @@ export interface ExchangePackage {
   format: 'mvmz-exchange-1'; project: string; sourceLang: string; targetLang: string;
   instructions: string;
   terms: { source: string; target: string }[];
-  characters: { name: string; target: string; speech: string; moanStyle?: string }[];
+  characters: { name: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }[];
   items: ExchangeItem[];
   replyFormat: '[{ "id": "...", "target": "..." }]';
 }
@@ -104,7 +104,7 @@ export function buildPackage(o: {
   }
 
   const found = new Set<string>();
-  for (const s of texts) for (const t of termsIn(s, g.terms)) found.add(t.id);
+  for (const s of texts) for (const t of termsIn(s, bodyTerms(g.terms))) found.add(t.id);
   const all = texts.join('\n');
   return {
     format: 'mvmz-exchange-1',
@@ -115,6 +115,8 @@ export function buildPackage(o: {
     terms: g.terms.filter((t) => found.has(t.id)).map((t) => ({ source: t.source, target: t.target })),
     characters: g.characters.filter((c) => speakers.has(c.source) || all.includes(c.source)).map((c) => {
       const out: ExchangePackage['characters'][number] = { name: c.source, target: c.target, speech: c.speech };
+      if (c.firstPerson) out.firstPerson = c.firstPerson;
+      if (c.addressing) out.addressing = c.addressing;
       if (c.moanStyle) out.moanStyle = c.moanStyle;
       return out;
     }),
