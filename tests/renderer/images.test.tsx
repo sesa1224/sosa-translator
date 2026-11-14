@@ -143,6 +143,40 @@ test('글이 영역을 넘치면 알린다', async () => {
   expect(await screen.findByText('영역을 넘쳐요')).toBeVisible();
 });
 
+test('원본 내보내기: 고른 그림 한 장, 또는 보이는 그림 전부', async () => {
+  const user = await openImages();
+  await waitFor(() => expect(cells()).toHaveLength(5));
+  await user.click(screen.getByRole('button', { name: '할 것' }));
+  imagesFake(api).exportFailed = 0;
+  await user.click(screen.getByRole('button', { name: '보이는 원본 1장 내보내기' }));
+  expect(api.calls).toContainEqual(['images.exportOriginals', [MENU]]);
+  expect(await screen.findByText('원본 1장을 내보냈어요: C:\\내보낸 그림')).toBeVisible();
+
+  await user.click(screen.getByRole('button', { name: '전체' }));
+  imagesFake(api).exportFailed = 2;
+  await user.click(screen.getByRole('button', { name: '보이는 원본 5장 내보내기' }));
+  expect(api.calls.at(-1)).toEqual(['images.exportOriginals', cells()]);
+  expect(await screen.findByText('원본 3장을 내보냈어요: C:\\내보낸 그림 · 실패 2장')).toBeVisible();
+
+  imagesFake(api).exportFailed = 0;
+  await pick(user);
+  await user.click(screen.getByRole('button', { name: '원본 내보내기' }));
+  expect(api.calls.at(-1)).toEqual(['images.exportOriginals', [MENU]]);
+  expect(await screen.findByText('원본 1장을 내보냈어요: C:\\내보낸 그림')).toBeVisible();
+});
+
+test('원본 내보내기: 고르지 않으면 아무것도 안 보이고, 보이는 그림이 없으면 막힌다', async () => {
+  imagesFake(api).exportDir = null;
+  const user = await openImages();
+  await waitFor(() => expect(cells()).toHaveLength(5));
+  await user.click(screen.getByRole('button', { name: '보이는 원본 5장 내보내기' }));
+  expect(api.calls).toContainEqual(['images.exportOriginals', cells()]);
+  expect(screen.queryByText(/내보냈어요/)).toBeNull();
+  await user.selectOptions(screen.getByLabelText('폴더'), 'img/system');
+  await user.click(screen.getByRole('button', { name: '할 것' }));
+  expect(screen.getByRole('button', { name: '보이는 원본 0장 내보내기' })).toBeDisabled();
+});
+
 test('채팅으로 말하기는 그림을 붙여 채팅 탭으로 간다', async () => {
   const user = await openImages();
   await pick(user);

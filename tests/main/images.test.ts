@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { unzipSync } from 'fflate';
@@ -185,6 +186,31 @@ test('그림 속 글의 용어 검사가 메모로 남는다', async () => {
   expect(r.note).toContain('메뉴');
   const ok = await images.setRecipe('img/pictures/menu.png', [region({ text: '메뉴', source: 'メニュー' })], 'claude');
   expect(ok.note).toBeUndefined();
+});
+
+test('원본 내보내기: 풀린 PNG 를 폴더 구조 그대로 쓰고, 없는 그림은 실패로 남긴다', async () => {
+  const { images, changed } = await setup();
+  const out = path.join(await makeTempDir(), 'export');
+  const before = changed.length;
+  const r = await images.exportOriginals(['img/pictures/menu.png', 'img/titles1/c.png', 'img/pictures/none.png'], out);
+  expect(r.written).toBe(2);
+  expect(r.failed).toEqual([{ file: 'img/pictures/none.png', reason: expect.any(String) }]);
+  expect(new Uint8Array(await readFile(path.join(out, 'img', 'pictures', 'menu.png')))).toEqual(makePng(40, 20, [255, 0, 0, 255]));
+  const c = new Uint8Array(await readFile(path.join(out, 'img', 'titles1', 'c.png')));
+  expect(c).toEqual(makePng(30, 30, [0, 0, 255, 255]));
+  expect(c).toEqual(await images.original('img/titles1/c.png'));
+  expect(existsSync(path.join(out, 'img', 'pictures', 'none.png'))).toBe(false);
+  expect(changed.length).toBe(before);
+});
+
+test('원본 내보내기: 게임 폴더 안으로는 쓰지 않는다', async () => {
+  const { images, gameDir } = await setup({ www: true });
+  const caseVariants = process.platform === 'win32' ? [gameDir.toUpperCase()] : [];
+  for (const dir of [gameDir, path.join(gameDir, 'www', 'export'), ...caseVariants]) {
+    await expect(images.exportOriginals(['img/pictures/menu.png'], dir)).rejects.toThrow('게임 폴더 안으로는 내보낼 수 없습니다');
+  }
+  expect(existsSync(path.join(gameDir, 'img'))).toBe(false);
+  expect(existsSync(path.join(gameDir, 'www', 'export'))).toBe(false);
 });
 
 test('기여자를 등록한 빌드의 zip 에 그림이 들어 있다', async () => {

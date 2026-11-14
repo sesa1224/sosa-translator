@@ -144,6 +144,7 @@ const api: Api = {
     failure: (file) => call('images:failure', file),
     folders: () => call('images:folders'),
     setFolders: (folders) => call('images:setFolders', folders),
+    exportOriginals: (files) => call('images:exportOriginals', files),
   },
   builds: {
     list: () => call('builds:list'),

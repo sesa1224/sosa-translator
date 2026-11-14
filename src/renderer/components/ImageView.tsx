@@ -346,7 +346,7 @@ function RegionEditor({ region, index, count, overflow, onChange, onRemove, onPi
   );
 }
 
-function ImageEditor({ entry }: { entry: ImageEntry }) {
+function ImageEditor({ entry, onExport }: { entry: ImageEntry; onExport: (files: string[]) => Promise<void> }) {
   const file = entry.file;
   const [regions, setRegions] = useState<Region[]>([]);
   const [selected, setSelected] = useState(0);
@@ -459,6 +459,7 @@ function ImageEditor({ entry }: { entry: ImageEntry }) {
         {manualFile || entry.status === 'manual'
           ? <button type="button" className="btn small-btn" onClick={() => void run(() => useApp.clearManualImage(file))}>직접 고친 그림 빼기</button>
           : <button type="button" className="btn small-btn" onClick={() => void run(() => useApp.pickManualImage(file))}>직접 고친 그림 넣기</button>}
+        <button type="button" className="btn small-btn" onClick={() => void run(() => onExport([file]))}>원본 내보내기</button>
         <button type="button" className="btn ghost small-btn" onClick={() => useApp.talkAboutImage(file)}>채팅으로 말하기</button>
         <div className="grow" />
         <span className="seg" aria-label="확대">
@@ -524,6 +525,15 @@ export function ImageView() {
     if (!current) return setRegionCount(null);
     window.api.images.recipe(current.file).then((r) => setRegionCount(r?.regions.length ?? 0), () => setRegionCount(null));
   }, [current]);
+  const [exported, setExported] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  // Errors are thrown back so the editor can show them next to its own buttons.
+  const exportOriginals = async (files: string[]) => {
+    setExportError(null);
+    setExported(null);
+    const r = await useApp.exportOriginalImages(files);
+    if (r) setExported(`원본 ${num(r.written)}장을 내보냈어요: ${r.dir}${r.failed > 0 ? ` · 실패 ${num(r.failed)}장` : ''}`);
+  };
 
   return (
     <div className="image-view">
@@ -537,6 +547,7 @@ export function ImageView() {
         <button type="button" className="btn small-btn" onClick={() => void useApp.rerenderImages().catch(() => undefined)}>전체 이미지 다시 찍기</button>
       </div>
       <span className="hint">완성된 그림이 아니라 설정을 저장해요. 값을 바꾸면 바로 다시 찍혀요.</span>
+      {exported && <span className="sub small iv-export-status" role="status">{exported}</span>}
       {images === null && <span className="sub small">그림을 찾는 중이에요</span>}
       {images !== null && images.length === 0 && <div className="empty">이 게임에는 글자가 있을 만한 그림 폴더가 없어요</div>}
       {images !== null && images.length > 0 && (
@@ -551,9 +562,14 @@ export function ImageView() {
               <option value="">모든 폴더</option>
               {folders.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
+            <button type="button" className="btn small-btn" disabled={shown.length === 0}
+              onClick={() => void exportOriginals(shown.map((e) => e.file)).catch((e) => setExportError(errorText(e)))}>
+              {`보이는 원본 ${num(shown.length)}장 내보내기`}
+            </button>
+            {exportError && <span className="err-text small" role="alert">{exportError}</span>}
             <ImageGrid entries={shown} current={imageFile} />
           </div>
-          {current ? <ImageEditor key={current.file} entry={current} /> : <div className="empty">왼쪽에서 그림을 고르세요</div>}
+          {current ? <ImageEditor key={current.file} entry={current} onExport={exportOriginals} /> : <div className="empty">왼쪽에서 그림을 고르세요</div>}
         </div>
       )}
     </div>

@@ -144,6 +144,13 @@ app.whenReady().then(async () => {
       const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
       return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
     },
+    pickExportDir: async () => {
+      if (process.env.MVMZ_EXPORT_DIR) return process.env.MVMZ_EXPORT_DIR;
+      const win = BrowserWindow.getFocusedWindow();
+      const opts = { title: '원본 그림을 내보낼 폴더 고르기', properties: ['openDirectory' as const, 'createDirectory' as const] };
+      const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+      return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
+    },
   });
 
   createWindow();

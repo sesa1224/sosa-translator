@@ -17,7 +17,7 @@ afterEach(async () => { for (const d of disposers) await d(); disposers = []; })
 
 const RENDERED = makePng(40, 20, [0, 0, 255, 255]);
 
-async function setup() {
+async function setup(extra: Partial<IpcDeps> = {}) {
   const game = await makeTempDir();
   await makeMiniGame(game);
   await writeFile(path.join(game, 'img', 'pictures', 'menu.png'), makePng(40, 20, [255, 0, 0, 255]));
@@ -38,6 +38,7 @@ async function setup() {
     render: { render: async () => RENDERED, sheet: async () => RENDERED, thumbnail: async (png) => png },
     runJson: answer(() => ({ notes: '약초원 한국어 패치 빌드 1\n- 다듬음' })) as any,
     jsonClaude: () => ({ command: 'claude' }),
+    ...extra,
   };
   const ipc = registerIpc(deps);
   disposers.push(() => ipc.dispose());
@@ -104,6 +105,16 @@ test('전체 다시 찍기는 images 작업으로 진행을 알린다', async ()
   await invoke('images:rerenderAll');
   for (let i = 0; i < 100 && !sent('job:progress').some((p) => p.kind === 'images' && p.state === 'done'); i++) await new Promise((r) => setTimeout(r, 10));
   expect(sent('job:progress').filter((p) => p.kind === 'images').at(-1)).toMatchObject({ state: 'done', done: 1, total: 1 });
+});
+
+test('원본 내보내기는 고른 폴더에 쓰고, 고르지 않으면 null', async () => {
+  const out = await makeTempDir();
+  let picked: string | null = out;
+  const { invoke } = await setup({ pickExportDir: async () => picked });
+  expect(await invoke('images:exportOriginals', ['img/pictures/menu.png'])).toEqual({ dir: out, written: 1, failed: 0 });
+  expect(new Uint8Array(await readFile(path.join(out, 'img', 'pictures', 'menu.png')))).toEqual(makePng(40, 20, [255, 0, 0, 255]));
+  picked = null;
+  expect(await invoke('images:exportOriginals', ['img/pictures/menu.png'])).toBeNull();
 });
 
 test('게임 폴더가 없어지면 그림 목록은 비고, 빌드는 그림 없이 된다', async () => {

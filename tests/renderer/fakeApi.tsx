@@ -223,6 +223,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       failure: rec('images.failure', (file: string) => im.failure[file] ?? null),
       folders: rec('images.folders', () => ({ folders: im.folders, defaults: ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes'] })),
       setFolders: rec('images.setFolders', (f: string[] | null) => { im.folders = f ?? ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes']; }),
+      exportOriginals: rec('images.exportOriginals', (files: string[]) => (im.exportDir === null ? null : { dir: im.exportDir, written: files.length - im.exportFailed, failed: im.exportFailed })),
     },
     builds: {
       list: rec('builds.list', () => im.builds),
@@ -328,12 +329,14 @@ export function eventsFake(api: FakeApi): EventsFake {
 export interface ImagesFake {
   entries: ImageEntry[]; recipes: Record<string, ImageRecipe>; overflow: Record<string, Record<string, RegionOverflow>>;
   defaultFont: string | null; failure: Record<string, string>; builds: BuildRecord[]; folders: string[];
+  /** The folder exportOriginals "picks" (null = cancelled) and how many of the files it reports as failed. */
+  exportDir: string | null; exportFailed: number;
 }
 export function defaultRegion(): Region {
   return { id: 'r0', rect: { x: 0, y: 0, w: 10, h: 10 }, erase: 'sample', text: '', fontPath: null, size: 24, color: '#ffffff', align: 'center', valign: 'middle', lineHeight: 1.25, bold: false, stroke: null, shadow: null };
 }
 function defaultImagesFake(): ImagesFake {
-  return { entries: [], recipes: {}, overflow: {}, defaultFont: null, failure: {}, builds: [], folders: ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes'] };
+  return { entries: [], recipes: {}, overflow: {}, defaultFont: null, failure: {}, builds: [], folders: ['img/pictures', 'img/titles1', 'img/titles2', 'img/system', 'img/parallaxes'], exportDir: 'C:\\내보낸 그림', exportFailed: 0 };
 }
 const imagesFakes = new WeakMap<FakeApi, ImagesFake>();
 /** The images state behind a fake api. */

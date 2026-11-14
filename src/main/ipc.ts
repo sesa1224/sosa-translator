@@ -109,6 +109,8 @@ export interface IpcDeps {
   render?: Pick<RenderService, 'render' | 'sheet' | 'thumbnail'>;
   /** Open dialog for a hand-fixed PNG (null = cancelled). */
   pickPngFile?(): Promise<string | null>;
+  /** Folder dialog for exporting original pictures (null = cancelled; default: pickDirectory). */
+  pickExportDir?(): Promise<string | null>;
   // Game updates and the Claude CLI check
   /** Folder dialog for the game's new version (null = cancelled; default: pickDirectory). */
   pickNewVersionDir?(): Promise<string | null>;
@@ -751,6 +753,14 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('images:failure', (file: string) => needImages().failure(fileArg(file)) ?? null);
   handle('images:folders', () => ({ folders: images ? images.folders() : [...IMAGE_FOLDERS], defaults: [...IMAGE_FOLDERS] }));
   handle('images:setFolders', (folders: string[] | null) => needImages().setFolders(Array.isArray(folders) ? folders.map(String) : null));
+  handle('images:exportOriginals', async (files: unknown) => {
+    const im = needImages();
+    const list = Array.isArray(files) ? files.map(fileArg) : [];
+    const dir = await (deps.pickExportDir ?? deps.pickDirectory)();
+    if (!dir) return null;
+    const r = await im.exportOriginals(list, dir);
+    return { dir, written: r.written, failed: r.failed.length };
+  });
   handle('images:rerenderAll', () => {
     if (busy()) throw new Error(JOB_BUSY);
     void launch(new RerenderJob(needImages()));

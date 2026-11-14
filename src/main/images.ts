@@ -148,6 +148,41 @@ export class ImageService extends EventEmitter {
     return this.catalog.bytes(file);
   }
 
+  /**
+   * Writes the decrypted original PNG of each picture under <outDir>/<entry.file>, so the user can fix one
+   * by hand and put it back with setManual. Only files from the catalog are written (their paths are known
+   * to stay inside outDir); the rest go to failed. Refuses any outDir inside the game folder.
+   */
+  async exportOriginals(files: string[], outDir: string): Promise<{ written: number; failed: { file: string; reason: string }[] }> {
+    if (this.insideGame(outDir)) throw new Error('게임 폴더 안으로는 내보낼 수 없습니다');
+    let written = 0;
+    const failed: { file: string; reason: string }[] = [];
+    for (const file of files) {
+      try {
+        const entry = await this.requireEntry(file);
+        const png = await this.original(entry.file);
+        const dest = path.join(outDir, ...entry.file.split('/'));
+        await mkdir(path.dirname(dest), { recursive: true });
+        await writeFile(dest, png);
+        written++;
+      } catch (e) {
+        failed.push({ file, reason: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { written, failed };
+  }
+
+  /** Whether dir is the game folder or inside it (Windows paths compare without case). */
+  private insideGame(dir: string): boolean {
+    const norm = (p: string) => {
+      const r = path.resolve(p);
+      return process.platform === 'win32' ? r.toLowerCase() : r;
+    };
+    const target = norm(dir);
+    const roots = [this.o.svc.meta.gameDir, this.o.game?.topDir, this.o.game?.contentDir].filter((p): p is string => !!p).map(norm);
+    return roots.some((root) => target === root || target.startsWith(root.endsWith(path.sep) ? root : root + path.sep));
+  }
+
   /** Font files a recipe draws with (only regions with text need one). */
   private fontPaths(recipe: ImageRecipe): string[] {
     const set = new Set<string>();

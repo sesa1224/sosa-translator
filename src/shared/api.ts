@@ -354,6 +354,8 @@ export interface InvokeChannels {
   'images:failure': (file: string) => string | null;
   'images:folders': () => { folders: string[]; defaults: string[] };
   'images:setFolders': (folders: string[] | null) => void;
+  /** Writes the decrypted original PNGs into a folder the user picks; null when cancelled. */
+  'images:exportOriginals': (files: string[]) => { dir: string; written: number; failed: number } | null;
   'builds:list': () => BuildRecord[];
   'builds:setNotes': (number: number, text: string) => void;
   'builds:polishNotes': (number: number) => void;
@@ -448,6 +450,7 @@ export interface Api {
     rerenderAll: Call<'images:rerenderAll'>; defaultFont: Call<'images:defaultFont'>;
     overflow: Call<'images:overflow'>; failure: Call<'images:failure'>;
     folders: Call<'images:folders'>; setFolders: Call<'images:setFolders'>;
+    exportOriginals: Call<'images:exportOriginals'>;
   };
   builds: {
     list: Call<'builds:list'>; setNotes: Call<'builds:setNotes'>;

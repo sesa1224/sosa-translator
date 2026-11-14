@@ -451,6 +451,8 @@ const actions = {
   setImageStatus: (file: string, status: ImageStatus): Promise<void> => need().images.setStatus(file, status),
   pickManualImage: (file: string): Promise<boolean> => need().images.pickManual(file),
   clearManualImage: (file: string): Promise<void> => need().images.clearManual(file),
+  /** Writes the decrypted originals into a folder the user picks; null when cancelled. */
+  exportOriginalImages: (files: string[]): Promise<{ dir: string; written: number; failed: number } | null> => need().images.exportOriginals(files),
   acceptImageBase: (file: string): Promise<void> => need().images.acceptBase(file),
   setImageFont: (path: string | null): Promise<void> => need().images.setDefaultFont(path),
   rerenderImages: (): Promise<void> => need().images.rerenderAll(),
