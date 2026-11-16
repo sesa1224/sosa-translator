@@ -8,6 +8,7 @@ type ScopeKey = ReviewScopeArg['scope'];
 /** Picks the review scope, shows the item count and token estimate, then starts the review. */
 export function ReviewDialog({ onClose }: { onClose: () => void }) {
   const { query, snapshot, settings } = useApp();
+  const skipPassed = settings?.reviewSkipPassed ?? true;
   const [scope, setScope] = useState<ScopeKey>('all');
   const [plan, setPlan] = useState<ReviewPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
     setPlan(null);
     useApp.reviewPlan(arg(scope)).then((p) => { if (live) setPlan(p); }, (e) => { if (live) setError(e instanceof Error ? e.message : String(e)); });
     return () => { live = false; };
-  }, [scope, file]);
+  }, [scope, file, skipPassed]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -56,8 +57,13 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
             </label>
           ))}
         </div>
+        <label className="radio-line">
+          <input type="checkbox" checked={skipPassed}
+            onChange={(e) => { void useApp.updateSettings({ reviewSkipPassed: e.target.checked }).catch((err) => setError(err instanceof Error ? err.message : String(err))); }} />
+          <span>넘긴 의견이 달린 줄은 다시 검수하지 않기</span>
+        </label>
         <span className="mono small" aria-live="polite">
-          {plan ? `항목 ${num(plan.items)}개 · 예상 입력 약 ${num(plan.estimatedInputTokens)} 토큰 · 모델 ${modelLabel}` : '세는 중…'}
+          {plan ? `항목 ${num(plan.items)}개 · 예상 입력 약 ${num(plan.estimatedInputTokens)} 토큰 · 모델 ${modelLabel}${plan.skippedPassed > 0 ? ` · 넘긴 의견 ${num(plan.skippedPassed)}개 제외` : ''}` : '세는 중…'}
         </span>
         {error && <span className="err-text small" role="alert">{error}</span>}
         <div className="row-gap end">

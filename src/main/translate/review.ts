@@ -18,13 +18,17 @@ export function estimateTokens(chars: number): number {
   return Math.ceil(chars * 1.2);
 }
 
-/** Translated units (translated, needs-review or approved) in the scope, grouped per file into batches, with an input-token estimate. */
+/**
+ * Translated units (translated, needs-review or approved) in the scope, grouped per file into batches, with an input-token estimate.
+ * skipPassed leaves out lines whose last remark the user passed over while the translation is still the one kept:
+ * the reviewer would most likely say the same again, and the user already said no.
+ */
 export function planReview(
   units: TextUnit[],
   entryOf: (id: string) => TranslationEntry,
   glossary: Glossary,
-  o: { scope: ReviewScope; file?: string; maxItems?: number; maxChars?: number },
-): { batches: ReviewBatch[]; items: number; estimatedInputTokens: number } {
+  o: { scope: ReviewScope; file?: string; maxItems?: number; maxChars?: number; skipPassed?: boolean },
+): { batches: ReviewBatch[]; items: number; estimatedInputTokens: number; skippedPassed: number } {
   const maxItems = o.maxItems ?? DEFAULT_MAX_ITEMS;
   const maxChars = o.maxChars ?? DEFAULT_MAX_CHARS;
   const pattern = glossary.rules.speakerPattern;
@@ -32,12 +36,17 @@ export function planReview(
   const sizes = new Map<ReviewItem[], number>();
   let items = 0;
   let chars = 0;
+  let skippedPassed = 0;
   for (const u of units) {
     const e = entryOf(u.id);
     if (e.target === null || (e.status !== 'translated' && e.status !== 'needs-review' && e.status !== 'approved')) continue;
     const file = u.refs[0]?.file ?? '';
     if (o.scope === 'file' && file !== o.file) continue;
     if (o.scope === 'unreviewed' && e.reviewedAt && e.reviewedAt >= e.updatedAt) continue;
+    if (o.skipPassed && e.pastReview?.taken === 'before' && e.target === e.pastReview.before) {
+      skippedPassed++;
+      continue;
+    }
     const p = unitParts(u, pattern);
     const target = targetBody(e.target, p.speakerLine);
     const len = p.body.length + target.length;
@@ -59,7 +68,7 @@ export function planReview(
     groups.forEach((g, n) => batches.push({ label: `${scopeLabel(file)} (${n + 1}/${groups.length})`, file, items: g }));
   }
   chars += batches.length * finalPrompt('review', glossary).length;
-  return { batches, items, estimatedInputTokens: items === 0 ? 0 : estimateTokens(chars) };
+  return { batches, items, estimatedInputTokens: items === 0 ? 0 : estimateTokens(chars), skippedPassed };
 }
 
 export const REVIEW_SCHEMA = {
@@ -117,16 +126,18 @@ export function buildReviewPrompt(batch: ReviewBatch, glossary: Glossary): { sys
 
 /** Reviews translated units batch by batch; only units with a problem get a remark. */
 export class ReviewJob extends BatchJob<ReviewBatch> {
-  constructor(o: JobOptions & { scope?: { scope: ReviewScope; file?: string } }) {
+  constructor(o: JobOptions & { scope?: { scope: ReviewScope; file?: string }; skipPassed?: boolean }) {
     super(o, 'review');
     this.scope = o.scope ?? { scope: 'all' };
+    this.skipPassed = o.skipPassed ?? false;
   }
 
   private readonly scope: { scope: ReviewScope; file?: string };
+  private readonly skipPassed: boolean;
 
   protected plan(): { batches: ReviewBatch[]; total: number } {
     const svc = this.o.svc;
-    const r = planReview(svc.units(), (id) => svc.entry(id), svc.glossary(), { ...this.scope, maxItems: this.o.maxItems, maxChars: this.o.maxChars });
+    const r = planReview(svc.units(), (id) => svc.entry(id), svc.glossary(), { ...this.scope, skipPassed: this.skipPassed, maxItems: this.o.maxItems, maxChars: this.o.maxChars });
     return { batches: r.batches, total: r.items };
   }
 

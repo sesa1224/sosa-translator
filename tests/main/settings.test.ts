@@ -25,3 +25,12 @@ test('저장하고 다시 읽기, 빠진 값은 기본값', async () => {
   await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ projectsDir: 'D:/p' }));
   expect(await loadSettings(dir)).toEqual({ ...s, projectsDir: 'D:/p' });
 });
+
+test('넘긴 의견 줄 건너뛰기는 기본으로 켜져 있다', async () => {
+  expect((await loadSettings(dir)).reviewSkipPassed).toBe(true);
+  // An older settings file has no such field.
+  await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ theme: 'light' }));
+  expect((await loadSettings(dir)).reviewSkipPassed).toBe(true);
+  await saveSettings(dir, { ...(await loadSettings(dir)), reviewSkipPassed: false });
+  expect((await loadSettings(dir)).reviewSkipPassed).toBe(false);
+});

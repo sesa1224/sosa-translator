@@ -13,7 +13,7 @@ import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } fro
 import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
 
-export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS } };
+export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS }, reviewSkipPassed: true };
 
 const meta: ProjectMeta = {
   name: '약초원', engine: 'MZ', gameDir: 'C:/game', contentPrefix: '', sourceLang: 'ja', targetLang: 'ko',
@@ -81,7 +81,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     glossaryValue: { ...defaultFakeGlossary(), ...o.glossary },
     chooseResult: { changed: [], uncertain: [] },
     speakerDetection: null,
-    reviewPlanValue: { items: 0, estimatedInputTokens: 0, model: 'claude-fable-5-2' },
+    reviewPlanValue: { items: 0, estimatedInputTokens: 0, model: 'claude-fable-5-2', skippedPassed: 0 },
     groupsValue: [],
     importPlanValue: null,
     exportPath: 'C:/out/약초원.json',

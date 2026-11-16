@@ -110,7 +110,8 @@ export interface ClaudeStatus { found: boolean; path: string | null; loggedIn: b
 export interface ModelOption { id: string; label: string }
 /** Model per job. glossaryRead: model for reading the script in a draft (missing = the glossary model); decide: missing = DEFAULT_DECIDE_MODEL. */
 export interface StageModels { glossary: string; translate: string; review: string; patchNotes: string; glossaryRead?: string; decide?: string }
-export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels }
+/** reviewSkipPassed: a review leaves out lines whose remark the user passed over and that are unchanged since. */
+export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 export const DEFAULT_DECIDE_MODEL = 'claude-fable-5-2';
 export const DEFAULT_MODELS: ModelOption[] = [
@@ -128,7 +129,8 @@ export type DraftMode = 'balanced' | 'full' | 'sample';
 export interface DraftChoice { budgetChars?: number; readModel?: string; mergeModel?: string }
 export interface DraftPlan { chunks: number; chars: number; estimatedInputTokens: number; model: string; readModel: string }
 export interface ReviewScopeArg { scope: 'all' | 'unreviewed' | 'file'; file?: string }
-export interface ReviewPlan { items: number; estimatedInputTokens: number; model: string }
+/** skippedPassed: lines left out because the user passed their remark over (see AppSettings.reviewSkipPassed). */
+export interface ReviewPlan { items: number; estimatedInputTokens: number; model: string; skippedPassed: number }
 
 // ---- Glossary (copies of src/core/glossary/types.ts, checked in src/main/ipc.ts) ----
 

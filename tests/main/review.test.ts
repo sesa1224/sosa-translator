@@ -141,3 +141,22 @@ test('검수 의견에는 종류가 붙고, 모르는 종류는 종류 없이 �
   expect(svc.entry(ids[1]).review).toBeDefined(); expect('kind' in svc.entry(ids[1]).review!).toBe(false);
   await svc.rejectReview(ids[0]); expect(svc.entry(ids[0]).pastReview).toMatchObject({ kind: 'tone', taken: 'before' });
 });
+test('넘긴 의견이 달린 줄은 고르면 다시 보내지 않는다', async () => {
+  const id = idOf('やった！');
+  await svc.setReview(id, { problem: '감탄', suggestion: '해냈어!', model: 'm', kind: 'tone' }, 'review'); await svc.rejectReview(id);
+  const passedNow = units().filter((u) => { const e = svc.entry(u.id); return e.pastReview?.taken === 'before' && e.target === e.pastReview.before; }).length;
+  expect(passedNow).toBeGreaterThan(0);
+  const sent = (r: ReturnType<typeof planReview>) => r.batches.flatMap((bt) => bt.items.map((i) => i.id));
+  const all = planReview(units(), entryOf, g(), { scope: 'all' });
+  expect(sent(all)).toContain(id); expect(all.skippedPassed).toBe(0);
+  const skip = planReview(units(), entryOf, g(), { scope: 'all', skipPassed: true });
+  expect(sent(skip)).not.toContain(id); expect(skip.skippedPassed).toBe(passedNow); expect(skip.items).toBe(all.items - passedNow);
+  // The job plans with the same option: the passed line is not sent at all.
+  const seen: string[] = [];
+  const job = new ReviewJob({ svc, call: answer((u) => { seen.push(...u.items.map((x: any) => x.target)); return { problems: [] }; }) as any, claude: { command: 'claude' }, model: 'review-model', cwd: '.', scope: { scope: 'all' }, skipPassed: true });
+  await job.start(); expect(job.progress.total).toBe(skip.items); expect(seen).not.toContain(svc.entry(id).target);
+  // Edited since: the user's own wording deserves a look again.
+  await svc.setTranslation(id, '해냈다!!', 'user');
+  const after = planReview(units(), entryOf, g(), { scope: 'all', skipPassed: true });
+  expect(sent(after)).toContain(id); expect(after.skippedPassed).toBe(passedNow - 1);
+});

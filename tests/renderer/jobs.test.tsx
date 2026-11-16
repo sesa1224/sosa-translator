@@ -24,7 +24,7 @@ const itemRow = baseRows.find(r => r.id === itemId)!;
 async function openFake(o: { glossary?: Partial<Glossary>; select?: string } = {}) {
   cleanup();
   api = fakeApi({ glossary: o.glossary, rows: [...baseRows, ...extraRows] });
-  api.reviewPlanValue = { items: 120, estimatedInputTokens: 31000, model: 'claude-fable-5-2' };
+  api.reviewPlanValue = { items: 120, estimatedInputTokens: 31000, model: 'claude-fable-5-2', skippedPassed: 0 };
   user = await openFakeWith(api, { select: o.select });
 }
 async function openSettings() {
@@ -149,4 +149,19 @@ test('검수 의견을 종류로 거르고, 종류는 의견 상자에 보인다
   expect(within(screen.getByRole('region', { name: '검수 의견' })).getByText('표기')).toBeVisible();
   await act(async () => { await useApp.selectRow('r-sound'); });
   expect(within(screen.getByRole('region', { name: '지난 검수 의견' })).getByText('의성어·신음')).toBeVisible();
+});
+test('검수에서 넘긴 의견이 달린 줄을 빼는 선택', async () => {
+  await openFake({ glossary: confirmed });
+  api.reviewPlanValue = { items: 115, estimatedInputTokens: 30000, model: 'claude-fable-5-2', skippedPassed: 5 };
+  await user.click(screen.getByRole('button', { name: '번역 전체 검수' }));
+  const box = screen.getByRole('checkbox', { name: '넘긴 의견이 달린 줄은 다시 검수하지 않기' });
+  expect(box).toBeChecked();
+  expect(await screen.findByText('항목 115개 · 예상 입력 약 30,000 토큰 · 모델 Claude Fable 5.2 · 넘긴 의견 5개 제외')).toBeVisible();
+  const plans = () => api.calls.filter((c) => c[0] === 'job.reviewPlan').length;
+  const before = plans();
+  api.reviewPlanValue = { items: 120, estimatedInputTokens: 31000, model: 'claude-fable-5-2', skippedPassed: 0 };
+  await user.click(box);
+  expect(api.calls).toContainEqual(['settings.set', { reviewSkipPassed: false }]);
+  expect(await screen.findByText('항목 120개 · 예상 입력 약 31,000 토큰 · 모델 Claude Fable 5.2')).toBeVisible();
+  expect(plans()).toBeGreaterThan(before); expect(box).not.toBeChecked();
 });

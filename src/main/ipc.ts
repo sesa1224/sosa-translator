@@ -460,13 +460,14 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   });
   handle('job:reviewPlan', async (scope: ReviewScopeArg): Promise<ReviewPlan> => {
     const s = svc();
-    const r = planReview(s.units(), (id) => s.entry(id), s.glossary(), scope ?? { scope: 'all' });
-    return { items: r.items, estimatedInputTokens: r.estimatedInputTokens, model: (await settings()).stageModels.review };
+    const st = await settings();
+    const r = planReview(s.units(), (id) => s.entry(id), s.glossary(), { ...(scope ?? { scope: 'all' }), skipPassed: st.reviewSkipPassed });
+    return { items: r.items, estimatedInputTokens: r.estimatedInputTokens, model: st.stageModels.review, skippedPassed: r.skippedPassed };
   });
   handle('job:review', async (scope: ReviewScopeArg) => {
     if (busy()) throw new Error(JOB_BUSY);
     const o = await jobOptions('review');
-    void launch(new ReviewJob({ ...o, scope: scope ?? { scope: 'all' } }));
+    void launch(new ReviewJob({ ...o, scope: scope ?? { scope: 'all' }, skipPassed: (await settings()).reviewSkipPassed }));
   });
   handle('job:pause', () => { job?.pause(); });
   handle('job:resume', () => { job?.resume(); });

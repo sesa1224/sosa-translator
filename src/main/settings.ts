@@ -15,6 +15,7 @@ export function defaultSettings(documentsDir = path.join(os.homedir(), 'Document
     claudePath: null,
     projectsDir: path.join(documentsDir, PROJECTS_FOLDER_NAME),
     stageModels: { ...DEFAULT_STAGE_MODELS },
+    reviewSkipPassed: true,
   };
 }
 
@@ -50,6 +51,7 @@ export async function loadSettings(dir: string, documentsDir?: string): Promise<
     claudePath: typeof raw.claudePath === 'string' && raw.claudePath ? raw.claudePath : null,
     projectsDir: typeof raw.projectsDir === 'string' && raw.projectsDir ? raw.projectsDir : d.projectsDir,
     stageModels: readStageModels(raw.stageModels, d.stageModels),
+    reviewSkipPassed: typeof raw.reviewSkipPassed === 'boolean' ? raw.reviewSkipPassed : d.reviewSkipPassed,
   };
 }
 
