@@ -99,3 +99,13 @@ test('멈추기와 4장 제한, 실패한 도구 줄', async () => {
 });
 
 function act0(fn: () => void) { act(fn); }
+test('방금 변경 되돌리기: 채팅이 마지막에 쓴 한 줄이라는 것과 무엇을 되돌렸는지 보인다', async () => {
+  const btn = screen.getByRole('button', { name: '방금 변경 되돌리기' });
+  expect(btn).toHaveAttribute('title', expect.stringContaining('마지막에 고친 한 줄'));
+  api.chat.undo = async () => ['r-map-1'];
+  await user.click(btn);
+  expect(await screen.findByText('되돌렸어요 · 맵1 · 이벤트1 · あれ？\\N[1]じゃない！ こんな夜に来…')).toBeVisible();
+  api.chat.undo = async () => [];
+  await user.click(btn);
+  expect(await screen.findByText('되돌릴 채팅 변경이 없어요')).toBeVisible();
+});

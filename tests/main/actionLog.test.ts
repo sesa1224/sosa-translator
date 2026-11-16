@@ -147,3 +147,53 @@ test('용어 바꾸기 기록은 옛 번역과 새 번역을 적는다', async (
   await svc.chooseCandidate(termId('リナ'), '린');
   expect(svc.actions()[0].label).toBe('용어 바꾸기: 리나 → 린 (1곳)');
 });
+
+test('되돌리기는 작업 기록에 행동 하나로 남고, 그 행동을 취소하면 번역이 다시 돌아온다', async () => {
+  const a = idOf('月光草');
+  await svc.setTranslation(a, '월광초', 'chat');
+  expect(await svc.undo('chat')).toEqual([a]);
+  expect(svc.entry(a).target).toBeNull();
+  const [undo] = svc.actions();
+  expect(undo).toMatchObject({ origin: 'chat', label: '되돌리기 1줄', count: 1, preview: { source: '月光草', cleared: true } });
+  expect(await svc.cancelAction(undo.id)).toEqual({ restored: 1, skipped: 0 });
+  expect(svc.entry(a).target).toBe('월광초');
+  // Without an origin (the screen's undo) the action is the user's.
+  await svc.setTranslation(a, '달빛풀', 'user');
+  await svc.undo();
+  expect(svc.actions()[0]).toMatchObject({ origin: 'user', label: '되돌리기 1줄' });
+});
+
+test('열린 행동 안의 되돌리기는 그 행동에 합쳐지고, 같은 턴에 쓰고 되돌리면 아무것도 남지 않는다', async () => {
+  const a = idOf('月光草');
+  const b = idOf('リナ');
+  await svc.beginAction('chat', (n) => `채팅에서 바꿈 ${n}개`);
+  await svc.setTranslation(a, '월광초', 'chat');
+  await svc.setTranslation(b, '리나', 'chat');
+  await svc.undo('chat');
+  await svc.endAction('chat');
+  expect(svc.actions()).toHaveLength(1);
+  expect(svc.actions()[0]).toMatchObject({ label: '채팅에서 바꿈 1개', count: 1 });
+  expect(svc.entry(b).target).toBeNull();
+  await svc.beginAction('chat', (n) => `채팅에서 바꿈 ${n}개`);
+  await svc.setTranslation(b, '린', 'chat');
+  await svc.undo('chat');
+  await svc.endAction('chat');
+  expect(svc.actions()).toHaveLength(1);
+});
+
+test('낡은 되돌리기 기록은 그 뒤에 다른 행동이 바꾼 줄을 덮어쓰지 않고 다음 기록으로 넘어간다', async () => {
+  const a = idOf('月光草');
+  const b = idOf('リナ');
+  await svc.setTranslation(a, '월광초', 'chat');
+  await svc.setTranslation(b, '리나', 'chat');
+  await svc.setTranslation(b, '리나짱', 'user');
+  expect(await svc.undo('chat')).toEqual([a]);
+  expect(svc.entry(b).target).toBe('리나짱');
+  expect(svc.entry(a).target).toBeNull();
+  // A cancelled action makes its lines' records stale too.
+  await svc.setTranslation(a, '달빛풀', 'chat');
+  await svc.cancelAction(svc.actions()[0].id);
+  await svc.setTranslation(a, '하나', 'user');
+  expect(await svc.undo('chat')).toEqual([]);
+  expect(svc.entry(a).target).toBe('하나');
+});

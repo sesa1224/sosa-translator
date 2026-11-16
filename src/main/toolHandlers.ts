@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import type { TextUnit, UnitRef } from '../core/types.js';
 import type { Row } from '../shared/api.js';
-import { computeStats, filterRows, toRow } from '../shared/rows.js';
+import { computeStats, filterRows, locationLabel, toRow } from '../shared/rows.js';
+import { clipLine } from '../core/history/store.js';
+import type { ActionSummary, CancelResult } from '../core/history/types.js';
 import type { ProjectService } from './projectService.js';
 import type { KeepRule } from '../core/decisions/types.js';
 import type { Region } from '../core/images/types.js';
@@ -16,7 +18,7 @@ import { NEED_FONT } from './projectService.js';
 // The chat's tools: their names, Korean descriptions and input schemas (TOOL_DEFS), and what each one does
 // (HANDLERS). The MCP server in src/mcp lists TOOL_DEFS to the Claude CLI and forwards each call here through
 // the local bridge (src/main/bridge.ts). Every write goes through ProjectService; translations are written
-// with origin 'chat' so the chat's undo takes back only the chat's changes. Names and descriptions are what
+// with origin 'chat' so the chat's undo_last takes back only the chat's changes. Names and descriptions are what
 // the model sees, and the system prompt (src/main/claude/prompt.ts) and --allowedTools (args.ts) name tools too.
 
 export interface ToolDef { name: string; description: string; inputSchema: z.ZodObject<any> }
@@ -65,7 +67,7 @@ export const TOOL_DEFS: ToolDef[] = [
   },
   {
     name: 'undo_last',
-    description: '채팅에서 한 가장 최근 변경 하나를 되돌릴 때 쓴다.',
+    description: '채팅이 방금 고친 것을 통째로 되돌린다: 이번 턴의 변경, 없으면 채팅의 직전 행동. 무엇을 몇 줄 되돌렸는지 준다.',
     inputSchema: z.object({}),
   },
   {
@@ -100,7 +102,42 @@ export const TOOL_DEFS: ToolDef[] = [
       reason: z.string().optional().describe('이유'),
     }),
   },
+  {
+    name: 'list_actions',
+    description: '작업 기록의 최근 행동 10개(id, 시각, 출처, 제목, 줄 수, 취소됐는지)를 볼 때 쓴다.',
+    inputSchema: z.object({}),
+  },
+  {
+    name: 'cancel_action',
+    description: '작업 기록의 행동 하나만 취소할 때 쓴다. 그 뒤에 다시 바뀐 줄은 건드리지 않는다.',
+    inputSchema: z.object({ id: z.string().describe('list_actions 의 id') }),
+  },
 ];
+
+const THIS_TURN = '이번 턴에 채팅에서 바꾼 것';
+const ACTIONS_MAX = 10;
+const UNDO_LINES = 5;
+const UNDO_SOURCE_CHARS = 30;
+
+/**
+ * What a take-back did, for the model to tell the user: the action, the counts, and the first few lines. Only ids
+ * once let the chat wipe lines without knowing which.
+ */
+function undoReport(svc: ProjectService, action: { id?: string; label: string; at?: string; origin: string }, r: CancelResult, unitIds: string[]) {
+  const lines = unitIds.slice(0, UNDO_LINES).map((id) => {
+    const u = svc.unit(id);
+    return { location: u ? locationLabel(u) : '', source: u ? clipLine(u.source, UNDO_SOURCE_CHARS) : null };
+  });
+  return { undone: true, action, restored: r.restored, skipped: r.skipped, lines, more: Math.max(0, unitIds.length - lines.length) };
+}
+
+async function cancelReport(svc: ProjectService, a: ActionSummary) {
+  const r = await svc.cancelAction(a.id);
+  const unitIds = svc.actionDetail(a.id, 0, UNDO_LINES).lines.map((l) => l.unitId);
+  // The detail is one page; the count of the whole action comes from the summary.
+  const report = undoReport(svc, { id: a.id, label: a.label, at: a.at, origin: a.origin }, r, unitIds);
+  return { ...report, more: Math.max(0, a.count - report.lines.length) };
+}
 
 function brief(r: Row) {
   return {
@@ -156,7 +193,11 @@ const HANDLERS: Record<string, Handler> = {
     return { status: svc.entry(input.id).status };
   },
   async undo_last(svc) {
-    return { ids: await svc.undo('chat') };
+    const open = await svc.revertOpenAction('chat');
+    if (open) return undoReport(svc, { label: THIS_TURN, origin: 'chat' }, open, open.unitIds);
+    const last = svc.actions().find((a) => a.origin === 'chat' && a.undoneAt === undefined);
+    if (!last) return { undone: false, reason: '되돌릴 채팅 변경이 없습니다' };
+    return cancelReport(svc, last);
   },
   async glossary_search(svc, input: { query: string }) {
     const q = input.query.toLowerCase();
@@ -187,6 +228,19 @@ const HANDLERS: Record<string, Handler> = {
   },
 };
 
+HANDLERS.list_actions = async (svc) => {
+  const all = svc.actions();
+  return {
+    total: all.length,
+    actions: all.slice(0, ACTIONS_MAX).map((a) => ({ id: a.id, at: a.at, origin: a.origin, label: a.label, count: a.count, undone: a.undoneAt !== undefined })),
+  };
+};
+HANDLERS.cancel_action = async (svc, input: { id: string }) => {
+  const a = svc.actions().find((x) => x.id === input.id);
+  if (!a) throw new Error(`없는 행동입니다: ${input.id}`);
+  if (a.undoneAt !== undefined) throw new Error('이미 취소한 행동입니다');
+  return cancelReport(svc, a);
+};
 HANDLERS.list_decisions = async (svc, input: { query?: string }) => {
   const q = (input.query ?? '').toLowerCase();
   const groups = svc.decisionGroups().filter((g) => q === '' || [g.key, g.label, ...g.samples].some((s) => s.toLowerCase().includes(q)));

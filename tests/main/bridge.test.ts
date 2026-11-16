@@ -39,7 +39,7 @@ afterAll(async () => {
 test('토큰이 없으면 401', async () => { expect((await fetch(bridge.url + '/tools')).status).toBe(401); });
 test('MCP 클라이언트로 도구를 부르면 프로젝트가 바뀐다', async () => {
   const client = await connectStdioClient(process.execPath, [builtServerPath], { MVMZ_BRIDGE_URL: bridge.url, MVMZ_BRIDGE_TOKEN: bridge.token });
-  expect((await client.listTools()).tools.map(t => t.name).sort()).toEqual(['add_extract_text', 'event_files', 'event_list', 'event_patch', 'event_read', 'find_game_text', 'get_unit', 'glossary_search', 'glossary_set_term', 'image_list', 'image_set_recipe', 'image_set_status', 'image_sheet', 'image_view', 'list_decisions', 'project_status', 'rewrap_overflow', 'search_units', 'set_decision', 'set_josa_plugin', 'set_status', 'set_text_window', 'set_translation', 'undo_last', 'update_summary', 'usage_search']);
+  expect((await client.listTools()).tools.map(t => t.name).sort()).toEqual(['add_extract_text', 'cancel_action', 'event_files', 'event_list', 'event_patch', 'event_read', 'find_game_text', 'get_unit', 'glossary_search', 'glossary_set_term', 'image_list', 'image_set_recipe', 'image_set_status', 'image_sheet', 'image_view', 'list_actions', 'list_decisions', 'project_status', 'rewrap_overflow', 'search_units', 'set_decision', 'set_josa_plugin', 'set_status', 'set_text_window', 'set_translation', 'undo_last', 'update_summary', 'usage_search']);
   const res = await client.callTool({ name: 'set_translation', arguments: { id: idOf('月光草'), target: '월광초' } });
   expect(res.isError).toBeFalsy(); expect(svc.entry(idOf('月光草')).target).toBe('월광초');
   expect((await client.callTool({ name: 'get_unit', arguments: { id: 'nope' } })).isError).toBe(true);

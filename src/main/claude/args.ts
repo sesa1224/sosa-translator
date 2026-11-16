@@ -7,6 +7,7 @@ export const MCP_SERVER_NAME = 'mvmz';
 /** Tools the chat may call, in the order they are allowed (a test checks the exact argument). */
 export const CHAT_TOOLS = [
   'project_status', 'search_units', 'get_unit', 'set_translation', 'set_status', 'undo_last', 'glossary_search', 'glossary_set_term', 'list_decisions', 'set_decision',
+  'list_actions', 'cancel_action',
   'image_sheet', 'image_view', 'image_set_recipe', 'image_set_status', 'image_list',
   'event_files', 'event_list', 'event_read', 'usage_search', 'event_patch', 'set_josa_plugin',
   'update_summary',

@@ -18,6 +18,15 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+/** Characters of the source the undo note shows. */
+const UNDO_NOTE_CHARS = 20;
+
+/** Source on one line, cut to UNDO_NOTE_CHARS with '…', so the note says which line came back. */
+function clipSource(text: string): string {
+  const chars = [...text.replace(/[ \t]*\r?\n[ \t]*/g, ' ')];
+  return chars.length > UNDO_NOTE_CHARS ? `${chars.slice(0, UNDO_NOTE_CHARS).join('')}…` : chars.join('');
+}
+
 function filesOf(dt: DataTransfer | null): File[] {
   if (!dt) return [];
   const fromFiles = dt.files ? Array.from(dt.files) : [];
@@ -38,6 +47,8 @@ export function toolLabel(name: string, input: unknown, rowsById: Record<string,
     case 'set_translation': return `수정 · ${where()}`;
     case 'set_status': return `상태 변경 · ${where()}`;
     case 'undo_last': return '되돌림';
+    case 'list_actions': return '작업 기록 봄';
+    case 'cancel_action': return '행동 취소';
     case 'project_status': return '상태 확인';
     default: return name;
   }
@@ -157,7 +168,11 @@ export function ChatPanel() {
 
   const undo = async () => {
     const ids = await useApp.undoChat();
-    setUndoNote(ids.length > 0 ? `되돌렸어요 · ${ids.map((id) => rowsById[id]?.location ?? id).join(', ')}` : '되돌릴 채팅 변경이 없어요');
+    const what = (id: string) => {
+      const r = rowsById[id];
+      return r ? `${r.location} · ${clipSource(r.source)}` : id;
+    };
+    setUndoNote(ids.length > 0 ? `되돌렸어요 · ${ids.map(what).join(', ')}` : '되돌릴 채팅 변경이 없어요');
   };
 
   return (
@@ -165,7 +180,8 @@ export function ChatPanel() {
       <ClaudeGuide />
       <div className="chat-tools">
         <button type="button" className="btn ghost small-btn" onClick={() => void useApp.resetChat()}>새 대화</button>
-        <button type="button" className="btn ghost small-btn" disabled={chat.busy} onClick={() => void undo()}>방금 변경 되돌리기</button>
+        <button type="button" className="btn ghost small-btn" disabled={chat.busy} onClick={() => void undo()}
+          title="채팅이 마지막에 고친 한 줄을 되돌립니다. 작업 기록에 남아 다시 취소할 수 있습니다.">방금 변경 되돌리기</button>
       </div>
       <div className="chat-list" ref={listRef} aria-live="polite">
         {chat.messages.length === 0 && <span className="sub small">게임 텍스트에 대해 물어보거나 스크린샷을 붙여 넣어 보세요.</span>}

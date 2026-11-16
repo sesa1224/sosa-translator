@@ -15,7 +15,7 @@ test('인자', () => {
   const a = buildClaudeArgs({ model: 'claude-opus-5-5', mcpConfigPath: 'C:/x/mcp.json', systemPrompt: 'S' });
   expect(a).toEqual(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--model', 'claude-opus-5-5', '--mcp-config', 'C:/x/mcp.json', '--strict-mcp-config', '--tools', '',
-    '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last,mcp__mvmz__glossary_search,mcp__mvmz__glossary_set_term,mcp__mvmz__list_decisions,mcp__mvmz__set_decision,mcp__mvmz__image_sheet,mcp__mvmz__image_view,mcp__mvmz__image_set_recipe,mcp__mvmz__image_set_status,mcp__mvmz__image_list,mcp__mvmz__event_files,mcp__mvmz__event_list,mcp__mvmz__event_read,mcp__mvmz__usage_search,mcp__mvmz__event_patch,mcp__mvmz__set_josa_plugin,mcp__mvmz__update_summary,mcp__mvmz__find_game_text,mcp__mvmz__add_extract_text,mcp__mvmz__set_text_window,mcp__mvmz__rewrap_overflow',
+    '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last,mcp__mvmz__glossary_search,mcp__mvmz__glossary_set_term,mcp__mvmz__list_decisions,mcp__mvmz__set_decision,mcp__mvmz__list_actions,mcp__mvmz__cancel_action,mcp__mvmz__image_sheet,mcp__mvmz__image_view,mcp__mvmz__image_set_recipe,mcp__mvmz__image_set_status,mcp__mvmz__image_list,mcp__mvmz__event_files,mcp__mvmz__event_list,mcp__mvmz__event_read,mcp__mvmz__usage_search,mcp__mvmz__event_patch,mcp__mvmz__set_josa_plugin,mcp__mvmz__update_summary,mcp__mvmz__find_game_text,mcp__mvmz__add_extract_text,mcp__mvmz__set_text_window,mcp__mvmz__rewrap_overflow',
     '--permission-mode', 'dontAsk', '--setting-sources', 'project', '--disable-slash-commands', '--system-prompt', 'S']);
   expect(buildClaudeArgs({ model: 'm', mcpConfigPath: 'p', systemPrompt: 'S', resumeSessionId: 'abc' }).slice(-2)).toEqual(['--resume', 'abc']);
 });
@@ -43,6 +43,10 @@ test('시스템 프롬프트는 조사가 그대로 보일 때 조사 자동 맞
   expect(s).toContain('은(는)');
 });
 test('시스템 프롬프트', () => { const s = buildSystemPrompt(meta, stats); expect(s).toContain('약초원'); expect(s).toContain('search_units'); expect(s).toContain('MZ'); });
+test('되돌리기 안내: undo_last 는 채팅이 방금 고친 것만, 다른 것은 list_actions 로 찾아 cancel_action', () => {
+  const line = buildSystemPrompt(meta, stats).split('\n').find((l) => l.includes('undo_last'))!;
+  for (const must of ['이번 턴', 'list_actions', 'cancel_action', '묻고', '몇 줄']) expect(line).toContain(must);
+});
 
 // Extra coverage beyond the plan's assertions.
 test('text-delta, 실패한 결과, 문자열 tool_result, CRLF', () => {

@@ -12,7 +12,7 @@ export function buildSystemPrompt(meta: ProjectMeta, stats: Stats, styleGuide?: 
     '- 먼저 search_units 로 찾고, 필요한 것만 get_unit 으로 읽는다. 전체를 훑지 않는다.',
     '- 번역은 set_translation 으로 쓴다. 제어문자(\\C[2], \\N[1], \\V[12] 같은 것)와 %1 같은 자리표시는 그대로 둔다.',
     '- needsDecision 항목(플러그인 설정, 플러그인 커맨드, 스크립트, 주석)은 화면에 보이는 글자라고 판단될 때만 번역하고 그 이유를 말한다. 코드가 이름으로 찾는 값은 건드리지 않는다.',
-    '- 잘못 고쳤으면 undo_last 로 되돌린다.',
+    '- undo_last 는 채팅이 방금 고친 것(이번 턴, 없으면 채팅의 직전 행동)을 통째로 되돌린다. 사용자가 다른 것(줄바꿈 다시 맞추기, 예전에 고친 것, 사용자가 직접 한 것)을 되돌려 달라고 하면 list_actions 로 찾아 cancel_action 으로 그 행동만 취소한다. 어느 행동인지 분명하지 않으면 되돌리기 전에 묻고, 되돌린 뒤에는 무엇을 몇 줄 되돌렸는지 말한다.',
     '- 용어는 glossary_search 로 찾는다. 용어를 정하거나 바꿀 때는 glossary_set_term 을 쓴다.',
     '- 사용자에게는 한국어로 짧게 답한다.',
     '- 판단 필요 항목은 list_decisions 로 묶음을 보고 set_decision 으로 정한다. 화면에 보이는 글자라는 근거가 있을 때만 번역함으로 한다.',

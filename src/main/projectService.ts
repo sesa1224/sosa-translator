@@ -67,7 +67,14 @@ import { registerFontContributor } from './fontEmbed.js';
 
 const UNDO_LIMIT = 200;
 
-interface UndoRecord { id: string; before: TranslationEntry; origin: Origin }
+/**
+ * One line of the in-memory undo list. after: the line as that write left it; when the line no longer matches (another
+ * action changed it since), the record is stale and undo passes it by instead of overwriting the newer change.
+ */
+interface UndoRecord { id: string; before: TranslationEntry; origin: Origin; after?: TranslationEntry }
+
+/** What reverting the open action of an origin did; unitIds are its changed lines, restored or not. */
+export interface OpenRevert { restored: number; skipped: number; unitIds: string[] }
 
 /**
  * How a translation write shows in the action log. label gets the number of changed lines. join: while an action of
@@ -123,6 +130,8 @@ export class ProjectService extends EventEmitter {
   private log: ActionRecord[];
   /** The before of every line the write in progress touches (filled by remember). */
   private capture: Map<string, TranslationEntry> | null = null;
+  /** Undo records the write in progress added, so they get their after once it is done. */
+  private freshUndo: UndoRecord[] | null = null;
   private readonly openActions = new Map<Origin, OpenAction>();
 
   private constructor(
@@ -665,16 +674,44 @@ export class ProjectService extends EventEmitter {
     return target === null ? [] : this.check(unit, target);
   }
 
-  /** Reverts the most recent change (of that origin, if given). Returns the changed ids, or []. */
+  /**
+   * Reverts the most recent change (of that origin, if given). Returns the changed ids, or []. Records whose line was
+   * changed again since are dropped on the way. The undo is logged like any write, so it can be cancelled in turn,
+   * and inside an open action of the origin it nets out against the write it takes back.
+   */
   undo(origin?: Origin): Promise<string[]> {
     return this.mutate(origin ?? 'user', () => {
-      let i = this.history.length - 1;
-      while (i >= 0 && origin !== undefined && this.history[i].origin !== origin) i--;
-      if (i < 0) return { ids: [], result: [] };
-      const [rec] = this.history.splice(i, 1);
-      this.store.restore(rec.id, rec.before);
-      return { ids: [rec.id], result: [rec.id] };
-    });
+      for (let i = this.history.length - 1; i >= 0; i--) {
+        const rec = this.history[i];
+        if (origin !== undefined && rec.origin !== origin) continue;
+        this.history.splice(i, 1);
+        if (rec.after && !unchangedSince(this.store.get(rec.id), rec.after)) continue;
+        this.captureBefore(rec.id);
+        this.store.restore(rec.id, rec.before);
+        return { ids: [rec.id], result: [rec.id] };
+      }
+      return { ids: [], result: [] };
+    }, { label: (n) => `되돌리기 ${count(n)}줄`, join: true });
+  }
+
+  /**
+   * Takes back everything the open action of an origin (a chat turn) changed so far; null when it changed nothing.
+   * A line changed since by someone else is left as it is and counted as skipped.
+   */
+  revertOpenAction(origin: Origin): Promise<OpenRevert | null> {
+    return this.mutate(origin, () => {
+      const open = this.openActions.get(origin);
+      const changes = open ? [...open.changes.values()].filter((c) => !sameEntry(c.before, c.after)) : [];
+      if (changes.length === 0) return { ids: [], result: null };
+      const ids: string[] = [];
+      for (const c of changes) {
+        if (!unchangedSince(this.store.get(c.unitId), c.after)) continue;
+        this.captureBefore(c.unitId);
+        this.store.restore(c.unitId, structuredClone(c.before));
+        ids.push(c.unitId);
+      }
+      return { ids, result: { restored: ids.length, skipped: changes.length - ids.length, unitIds: changes.map((c) => c.unitId) } };
+    }, { label: (n) => `되돌리기 ${count(n)}줄`, join: true });
   }
 
   /** Builds a patch zip. Status changes made by the build's check are saved and announced. */
@@ -722,9 +759,16 @@ export class ProjectService extends EventEmitter {
   }
 
   private remember(id: string, origin: Origin): void {
-    if (this.capture && !this.capture.has(id)) this.capture.set(id, structuredClone(this.store.get(id)));
-    this.history.push({ id, before: this.store.get(id), origin });
+    this.captureBefore(id);
+    const rec: UndoRecord = { id, before: this.store.get(id), origin };
+    this.freshUndo?.push(rec);
+    this.history.push(rec);
     if (this.history.length > UNDO_LIMIT) this.history.shift();
+  }
+
+  /** Keeps the line's before for the action log (the first one, when a write touches it twice). */
+  private captureBefore(id: string): void {
+    if (this.capture && !this.capture.has(id)) this.capture.set(id, structuredClone(this.store.get(id)));
   }
 
   // ---- pixel-width check ----
@@ -829,6 +873,7 @@ export class ProjectService extends EventEmitter {
   private mutate<T>(origin: Origin, apply: () => { ids: string[]; result: T }, log?: LogSpec): Promise<T> {
     return this.enqueue(async () => {
       this.capture = new Map();
+      this.freshUndo = [];
       let out: { ids: string[]; result: T };
       let captured: Map<string, TranslationEntry>;
       try {
@@ -836,6 +881,8 @@ export class ProjectService extends EventEmitter {
       } finally {
         captured = this.capture ?? new Map();
         this.capture = null;
+        for (const rec of this.freshUndo ?? []) rec.after = structuredClone(this.store.get(rec.id));
+        this.freshUndo = null;
       }
       const { ids, result } = out;
       if (ids.length > 0) {
