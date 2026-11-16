@@ -32,6 +32,7 @@ import { promptText, withPromptText } from '../core/glossary/prompts.js';
 import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term } from '../core/glossary/types.js';
 import type { PxCheck } from '../core/check/format.js';
+import { notationIssues } from '../core/check/notation.js';
 import { groupDecisions } from '../core/decisions/keys.js';
 import { mergeSuggestions } from '../core/decisions/auto.js';
 import { confirmedDecisionFor, decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
@@ -326,6 +327,18 @@ export class ProjectService extends EventEmitter {
     if (!u) return false;
     const provisional = this.gloss.terms.filter((t) => t.status === 'provisional');
     return provisional.length > 0 && termsIn(u.source, provisional).length > 0;
+  }
+
+  /**
+   * Whether the unit's translation has a notation warning. Only the notation rules run (not the whole check with its
+   * pixel layout), so the text table can afford it for every row when a project opens.
+   */
+  hasNotationWarning(id: string): boolean {
+    const u = this.byId.get(id);
+    const target = this.store.get(id).target;
+    const r = this.gloss.rules;
+    if (!u || target === null || u.needsDecision || !r.notationCheck || target.trim() === '') return false;
+    return notationIssues(u.source, target, { unmask: r.unmask, brackets: r.halfWidth && r.halfWidthBrackets }).length > 0;
   }
 
   /** Adds terms the model brought up as provisional, skipping sources already in the glossary. Returns the added terms. */

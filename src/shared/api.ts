@@ -44,10 +44,12 @@ export interface Row {
   previous?: { source: string; target: string | null };
   /** previous.target was filled in as this sentence's translation. */
   carried?: boolean;
+  /** The translation has a notation warning (src/core/check/notation.ts). */
+  notation?: boolean;
 }
 /** A needs-decision row's state: no decision, confirmed (translate / skip), or only suggested. null for other rows. */
 export type RowDecision = 'none' | 'translate' | 'skip' | 'suggested-translate' | 'suggested-skip';
-export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed' | 'review-taken' | 'review-passed';
+export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed' | 'review-taken' | 'review-passed' | 'notation';
 /** reviewKind: the kind of the open (else the last handled) remark; 'none' is a remark without a kind. */
 export interface RowQuery { text?: string; status?: StatusFilter; file?: string; decisionKey?: string; reviewKind?: ReviewKind | 'none' }
 /**
@@ -62,6 +64,8 @@ export interface Stats {
   translated: number;
   /** Rows whose last handled remark ended with the suggestion taken / with the translation kept. */
   reviewTaken?: number; reviewPassed?: number;
+  /** Rows whose translation has a notation warning. */
+  notation?: number;
 }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
@@ -145,6 +149,7 @@ export interface CharacterCard { id: string; source: string; target: string; spe
 export interface ProjectRules {
   controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
   maxLineWidthChars: number | null; speakerPattern: string | null; halfWidth: boolean; halfWidthBrackets: boolean;
+  notationCheck: boolean; unmask: boolean;
 }
 export type PromptKind = 'translate' | 'review' | 'export';
 export interface Glossary {

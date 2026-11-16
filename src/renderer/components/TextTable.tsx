@@ -125,6 +125,7 @@ function FilterBar() {
   if ((s.changed ?? 0) > 0) chips.push(['changed', '바뀐 문장', s.changed]);
   if ((s.reviewTaken ?? 0) > 0) chips.push(['review-taken', '검수로 바뀜', s.reviewTaken ?? 0]);
   if ((s.reviewPassed ?? 0) > 0) chips.push(['review-passed', '검수 의견 넘김', s.reviewPassed ?? 0]);
+  if ((s.notation ?? 0) > 0) chips.push(['notation', '표기 경고', s.notation ?? 0]);
   const current = query.status ?? 'all';
   return (
     <>

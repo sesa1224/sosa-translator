@@ -18,6 +18,8 @@ export interface ProjectRules extends FormatRules {
   speakerPattern: string | null;      // regex source; the first group is the speaker name
   halfWidth: boolean;                 // machine translations get half-width punctuation, digits and Latin letters (text/width.ts)
   halfWidthBrackets: boolean;         // with halfWidth: （ ） become ( ) as well. Off in projects made before the rule, and for games whose plugins read the bracket
+  notationCheck: boolean;             // the program warns about notation the style guide fixes (check/notation.ts)
+  unmask: boolean;                    // with notationCheck: a masked word (お○んこ) must not keep its mask in the translation
 }
 /** Who the instruction text is for: the translate job, the review job, or an exported package. */
 export type PromptKind = 'translate' | 'review' | 'export';

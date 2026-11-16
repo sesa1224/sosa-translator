@@ -3,7 +3,7 @@ import { type UserEvent } from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 import { useApp } from '../../src/renderer/state';
 import type { Glossary, Row, Term } from '../../src/shared/api';
-import { baseRows, fakeApi, openFakeWith, type FakeApi } from './fakeApi';
+import { baseRows, defaultFakeGlossary, fakeApi, openFakeWith, type FakeApi } from './fakeApi';
 
 let api: FakeApi;
 let user: UserEvent;
@@ -134,4 +134,15 @@ test('이름 용어를 화자 이름에만 적용하게 켜고 끈다', async ()
   expect(screen.getByLabelText('リナ 화자 이름에만 적용')).toBeChecked();
   await user.click(screen.getByLabelText('リナ 화자 이름에만 적용'));
   expect(api.calls.at(-1)).toEqual(['glossary.upsertTerm', { source: 'リナ', target: '리나', category: 'name', status: 'confirmed', candidates: [] }]);
+});
+
+test('표기 검사 규칙: 끄면 가린 글자 규칙도 잠긴다', async () => {
+  await openGlossary();
+  await user.click(screen.getByLabelText('표기 검사'));
+  expect(api.calls).toContainEqual(['glossary.setRules', { notationCheck: false }]);
+  await user.click(screen.getByLabelText('가린 글자는 풀어서 쓰기'));
+  expect(api.calls).toContainEqual(['glossary.setRules', { unmask: false }]);
+  cleanup();
+  await openGlossary({ rules: { ...defaultFakeGlossary().rules, notationCheck: false } });
+  expect(screen.getByLabelText('가린 글자는 풀어서 쓰기')).toBeDisabled();
 });

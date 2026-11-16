@@ -16,6 +16,7 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
   'line-width': '줄 폭',
   'line-width-px': '창 폭',
   skeleton: '그대로 둘 부분',
+  notation: '표기',
 };
 
 export function ItemPanel() {

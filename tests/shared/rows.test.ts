@@ -36,7 +36,7 @@ test('검색은 글자 그대로', () => {
 test('상태 필터와 통계', () => {
   expect(filterRows(rows, { status: 'needs-decision' }).every(r => r.needsDecision)).toBe(true);
   expect(filterRows(rows, { status: 'untranslated', file: 'data/Items.json' }).map(r => r.id)).toEqual(['item-desc']);
-  expect(computeStats(rows)).toEqual({ total: rows.length, untranslated: rows.length - 1, needsReview: 1, approved: 0, error: 0, needsDecision: 2, declined: 0, provisional: 0, external: 0, undecided: 2, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0 });
+  expect(computeStats(rows)).toEqual({ total: rows.length, untranslated: rows.length - 1, needsReview: 1, approved: 0, error: 0, needsDecision: 2, declined: 0, provisional: 0, external: 0, undecided: 2, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0, notation: 0 });
   expect(computeScopes(rows).find(s => s.file === 'data/Items.json')).toEqual({ file: 'data/Items.json', label: 'Items', total: 2, done: 1 });
 });
 
@@ -53,4 +53,10 @@ test('그 밖의 위치 이름과 toRow', () => {
     id: 'a', kind: 'dialogue', speaker: 'リナ', source: 'やった！', target: '해냈다!', status: 'approved', needsDecision: false,
     file: 'data/Map001.json', location: '맵1 · 이벤트1', refCount: 2, usesProvisional: false, decision: null, external: false });
   expect(filterRows(rows, { text: 'showrecord' }).map(r => r.id)).toEqual(['cmd-1']);
+});
+
+test('표기 경고 거르기와 세기', () => {
+  const marked = [row({ id: 'n1', source: 'あ…', file: 'f', target: '아…', status: 'translated', notation: true }), row({ id: 'n2', source: 'い', file: 'f', target: '이', status: 'translated' })];
+  expect(filterRows(marked, { status: 'notation' }).map((r) => r.id)).toEqual(['n1']);
+  expect(computeStats(marked).notation).toBe(1);
 });

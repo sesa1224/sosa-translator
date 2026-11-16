@@ -79,6 +79,8 @@ test('폰트를 정하면 preview:changed 가 가고 preview.layout 이 배치�
   expect(l.maxWidth).toBe(78);
   expect((await invoke('preview:layout', dialogue.id)).lines).toHaveLength(1);
 
+  // The made-up translation drops the source's punctuation; only the window width is under test here.
+  await invoke('glossary:setRules', { notationCheck: false });
   await invoke('unit:setTranslation', dialogue.id, '가'.repeat(30));
   expect((await invoke('unit:get', dialogue.id)).issues.map((i: { rule: string }) => i.rule)).toEqual(['line-width-px']);
   expect(await invoke('preview:countOverflow')).toMatchObject({ overflowing: 1, checked: 1 });

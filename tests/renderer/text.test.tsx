@@ -62,3 +62,13 @@ test('7000줄 표도 첫 화면 줄은 그린다', async () => {
   const n = screen.getAllByRole('row').length;
   expect(n).toBeGreaterThan(5); expect(screen.getByText('台詞0')).toBeVisible();
 });
+
+test('표기 경고 칩은 경고가 있을 때만 나오고 그 줄만 거른다', async () => {
+  await openFake();
+  expect(screen.queryByRole('button', { name: /표기 경고/ })).toBeNull();
+  cleanup();
+  const marked: Row = { id: 'n1', kind: 'dialogue', source: 'あ…', target: '아…', status: 'translated', needsDecision: false, file: 'data/Map001.json', location: '맵1', refCount: 1, usesProvisional: false, notation: true };
+  await openFake({ rows: [marked] });
+  await user.click(screen.getByRole('button', { name: '표기 경고 1' }));
+  expect(useApp.get().query.status).toBe('notation');
+});

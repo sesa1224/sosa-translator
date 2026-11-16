@@ -1,5 +1,5 @@
 // The format check run on every translation: control codes, leftover Japanese, line count and width, glossary
-// terms, and for needs-decision values the skeleton check. ProjectService runs it on every write and marks
+// terms, notation (notation.ts), and for needs-decision values the skeleton check. ProjectService runs it on every write and marks
 // a translation with an error as 'error' (left out of builds); the CLI's check command runs checkAll.
 import { bodyTerms, checkGlossary, checkSpeakerTerms, lineWidthChars } from '../glossary/match.js';
 import { splitSpeaker } from '../text/speaker.js';
@@ -10,6 +10,7 @@ import { hasJapanese } from '../text/japanese.js';
 import type { Issue, TextUnit } from '../types.js';
 
 import { DEFAULT_RULES, type FormatRules } from './rules.js';
+import { notationIssues } from './notation.js';
 import type { Layout } from '../preview/types.js';
 import { keepPieces } from '../decisions/keys.js';
 import { checkSkeleton, translatedParts } from '../decisions/skeleton.js';
@@ -113,6 +114,10 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
         }
       });
     }
+  }
+  // A needs-decision value may be read by code; its symbols are not for the style guide to judge.
+  if (rules.notationCheck && !unit.needsDecision) {
+    issues.push(...notationIssues(unit.source, target, { unmask: rules.unmask !== false, brackets: rules.halfWidth === true && rules.halfWidthBrackets === true }));
   }
   if (px && unit.kind === 'dialogue') {
     // The pixel check replaces the character count. The whole text is laid out, so an MV speaker line counts as a line too.

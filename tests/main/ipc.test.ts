@@ -141,3 +141,15 @@ test('뭉친 exe 게임: 폴더 확인이 알려 주고, 풀면 게임 폴더가
 
   await expect(invoke('project:unpackGame', path.join(src, 'data', 'System.json'))).rejects.toThrow('뭉친 exe 가 아닙니다');
 });
+
+test('표기 경고 표시는 바뀐 행과 규칙이 바뀔 때 다시 계산한다', async () => {
+  await invoke('project:create', game, '표기');
+  const snap = await invoke('project:snapshot');
+  const moon = snap.rows.find((r: Row) => r.source === '月光草').id;
+  expect(snap.rows.some((r: Row) => r.notation)).toBe(false);
+  await invoke('unit:setTranslation', moon, '월광초♥');
+  expect(sent('project:changed').at(-1)).toMatchObject({ rows: [{ id: moon, notation: true }], stats: { notation: 1 } });
+  await invoke('glossary:setRules', { notationCheck: false });
+  await vi.waitFor(() => expect(sent('project:changed').at(-1)).toMatchObject({ rows: [{ id: moon }], stats: { notation: 0 } }));
+  expect(sent('project:changed').at(-1).rows[0].notation).toBeUndefined();
+});

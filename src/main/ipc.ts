@@ -240,7 +240,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   async function adopt(s: ProjectService): Promise<void> {
     await closeProject();
     deps.holder.svc = s;
-    rows = new Map(s.units().map((u: TextUnit) => [u.id, toRow(u, s.entry(u.id), s.usesProvisional(u.id))]));
+    rows = new Map(s.units().map((u: TextUnit) => [u.id, rowOf(s, u)]));
     gameTitle = await readGameTitle(s.projectDir);
     s.on('changed', (e) => {
       if (deps.holder.svc !== s) return;
@@ -248,7 +248,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       for (const id of e.ids) {
         const u = s.unit(id);
         if (!u) continue;
-        const r = toRow(u, s.entry(id), s.usesProvisional(id));
+        const r = rowOf(s, u);
         rows.set(id, r);
         changed.push(r);
       }
@@ -259,13 +259,13 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     s.on('glossary-changed', (g) => {
       if (deps.holder.svc !== s) return;
       deps.broadcast('glossary:changed', g);
-      // Rows whose "uses a provisional term" mark changed.
+      // Rows whose "uses a provisional term" or notation mark changed (terms and rules both live in the glossary).
       const changed: Row[] = [];
       for (const [id, r] of rows) {
         const u = s.unit(id);
         if (!u) continue;
-        const next = toRow(u, s.entry(id), s.usesProvisional(id));
-        if (next.usesProvisional !== r.usesProvisional) {
+        const next = rowOf(s, u);
+        if (next.usesProvisional !== r.usesProvisional || next.notation !== r.notation) {
           rows.set(id, next);
           changed.push(next);
         }
@@ -283,6 +283,13 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     watchPatches(s);
     await startImages(s);
     s.setBusyCheck(() => busy());
+  }
+
+  /** A row with the marks only the service can work out. */
+  function rowOf(s: ProjectService, u: TextUnit): Row {
+    const r = toRow(u, s.entry(u.id), s.usesProvisional(u.id));
+    if (s.hasNotationWarning(u.id)) r.notation = true;
+    return r;
   }
 
   function snapshotOf(s: ProjectService): Snapshot {
