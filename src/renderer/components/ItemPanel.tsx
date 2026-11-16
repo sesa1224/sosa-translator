@@ -1,10 +1,11 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
-import { changedWords, type WordPiece } from '../../core/update/carry';
+import { changedWords } from '../../core/update/carry';
 import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
+import { DiffPieces as Pieces } from './DiffPieces';
 import { GamePreview } from './GamePreview';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
@@ -216,17 +217,6 @@ function DecisionBox({ row }: { row: Row }) {
 }
 
 // ---- the sentence in the older version ----
-
-function Pieces({ pieces, kind }: { pieces: WordPiece[]; kind: 'old' | 'new' }) {
-  return (
-    <>
-      {pieces.map((p, i) => {
-        if (!p.changed) return <span key={i}>{p.text}</span>;
-        return kind === 'old' ? <del key={i} className="diff-del">{p.text}</del> : <ins key={i} className="diff-add">{p.text}</ins>;
-      })}
-    </>
-  );
-}
 
 /** A changed sentence: the older source next to the current one (changes marked) and the older translation to start from. */
 function PreviousBox({ row, onTake, disabled }: { row: Row; onTake: (target: string) => void; disabled: boolean }) {

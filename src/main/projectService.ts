@@ -33,8 +33,8 @@ import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term } from '../core/glossary/types.js';
 import type { PxCheck } from '../core/check/format.js';
 import { notationIssues } from '../core/check/notation.js';
-import { loadHistory, newActionId, sameEntry, saveHistory, summarize, trimHistory, unchangedSince } from '../core/history/store.js';
-import type { ActionChange, ActionRecord, ActionSummary, CancelResult } from '../core/history/types.js';
+import { actionDetail, loadHistory, newActionId, sameEntry, saveHistory, summarize, trimHistory, unchangedSince } from '../core/history/store.js';
+import type { ActionChange, ActionDetail, ActionRecord, ActionSummary, CancelResult } from '../core/history/types.js';
 import { groupDecisions } from '../core/decisions/keys.js';
 import { mergeSuggestions } from '../core/decisions/auto.js';
 import { confirmedDecisionFor, decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
@@ -458,7 +458,7 @@ export class ProjectService extends EventEmitter {
         if (!p.certain) uncertain.push(p.id);
       }
       return { ids: changed, result: { changed, uncertain } };
-    }, { label: (n) => `용어 바꾸기 ${count(n)}곳` });
+    }, { label: (n) => `용어 바꾸기: ${term.target || term.source} → ${next} (${count(n)}곳)` });
   }
 
   setCharacters(cards: CharacterCard[]): Promise<void> {
@@ -817,7 +817,15 @@ export class ProjectService extends EventEmitter {
 
   /** The action log, newest first, without the changes themselves. */
   actions(): ActionSummary[] {
-    return this.log.map(summarize).reverse();
+    const sourceOf = (unitId: string) => this.byId.get(unitId)?.source;
+    return this.log.map((a) => summarize(a, sourceOf)).reverse();
+  }
+
+  /** A page of one action's changed lines (cancelled actions too), against the units as they are now. */
+  actionDetail(id: string, offset?: number, limit?: number): ActionDetail {
+    const a = this.log.find((x) => x.id === id);
+    if (!a) throw new Error(`없는 행동입니다: ${id}`);
+    return actionDetail(a, (unitId) => this.byId.get(unitId), offset, limit);
   }
 
   /** Takes one action back: a line goes back to its before only if nothing changed it since. */

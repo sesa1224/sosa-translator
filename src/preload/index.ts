@@ -167,6 +167,7 @@ const api: Api = {
     list: () => call('history:list'),
     cancel: (id) => call('history:cancel', id),
     rollback: (id) => call('history:rollback', id),
+    detail: (id, offset, limit) => call('history:detail', id, offset, limit),
   },
 };
 

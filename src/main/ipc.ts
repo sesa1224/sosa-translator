@@ -868,6 +868,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('history:list', () => svc().actions());
   handle('history:cancel', (id: string) => svc().cancelAction(String(id ?? '')));
   handle('history:rollback', (id: string) => svc().rollbackTo(String(id ?? '')));
+  handle('history:detail', (id: string, offset?: number, limit?: number) => svc().actionDetail(String(id ?? ''), Number(offset) || 0, Number(limit) || undefined));
 
   // ---- Claude CLI status and the last font embedding ----
   handle('app:claudeStatus', async (): Promise<shared.ClaudeStatus> => {

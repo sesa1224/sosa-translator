@@ -13,7 +13,7 @@ import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patche
 import type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
 import type { Layout, PreviewContext, PreviewSettings, WindowMetrics } from '../core/preview/types.js';
 import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
-import type { ActionSummary, CancelResult } from '../core/history/types.js';
+import type { ActionDetail, ActionSummary, CancelResult } from '../core/history/types.js';
 
 export type { Issue, PastReview, ReviewKind, ReviewNote, TranslationStatus, UnitKind, PathSeg };
 export { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS } from '../core/types.js';
@@ -22,7 +22,7 @@ export type { EventCommand, ListOp, Patch, PatchBody, PatchState, PatchStatus } 
 export type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
 export type { LaidLine, Layout, PreviewContext, PreviewSettings, Run, WindowMetrics } from '../core/preview/types.js';
 export type { PatchMove, UpdateSummary, VersionInfo } from '../core/update/types.js';
-export type { ActionOrigin, ActionSummary, CancelResult } from '../core/history/types.js';
+export type { ActionDetail, ActionLine, ActionOrigin, ActionPreview, ActionSide, ActionSummary, CancelResult } from '../core/history/types.js';
 
 // ---- Rows, statistics and the project snapshot ----
 
@@ -394,6 +394,8 @@ export interface InvokeChannels {
   'history:cancel': (id: string) => CancelResult;
   /** Cancels every action newer than the given one. */
   'history:rollback': (id: string) => CancelResult;
+  /** The changed lines of one action, at most 100 from offset, with the whole count. */
+  'history:detail': (id: string, offset?: number, limit?: number) => ActionDetail;
 }
 export type InvokeChannel = keyof InvokeChannels;
 
@@ -489,5 +491,5 @@ export interface Api {
     import: Call<'update:import'>; rollback: Call<'update:rollback'>;
     summary: Call<'update:summary'>; versions: Call<'update:versions'>;
   };
-  history: { list: Call<'history:list'>; cancel: Call<'history:cancel'>; rollback: Call<'history:rollback'> };
+  history: { list: Call<'history:list'>; cancel: Call<'history:cancel'>; rollback: Call<'history:rollback'>; detail: Call<'history:detail'> };
 }

@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, expect, test } from 'vitest';
+import { termId } from '../../src/core/glossary/store.js';
 import { ProjectService } from '../../src/main/projectService.js';
 import { TranslateJob } from '../../src/main/translate/job.js';
 import { ReviewJob } from '../../src/main/translate/review.js';
@@ -103,4 +104,46 @@ test('기록은 최근 200개만, 프로젝트를 다시 열어도 남는다', a
   expect(list[0].label).toBe('번역 고침');
   expect(await svc.cancelAction(list[0].id)).toEqual({ restored: 1, skipped: 0 });
   expect(svc.entry(a).target).toBe('번역203');
+});
+
+test('목록의 줄 미리 보기와 상세: 위치 이름, 전후, offset/limit, 없는 행동', async () => {
+  const a = idOf('月光草');
+  const b = idOf('リナ');
+  await svc.beginAction('chat', (n) => `채팅에서 바꿈 ${n}개`);
+  await svc.setTranslation(a, '월광초', 'chat');
+  await svc.setTranslation(b, '리나', 'chat');
+  await svc.endAction('chat');
+  const [act] = svc.actions();
+  expect(act.preview).toEqual({ source: '月光草', target: '월광초', more: 1 });
+  const d = svc.actionDetail(act.id);
+  expect(d).toMatchObject({ id: act.id, total: 2, offset: 0 });
+  expect(d.lines[0]).toMatchObject({ unitId: a, exists: true, source: '月光草', before: { target: null, status: 'untranslated' }, after: { target: '월광초' } });
+  expect(d.lines[0].location).not.toBe('');
+  expect(svc.actionDetail(act.id, 1, 100).lines.map((l) => l.unitId)).toEqual([b]);
+  expect(() => svc.actionDetail('nope')).toThrow('없는 행동입니다');
+});
+
+test('preview 없이 저장된 옛 history.json 도 읽히고 미리 보기가 붙는다, 지금 없는 문장은 표시', async () => {
+  const a = idOf('月光草');
+  await svc.close();
+  const at = '2026-11-15T00:00:00.000Z';
+  const old = [
+    { id: 'old1', at, origin: 'user', label: '번역 고침', changes: [{ unitId: a, before: { target: null, status: 'untranslated', updatedAt: at }, after: { target: '월광초', status: 'translated', updatedAt: at } }] },
+    { id: 'old2', at, origin: 'user', label: '번역 고침', changes: [{ unitId: 'gone', before: { target: null, status: 'untranslated', updatedAt: at }, after: { target: '없음', status: 'translated', updatedAt: at } }] },
+  ];
+  writeFileSync(path.join(proj, 'history.json'), JSON.stringify(old));
+  svc = await ProjectService.open(proj);
+  const list = svc.actions();
+  expect(list.map((x) => x.id)).toEqual(['old2', 'old1']);
+  expect(list[1].preview).toEqual({ source: '月光草', target: '월광초', more: 0 });
+  expect(list[0].preview).toMatchObject({ source: null, target: '없음' });
+  expect(svc.actionDetail('old2').lines[0]).toMatchObject({ exists: false, source: null, location: '' });
+});
+
+test('용어 바꾸기 기록은 옛 번역과 새 번역을 적는다', async () => {
+  const b = idOf('リナ');
+  await svc.upsertTerm({ source: 'リナ', target: '리나', category: 'name', status: 'provisional', candidates: [{ target: '리나', reason: '' }, { target: '린', reason: '' }] });
+  await svc.setTranslation(b, '리나', 'user');
+  await svc.chooseCandidate(termId('リナ'), '린');
+  expect(svc.actions()[0].label).toBe('용어 바꾸기: 리나 → 린 (1곳)');
 });

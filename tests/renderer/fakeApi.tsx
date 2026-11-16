@@ -8,7 +8,7 @@ import {
 import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, WindowMetrics } from '../../src/shared/api';
 import type { SceneInfo } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
-import type { ActionSummary, CancelResult, DecisionGroup, ImportPlan } from '../../src/shared/api';
+import type { ActionLine, ActionSummary, CancelResult, DecisionGroup, ImportPlan } from '../../src/shared/api';
 import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } from '../../src/shared/api';
 import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
@@ -56,6 +56,8 @@ export type FakeApi = Api & {
   glossaryValue: Glossary; chooseResult: ChooseResult; speakerDetection: SpeakerDetection | null; reviewPlanValue: ReviewPlan;
   groupsValue: DecisionGroup[]; importPlanValue: ImportPlan | null; exportPath: string | null;
   historyValue: ActionSummary[]; historyResult: CancelResult;
+  /** Changed lines per action id; history.detail pages them like the main process (at most 100). */
+  historyLines: Record<string, ActionLine[]>;
 };
 
 export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
@@ -88,6 +90,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     exportPath: 'C:/out/약초원.json',
     historyValue: [],
     historyResult: { restored: 0, skipped: 0 },
+    historyLines: {},
     inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
@@ -252,6 +255,10 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       list: rec('history.list', () => fake.historyValue),
       cancel: rec('history.cancel', () => fake.historyResult),
       rollback: rec('history.rollback', () => fake.historyResult),
+      detail: rec('history.detail', (id: string, offset = 0, limit = 100) => {
+        const all = fake.historyLines[id] ?? [];
+        return { id, total: all.length, offset, lines: all.slice(offset, offset + Math.min(limit, 100)) };
+      }),
     },
   };
   const upState = defaultUpdateFake();

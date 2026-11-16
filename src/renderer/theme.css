@@ -413,10 +413,25 @@ select.input { padding: 0 12px; }
 
 /* ---- action log ---- */
 .history-view { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; }
-.hv-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+.hv-item { display: flex; flex-direction: column; flex: none; }
+.hv-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+/* The toggle fills the row, so anywhere but the two buttons opens the action. */
+.hv-toggle { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.hv-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.hv-meta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hv-chevron { width: 12px; flex: none; }
 .hv-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hv-undone { opacity: 0.55; }
+.hv-preview { display: flex; gap: 8px; min-width: 0; padding-left: 22px; color: var(--sub); }
+.hv-preview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv-undone .hv-head { opacity: 0.55; }
 .hv-undone .hv-label { text-decoration: line-through; }
+.hv-detail { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 12px 36px; }
+.hv-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.hv-line { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 13px; line-height: 1.55; }
+.hv-line-head { display: flex; align-items: center; gap: 8px; }
+.hv-src { color: var(--sub); }
+.hv-arrow { margin: 0 8px; }
+.hv-more { align-self: flex-start; }
 
 /* ---- build history ---- */
 .builds-view { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }

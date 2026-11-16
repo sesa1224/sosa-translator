@@ -4,7 +4,7 @@ import type {
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type {
-  ActionSummary, BuildRecord, CancelResult, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
+  ActionDetail, ActionSummary, BuildRecord, CancelResult, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
   NewPatch, Patch, PatchChange, PatchList, PathSeg, Rect, Region, StatusFilter, UpdateInspect, UpdateSummary, VersionInfo, UsageTarget,
 } from '../shared/api';
 
@@ -497,6 +497,8 @@ const actions = {
     await actions.loadHistory();
     return r;
   },
+  /** One page (100 lines) of an action's changed lines; the log screen keeps what it got. */
+  loadActionDetail: (id: string, offset: number): Promise<ActionDetail> => need().history.detail(id, offset, 100),
   async rollbackTo(id: string): Promise<CancelResult> {
     const r = await need().history.rollback(id);
     await actions.loadHistory();

@@ -168,6 +168,10 @@ test('작업 기록: 채팅 한 턴은 기록 하나, 목록·취소·되돌리�
   expect(sent('history:changed').length).toBeGreaterThan(0);
   const [chatTurn, edit] = await invoke('history:list');
   expect(chatTurn).not.toHaveProperty('changes');
+  expect(chatTurn.preview).toMatchObject({ source: '月光草', target: '달빛풀', more: 1 });
+  const detail = await invoke('history:detail', chatTurn.id, 1, 5);
+  expect(detail).toMatchObject({ id: chatTurn.id, total: 2, offset: 1, lines: [{ unitId: rina, source: 'リナ', after: { target: '리나' } }] });
+  await expect(invoke('history:detail', 'nope')).rejects.toThrow('없는 행동입니다');
   expect(await invoke('history:cancel', chatTurn.id)).toEqual({ restored: 2, skipped: 0 });
   expect(sent('project:changed').at(-1).rows.map((r: Row) => r.id).sort()).toEqual([moon, rina].sort());
   expect(await invoke('history:rollback', edit.id)).toEqual({ restored: 0, skipped: 0 });
