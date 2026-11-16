@@ -11,6 +11,7 @@
  * (으)로 (이)라 (이)나 (이)랑 (이)야 (이)여 (이)고 (이)다 (이)든 (이)면
  *
  * 앞 글자가 한글·숫자·영문이 아니면 그대로 둡니다.
+ * 이름과 조사 사이에 빈칸이 있으면("포션 을(를)") 빈칸을 없애고 맞춥니다.
  * 플러그인 목록의 맨 아래에 두세요. 설정할 것은 없습니다.
  */
 // Kept to ES5: MV games run on old NW.js builds. Every wrapper calls the function it replaced and only edits
@@ -21,7 +22,9 @@
   var HANGUL_FIRST = 0xac00;
   var HANGUL_LAST = 0xd7a3;
   var RIEUL = 8;
-  var FORMS = /은\(는\)|는\(은\)|이\(가\)|가\(이\)|을\(를\)|를\(을\)|과\(와\)|와\(과\)|아\(야\)|야\(아\)|\(으\)로|\(이\)(?:라|나|랑|야|여|고|다|든|면)/g;
+  // The spaces before a form are matched with it: plugins that fill their own placeholders write "_name を" with a
+  // space the translation has to keep, and a particle never stands apart from its word.
+  var FORMS = /([ 　]*)(은\(는\)|는\(은\)|이\(가\)|가\(이\)|을\(를\)|를\(을\)|과\(와\)|와\(과\)|아\(야\)|야\(아\)|\(으\)로|\(이\)(?:라|나|랑|야|여|고|다|든|면))/g;
   // [after a final consonant, after a vowel]
   var PAIRS = {
     '은(는)': ['은', '는'], '는(은)': ['은', '는'],
@@ -52,7 +55,7 @@
         continue;
       }
       var ch = text.charAt(i - 1);
-      if (CLOSERS.indexOf(ch) >= 0) {
+      if (CLOSERS.indexOf(ch) >= 0 || ch === ' ' || ch === '　') {
         i--;
         continue;
       }
@@ -86,9 +89,9 @@
   function fixJosa(text) {
     if (typeof text !== 'string' || text.indexOf('(') < 0) return text;
     try {
-      return text.replace(FORMS, function (form, offset) {
+      return text.replace(FORMS, function (whole, spaces, form, offset) {
         var fin = finalOf(text, offset);
-        return fin < 0 ? form : choose(form, fin);
+        return fin < 0 ? whole : choose(form, fin);
       });
     } catch (e) {
       return text;

@@ -89,7 +89,6 @@ describe('조사 자동 맞춤 플러그인', () => {
     expect(g.format('%1은(는)', 'ティア')).toBe('ティア은(는)');
     expect(g.format('%1은(는)', '王')).toBe('王은(는)');
     expect(g.format('은(는) 없다')).toBe('은(는) 없다');
-    expect(g.format('%1 은(는)', '티아')).toBe('티아 은(는)');
   });
 
   test('색 코드와 닫는 괄호를 건너뛴다', () => {
@@ -99,6 +98,21 @@ describe('조사 자동 맞춤 플러그인', () => {
     expect(g.format('「%1」은(는)', '티아루시')).toBe('「티아루시」는');
     expect(g.format('『%1』(으)로', '마을')).toBe('『마을』로');
     expect(g.format('%1)이(가)', '슬라임')).toBe('슬라임)이');
+  });
+
+  // Plugins that fill their own placeholders write them with a space after ("_name を"), and the app does not
+  // let a translation drop a space the source has.
+  test('이름과 조사 사이의 빈칸은 없애고 맞춘다', () => {
+    const g = game();
+    expect(g.convert('\\I[5]포션 을(를)\\C[24] 손에 넣었다!')).toBe('\x1bI[5]포션을\x1bC[24] 손에 넣었다!');
+    expect(g.convert('\\I[5]사과 을(를)\\C[24] 손에 넣었다!')).toBe('\x1bI[5]사과를\x1bC[24] 손에 넣었다!');
+    expect(g.format('%1　은(는) 도망쳤다!', '티아루시')).toBe('티아루시는 도망쳤다!');
+    expect(g.convert('포션\\C[0]  이(가) 올랐다')).toBe('포션\x1bC[0]이 올랐다');
+    // A space before the colour code stays (only the run right before the particle goes), the particle is still chosen.
+    expect(g.convert('포션 \\C[0]을(를) 잃었다')).toBe('포션 \x1bC[0]을 잃었다');
+    // Nothing to read before the spaces: left as written.
+    expect(g.format(' 은(는) %1', '티아루시')).toBe(' 은(는) 티아루시');
+    expect(g.format('ティア 은(는) %1', 'x')).toBe('ティア 은(는) x');
   });
 
   test('아직 바뀌지 않은 \\N[1] 뒤는 그대로 두고, 대사 처리에서 맞춘다', () => {
