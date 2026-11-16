@@ -1,4 +1,4 @@
-import { bodyTerms, termsIn } from '../../core/glossary/match.js';
+import { bodyTerms, termForModel, termsIn } from '../../core/glossary/match.js';
 import { finalPrompt } from '../../core/glossary/prompts.js';
 import type { Glossary, Term } from '../../core/glossary/types.js';
 import { splitSpeaker } from '../../core/text/speaker.js';
@@ -163,7 +163,7 @@ export function buildTranslatePrompt(batch: Batch, glossary: Glossary): { system
 
   const speakers = speakersOf(batch);
   const user = {
-    terms: batchTerms(batch, bodyTerms(glossary.terms)).map((t) => ({ source: t.source, target: t.target })),
+    terms: batchTerms(batch, bodyTerms(glossary.terms)).map(termForModel),
     characters: glossary.characters.filter((c) => speakers.has(c.source)).map((c) => {
       const out: Record<string, string> = { name: c.source, target: c.target, speech: c.speech };
       if (c.firstPerson) out.firstPerson = c.firstPerson;

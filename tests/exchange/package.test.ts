@@ -108,3 +108,11 @@ test('꾸러미: 검수 의견의 종류는 한국어 이름으로 나간다', (
   expect(by.d3).toMatchObject({ kind: '오역·누락', result: '받음' });
   expect('kind' in by.d2!).toBe(false);
 });
+
+test('꾸러미의 용어: 이름으로 쓰일 때만인 것은 표시하고, 메모가 있으면 함께', () => {
+  const g = glossary();
+  g.terms = g.terms.map((t) => (t.source === 'リナ' ? { ...t, scope: 'name' as const, note: '여주인공' } : t));
+  const pkg = buildPackage({ meta, units, entryOf: store(), glossary: g, decisions, ids: ['d1'] });
+  expect(pkg.terms).toHaveLength(2);
+  expect(pkg.terms).toEqual(expect.arrayContaining([{ source: '月光草', target: '월광초' }, { source: 'リナ', target: '리나', onlyWhenUsedAsName: true, note: '여주인공' }]));
+});

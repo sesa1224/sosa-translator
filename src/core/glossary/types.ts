@@ -1,7 +1,7 @@
 import type { FormatRules } from '../check/rules.js';
 
 export type TermCategory = 'name' | 'place' | 'term' | 'sfx' | 'other';
-export type TermScope = 'speaker';
+export type TermScope = 'speaker' | 'name';
 export interface TermCandidate { target: string; reason: string }
 export interface Term {
   id: string;                 // first 12 chars of sha1(source)
@@ -9,7 +9,11 @@ export interface Term {
   status: 'confirmed' | 'provisional';   // provisional = going ahead with the recommended candidate
   candidates: TermCandidate[];           // 2-3 when provisional; candidates[0].target === target
   note?: string;
-  /** Where the translation is enforced. 'speaker': only where the term is the speaker's name (the speaker line, the name box), for a title like 先生 that others also use as a form of address. Missing = everywhere. */
+  /**
+   * Where the translation is enforced. 'speaker': only where the term is the speaker's name (the speaker line, the name box), for a title like 先生 that others also use as a form of address.
+   * 'name': only where the word is used as a name, for a name that is also an ordinary word; the models are told so, and the program checks it only in the speaker places (it cannot tell a name from a word in a sentence).
+   * Missing = everywhere.
+   */
   scope?: TermScope;
 }
 export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }

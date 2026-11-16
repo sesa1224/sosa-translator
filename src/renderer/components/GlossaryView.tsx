@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { termsIn } from '../../core/glossary/match';
 import { SPEAKER_PRESETS } from '../../core/text/speaker';
-import type { CharacterCard, DraftChoice, DraftMode, Glossary, ProjectRules, Row, SpeakerDetection, Term, TermCategory } from '../../shared/api';
+import type { CharacterCard, DraftChoice, DraftMode, Glossary, ProjectRules, Row, SpeakerDetection, Term, TermCategory, TermScope } from '../../shared/api';
 import { num } from '../format';
 import { orderedRows, useApp } from '../state';
 import { DraftDialog } from './DraftDialog';
@@ -77,6 +77,11 @@ function TermRow({ term }: { term: Term }) {
     if (v && v !== term.target) void useApp.chooseTerm(term.id, v).catch(() => setValue(term.target));
   };
   const { id: _id, ...rest } = term;
+  // The two scopes exclude each other: turning one on turns the other off.
+  const setScope = (scope: TermScope | undefined) => {
+    const { scope: _scope, ...plain } = rest;
+    void useApp.upsertTerm(scope ? { ...plain, scope } : plain);
+  };
   return (
     <div className="term-row" data-testid="term-row">
       <span className="src">{term.source}</span>
@@ -88,11 +93,18 @@ function TermRow({ term }: { term: Term }) {
         {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
       </select>
       {term.category === 'name' ? (
-        <label className="scope-check small" title="켜면 화자 이름 자리(【 】 안, 이름 칸)에만 이 번역을 맞춰요. 대사 안에서 호칭으로 쓰인 것은 인물 카드를 따라요.">
-          <input type="checkbox" aria-label={`${term.source} 화자 이름에만 적용`} checked={term.scope === 'speaker'}
-            onChange={(e) => { const { scope: _scope, ...plain } = rest; void useApp.upsertTerm(e.target.checked ? { ...plain, scope: 'speaker' } : plain); }} />
-          화자만
-        </label>
+        <span className="scope-checks">
+          <label className="scope-check small" title="켜면 화자 이름 자리(【 】 안, 이름 칸)에만 이 번역을 맞춰요. 대사 안에서 호칭으로 쓰인 것은 인물 카드를 따라요.">
+            <input type="checkbox" aria-label={`${term.source} 화자 이름에만 적용`} checked={term.scope === 'speaker'}
+              onChange={(e) => setScope(e.target.checked ? 'speaker' : undefined)} />
+            화자만
+          </label>
+          <label className="scope-check small" title="켜면 이 말이 이름으로 쓰인 곳에만 이 번역을 맞춰요. 같은 글자가 보통 낱말로 쓰인 곳은 문맥대로 옮기고, 검수도 그곳은 짚지 않아요.">
+            <input type="checkbox" aria-label={`${term.source} 이름으로 쓰일 때만 적용`} checked={term.scope === 'name'}
+              onChange={(e) => setScope(e.target.checked ? 'name' : undefined)} />
+            이름으로 쓰일 때만
+          </label>
+        </span>
       ) : <span />}
       {term.status === 'provisional' ? <span className="chip warn small">추천안</span> : <span />}
       <button type="button" className="btn ghost small-btn" aria-label={`${term.source} 삭제`} onClick={() => void useApp.removeTerm(term.id)}>삭제</button>

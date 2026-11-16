@@ -146,3 +146,15 @@ test('표기 검사 규칙: 끄면 가린 글자 규칙도 잠긴다', async () 
   await openGlossary({ rules: { ...defaultFakeGlossary().rules, notationCheck: false } });
   expect(screen.getByLabelText('가린 글자는 풀어서 쓰기')).toBeDisabled();
 });
+
+test('이름 용어를 이름으로 쓰일 때만 적용하게 켜면 화자만은 꺼진다', async () => {
+  await openGlossary({ terms: [{ ...fiveTerms[0], scope: 'speaker' }] });
+  expect(screen.getByText('이름으로 쓰일 때만')).toBeVisible();
+  await user.click(screen.getByLabelText('リナ 이름으로 쓰일 때만 적용'));
+  expect(api.calls.at(-1)).toEqual(['glossary.upsertTerm', { source: 'リナ', target: '리나', category: 'name', status: 'confirmed', candidates: [], scope: 'name' }]);
+  await openGlossary({ terms: [{ ...fiveTerms[0], scope: 'name' }] });
+  expect(screen.getByLabelText('リナ 이름으로 쓰일 때만 적용')).toBeChecked();
+  expect(screen.getByLabelText('リナ 화자 이름에만 적용')).not.toBeChecked();
+  await user.click(screen.getByLabelText('リナ 이름으로 쓰일 때만 적용'));
+  expect(api.calls.at(-1)).toEqual(['glossary.upsertTerm', { source: 'リナ', target: '리나', category: 'name', status: 'confirmed', candidates: [] }]);
+});

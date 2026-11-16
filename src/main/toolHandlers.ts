@@ -78,7 +78,7 @@ export const TOOL_DEFS: ToolDef[] = [
       source: z.string().describe('원문 용어'),
       target: z.string().describe('번역'),
       category: termCategory.optional().describe('name 이름, place 지명, term 용어, sfx 효과음, other 기타 (새 용어의 기본값 term)'),
-      scope: z.enum(['all', 'speaker']).optional().describe('speaker: 화자 이름 자리(화자 줄, 이름 칸)에만 맞춘다. 先生 처럼 남들이 호칭으로도 쓰는 화자 이름에 쓴다. all: 어디서나(기본)'),
+      scope: z.enum(['all', 'speaker', 'name']).optional().describe('speaker: 화자 이름 자리(화자 줄, 이름 칸)에만 맞춘다. 先生 처럼 남들이 호칭으로도 쓰는 화자 이름에 쓴다. name: 그 말이 이름으로 쓰인 곳에만 맞춘다. 보통 낱말과 글자가 같은 인물 이름에 쓴다. all: 어디서나(기본)'),
     }),
   },
   {
@@ -161,15 +161,15 @@ const HANDLERS: Record<string, Handler> = {
       .map(({ id: _id, ...c }) => c);
     return { terms, characters };
   },
-  async glossary_set_term(svc, input: { source: string; target: string; category?: z.infer<typeof termCategory>; scope?: 'all' | 'speaker' }) {
+  async glossary_set_term(svc, input: { source: string; target: string; category?: z.infer<typeof termCategory>; scope?: 'all' | 'speaker' | 'name' }) {
     const source = input.source.trim();
     const existing = svc.glossary().terms.find((t) => t.source === source);
-    const scope = input.scope === 'speaker' ? { scope: 'speaker' as const } : {};
+    const scope = input.scope === 'speaker' || input.scope === 'name' ? { scope: input.scope } : {};
     if (!existing) {
       const t = await svc.upsertTerm({ source, target: input.target, category: input.category ?? 'term', status: 'confirmed', candidates: [], ...scope });
       return { term: t, changed: [], uncertain: [] };
     }
-    const wanted = input.scope === undefined ? existing.scope : input.scope === 'speaker' ? 'speaker' : undefined;
+    const wanted = input.scope === undefined ? existing.scope : input.scope === 'all' ? undefined : input.scope;
     if ((input.category && input.category !== existing.category) || wanted !== existing.scope) {
       const { scope: _old, ...plain } = existing;
       // The scope is set before the rename, so the rename already follows it.

@@ -157,3 +157,11 @@ test('화자 이름에만 쓰는 용어는 화자 줄의 번역만 따라 바뀐
   expect('scope' in svc.glossary().terms.find((t) => t.source === 'リナ')!).toBe(false);
   await svc.removeTerm(termId('リナ')); await svc.setRules({ speakerPattern: null });
 });
+test('채팅 도구로 이름으로 쓰일 때만인 용어를 정하면 이름 바꾸기는 범위 없는 용어처럼 따른다', async () => {
+  await callTool(svc, 'glossary_set_term', { source: 'リナ', target: '리나', category: 'name', scope: 'name' });
+  expect(svc.glossary().terms.find((t) => t.source === 'リナ')!.scope).toBe('name');
+  await svc.setTranslation(profileId, '리나는 약초원의 견습생', 'user');
+  const r: any = await callTool(svc, 'glossary_set_term', { source: 'リナ', target: '린' });
+  expect(r.data.changed).toEqual([profileId]); expect(svc.entry(profileId).target).toBe('린은 약초원의 견습생');
+  await svc.removeTerm(termId('リナ'));
+});

@@ -41,7 +41,7 @@ function readTerm(v: any): Term | null {
     candidates,
   };
   if (str(v.note) && v.note) t.note = v.note;
-  if (v.scope === 'speaker') t.scope = 'speaker';
+  if (v.scope === 'speaker' || v.scope === 'name') t.scope = v.scope;
   return t;
 }
 

@@ -34,6 +34,24 @@ export function bodyTerms(terms: Term[]): Term[] {
 }
 
 /**
+ * Body terms the program itself checks. A term that applies only where it is used as a name is left to the models:
+ * in a sentence the program cannot tell the name from the ordinary word.
+ */
+export function checkedBodyTerms(terms: Term[]): Term[] {
+  return bodyTerms(terms).filter((t) => t.scope !== 'name');
+}
+
+/** What the models (translate, review) and an exported package get for a term. */
+export interface TermForModel { source: string; target: string; onlyWhenUsedAsName?: true; note?: string }
+
+export function termForModel(t: Term): TermForModel {
+  const out: TermForModel = { source: t.source, target: t.target };
+  if (t.scope === 'name') out.onlyWhenUsedAsName = true;
+  if (t.note && t.note.trim()) out.note = t.note;
+  return out;
+}
+
+/**
  * A warning for each speaker-only term that is the name in a speaker place (the speaker line of a message,
  * or a value that is nothing but the name, like the MZ name box) and whose translation is not in its place.
  * translated is the name as translated, compared whole: 선생님 is not 선생.
@@ -41,7 +59,8 @@ export function bodyTerms(terms: Term[]): Term[] {
 export function checkSpeakerTerms(name: string, translated: string, terms: Term[]): Issue[] {
   const out: Issue[] = [];
   for (const t of terms) {
-    if (t.scope !== 'speaker' || t.target === '' || t.source !== name || translated === t.target) continue;
+    // A name-only term is a name in these places by definition, so it is held to its translation like a speaker term.
+    if ((t.scope !== 'speaker' && t.scope !== 'name') || t.target === '' || t.source !== name || translated === t.target) continue;
     out.push({ rule: 'glossary', severity: 'warning', message: `화자 이름 "${t.source}"는 "${t.target}"(으)로 옮깁니다` });
   }
   return out;

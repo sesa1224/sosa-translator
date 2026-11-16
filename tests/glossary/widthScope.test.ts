@@ -199,3 +199,34 @@ test('지침의 괄호 문장은 규칙을 따른다', () => {
     expect(finalPrompt(kind, { ...g, rules: { ...g.rules, halfWidth: false } })).not.toContain(on);
   }
 });
+
+test('이름으로 쓰일 때만: 본문 검사는 하지 않고 화자 자리에서는 맞추며, 모델에는 표시해서 보낸다', () => {
+  const hana = T('ハナ', '하나', { scope: 'name', note: '주인공 여동생' });
+  // The body may use the ordinary word: the program cannot tell, so it does not check.
+  expect(check(D('a', '「ハナが咲いた」'), '「꽃이 피었다」', [hana])).toEqual([]);
+  // As the speaker it is enforced like a speaker term.
+  expect(check(D('b', '【ハナ】\n「おはよう」'), '【꽃】\n「좋은 아침」', [hana])).toEqual([
+    expect.objectContaining({ rule: 'glossary', severity: 'warning' }),
+  ]);
+  expect(check(D('c', '【ハナ】\n「おはよう」'), '【하나】\n「좋은 아침」', [hana])).toEqual([]);
+  expect(check(D('d', 'ハナ', { kind: 'db' }), '꽃', [hana])).toHaveLength(1);
+  // A rename treats it like a term without a scope.
+  const units = [D('e', '「ハナが咲いた」')];
+  expect(planRename(hana, '한아', units, () => ({ target: '「하나가 피었다」', status: 'translated', updatedAt: '' }), PATTERN)).toEqual([
+    { id: 'e', newTarget: '「한아가 피었다」', certain: true },
+  ]);
+  const g: Glossary = { ...defaultGlossary(), terms: [hana, T('アーテル', '아텔', { note: '  ' })] };
+  const sent = [{ source: 'ハナ', target: '하나', onlyWhenUsedAsName: true, note: '주인공 여동생' }, { source: 'アーテル', target: '아텔' }];
+  expect(JSON.parse(buildTranslatePrompt(batchOf('「ハナとアーテル」', null), g).user).terms).toEqual(sent);
+  const rv = buildReviewPrompt({ label: 'x', file: 'f', items: [{ i: 0, id: 'a', kind: 'dialogue', speaker: null, speakerLine: null, source: '「ハナとアーテル」', target: '「꽃과 아텔」' }] }, g);
+  expect(JSON.parse(rv.user).terms).toEqual(sent);
+  expect(normalizeGlossary({ terms: [{ source: 'ハナ', target: '하나', scope: 'name' }] }).terms[0].scope).toBe('name');
+});
+
+test('번역·검수·내보내기 글이 이름 표시와 메모를 설명한다', () => {
+  for (const kind of ['translate', 'review', 'export'] as const) {
+    const text = finalPrompt(kind, defaultGlossary());
+    expect(text).toContain('onlyWhenUsedAsName');
+    expect(text).toContain('note');
+  }
+});

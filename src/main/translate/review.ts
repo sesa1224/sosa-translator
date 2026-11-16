@@ -1,4 +1,4 @@
-import { bodyTerms, termsIn } from '../../core/glossary/match.js';
+import { bodyTerms, termForModel, termsIn } from '../../core/glossary/match.js';
 import { toHalfWidth } from '../../core/text/width.js';
 import type { Glossary, Term } from '../../core/glossary/types.js';
 import { REVIEW_KINDS, type ReviewKind, type TextUnit, type TranslationEntry, type UnitKind } from '../../core/types.js';
@@ -115,7 +115,7 @@ export function buildReviewPrompt(batch: ReviewBatch, glossary: Glossary): { sys
   const system = finalPrompt('review', glossary);
   const speakers = new Set(batch.items.map((i) => i.speaker).filter((s): s is string => s !== null));
   const user = {
-    terms: batchTerms(batch, bodyTerms(glossary.terms)).map((t) => ({ source: t.source, target: t.target })),
+    terms: batchTerms(batch, bodyTerms(glossary.terms)).map(termForModel),
     characters: glossary.characters.filter((c) => speakers.has(c.source)).map((c) => ({
       name: c.source, target: c.target, speech: c.speech,
       ...(c.firstPerson ? { firstPerson: c.firstPerson } : {}), ...(c.addressing ? { addressing: c.addressing } : {}), ...(c.moanStyle ? { moanStyle: c.moanStyle } : {}),

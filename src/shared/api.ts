@@ -141,7 +141,7 @@ export interface ReviewPlan { items: number; estimatedInputTokens: number; model
 // ---- Glossary (copies of src/core/glossary/types.ts, checked in src/main/ipc.ts) ----
 
 export type TermCategory = 'name' | 'place' | 'term' | 'sfx' | 'other';
-export type TermScope = 'speaker';
+export type TermScope = 'speaker' | 'name';
 export interface TermCandidate { target: string; reason: string }
 export interface Term {
   id: string; source: string; target: string; category: TermCategory;
