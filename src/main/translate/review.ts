@@ -1,7 +1,7 @@
 import { bodyTerms, termsIn } from '../../core/glossary/match.js';
 import { toHalfWidth } from '../../core/text/width.js';
 import type { Glossary, Term } from '../../core/glossary/types.js';
-import type { TextUnit, TranslationEntry, UnitKind } from '../../core/types.js';
+import { REVIEW_KINDS, type ReviewKind, type TextUnit, type TranslationEntry, type UnitKind } from '../../core/types.js';
 import { scopeLabel } from '../../shared/rows.js';
 import { finalPrompt } from '../../core/glossary/prompts.js';
 import { targetBody, unitParts } from './batches.js';
@@ -69,16 +69,27 @@ export const REVIEW_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { i: { type: 'integer' }, problem: { type: 'string' }, suggestion: { type: 'string' } },
-        required: ['i', 'problem', 'suggestion'],
+        properties: {
+          i: { type: 'integer' },
+          kind: {
+            type: 'string',
+            enum: REVIEW_KINDS,
+            description: '의견의 종류. meaning: 오역이나 빠진 내용, tone: 인물 말투·어미·호칭, term: 용어집과 다른 용어, '
+              + 'sound: 의성어·의태어·신음 표기, form: 문장부호·기호·전각/반각·줄바꿈 같은 표기, style: 어색한 한국어·번역투',
+          },
+          problem: { type: 'string' },
+          suggestion: { type: 'string' },
+        },
+        required: ['i', 'kind', 'problem', 'suggestion'],
       },
     },
   },
   required: ['problems'],
 } as const;
 
-export interface ReviewAnswer { problems: { i: number; problem: string; suggestion: string }[] }
+export interface ReviewAnswer { problems: { i: number; problem: string; suggestion: string; kind?: unknown }[] }
 
+// kind is not checked: a remark without a kind the app knows is still worth a look, it is stored without one.
 export function isReviewAnswer(v: unknown): v is ReviewAnswer {
   return !!v && typeof v === 'object' && Array.isArray((v as any).problems)
     && (v as any).problems.every((p: any) => p && Number.isInteger(p.i) && typeof p.problem === 'string' && typeof p.suggestion === 'string');
@@ -160,7 +171,8 @@ export class ReviewJob extends BatchJob<ReviewBatch> {
       // Taking it would change nothing (the reviewer only differed in width, or repeated the translation): not worth a look.
       if (suggestion === current) continue;
       flagged.add(item.id);
-      await svc.setReview(item.id, { problem: p.problem, suggestion, model: this.o.model }, 'review');
+      const kind = REVIEW_KINDS.includes(p.kind as ReviewKind) ? { kind: p.kind as ReviewKind } : {};
+      await svc.setReview(item.id, { problem: p.problem, suggestion, model: this.o.model, ...kind }, 'review');
     }
     const rest = batch.items.map((i) => i.id).filter((id) => !flagged.has(id));
     if (rest.length > 0) await svc.markReviewed(rest, 'review');

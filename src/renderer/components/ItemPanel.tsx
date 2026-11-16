@@ -2,7 +2,7 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
 import { changedWords, type WordPiece } from '../../core/update/carry';
-import type { Issue, KeepRule, PastReview, Row } from '../../shared/api';
+import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { GamePreview } from './GamePreview';
@@ -103,7 +103,7 @@ export function ItemPanel() {
       )}
       {row.review && (
         <section className="review-box" aria-label="검수 의견">
-          <span className="label">검수 의견</span>
+          <span className="label">검수 의견{row.review.kind && <>{' '}<span className="tag small">{REVIEW_KIND_LABEL[row.review.kind]}</span></>}</span>
           <span className="small">{row.review.problem}</span>
           <div className="textbox src"><CodeText text={row.review.suggestion} /></div>
           <div className="row-gap">
@@ -256,7 +256,10 @@ function PastReviewBox({ row, past, disabled, onSwitch }: { row: Row; past: Past
   const edited = row.target !== (took ? past.suggestion : past.before);
   return (
     <section className="past-review" aria-label="지난 검수 의견">
-      <span className="label">{`지난 검수 의견 · ${took ? '고친 안 받음' : '그대로 둠'}${past.at ? ` · ${past.at.slice(0, 10)}` : ''}`}</span>
+      <span className="label">
+        {`지난 검수 의견 · ${took ? '고친 안 받음' : '그대로 둠'}${past.at ? ` · ${past.at.slice(0, 10)}` : ''}`}
+        {past.kind && <>{' '}<span className="tag small">{REVIEW_KIND_LABEL[past.kind]}</span></>}
+      </span>
       <span className="small">{past.problem}</span>
       <span className="label">고치기 전</span>
       <div className="textbox src"><CodeText text={past.before} /></div>

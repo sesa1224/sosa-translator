@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { Row, StatusFilter } from '../../shared/api';
+import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
 import { filterRows } from '../../shared/rows';
 import { num, STATUS_LABEL } from '../format';
 import { jobActive, orderedRows, useApp } from '../state';
@@ -127,13 +127,46 @@ function FilterBar() {
   if ((s.reviewPassed ?? 0) > 0) chips.push(['review-passed', '검수 의견 넘김', s.reviewPassed ?? 0]);
   const current = query.status ?? 'all';
   return (
-    <div className="filters">
-      {chips.map(([key, label, n]) => (
-        <button key={key} type="button" className={`pill${current === key ? ' on' : ''}`} aria-pressed={current === key}
-          onClick={() => useApp.setQuery({ status: key })}>{`${label} ${num(n)}`}</button>
-      ))}
-      <label htmlFor="q" className="sr-only">문장 검색</label>
-      <input id="q" className="input search" type="search" placeholder="月光草" value={text} onChange={(e) => setText(e.target.value)} />
+    <>
+      <div className="filters">
+        {chips.map(([key, label, n]) => (
+          <button key={key} type="button" className={`pill${current === key ? ' on' : ''}`} aria-pressed={current === key}
+            onClick={() => useApp.setQuery({ status: key })}>{`${label} ${num(n)}`}</button>
+        ))}
+        <label htmlFor="q" className="sr-only">문장 검색</label>
+        <input id="q" className="input search" type="search" placeholder="月光草" value={text} onChange={(e) => setText(e.target.value)} />
+      </div>
+      {REVIEW_STATUSES.has(current) && <ReviewKindChips status={current} />}
+    </>
+  );
+}
+
+const REVIEW_STATUSES = new Set<StatusFilter>(['needs-review', 'review-taken', 'review-passed']);
+
+/** Second chip row under a review status: the remark kinds among that status's rows, so one kind can be handled at once. */
+function ReviewKindChips({ status }: { status: StatusFilter }) {
+  const { rowsById, query } = useApp();
+  const counts = useMemo(() => {
+    const m = new Map<ReviewKind | 'none', number>();
+    for (const r of filterRows(Object.values(rowsById), { status })) {
+      const note = r.review ?? r.pastReview;
+      if (!note) continue;
+      const k = note.kind ?? 'none';
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [rowsById, status]);
+  if (counts.size === 0) return null;
+  const chips: [ReviewKind | 'none', string][] = [...REVIEW_KINDS.map((k): [ReviewKind, string] => [k, REVIEW_KIND_LABEL[k]]), ['none', NO_REVIEW_KIND_LABEL]];
+  return (
+    <div className="filters" role="group" aria-label="검수 의견 종류">
+      {chips.filter(([k]) => counts.has(k)).map(([k, label]) => {
+        const on = query.reviewKind === k;
+        return (
+          <button key={k} type="button" className={`pill${on ? ' on' : ''}`} aria-pressed={on}
+            onClick={() => useApp.setQuery({ reviewKind: on ? undefined : k })}>{`${label} ${num(counts.get(k)!)}`}</button>
+        );
+      })}
     </div>
   );
 }

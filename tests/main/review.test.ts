@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { finalPrompt } from '../../src/core/glossary/prompts.js';
 import type { TranslationEntry } from '../../src/core/types.js';
 import { ProjectService } from '../../src/main/projectService.js';
-import { buildReviewPrompt, estimateTokens, planReview, REVIEW_SCHEMA, ReviewJob } from '../../src/main/translate/review.js';
+import { buildReviewPrompt, estimateTokens, isReviewAnswer, planReview, REVIEW_SCHEMA, ReviewJob } from '../../src/main/translate/review.js';
 import { cleanupTempDirs } from '../helpers/fs.js';
 import { freshGame, idFinder } from './helpers.js';
 import { answer, idle, zero, type FakeCall } from './jobHelpers.js';
@@ -122,4 +122,22 @@ test('검수 의견을 한꺼번에 받고 넘긴다', async () => {
   expect(await svc.rejectReviews([z, plain])).toBe(1);
   expect(svc.entry(z)).toMatchObject({ target: zBefore, status: 'translated', pastReview: { taken: 'before', suggestion: `고침-${z}` } });
   expect(await svc.rejectReviews([plain])).toBe(0);
+});
+test('검수 의견에는 종류가 붙고, 모르는 종류는 종류 없이 남는다', async () => {
+  const item = (REVIEW_SCHEMA.properties.problems.items as any);
+  expect(item.required).toContain('kind');
+  expect(item.properties.kind.enum).toEqual(['meaning', 'tone', 'term', 'sound', 'form', 'style']);
+  expect(item.properties.kind.description).toContain('의성어');
+  // The model may leave it out or make one up: the remark still counts.
+  expect(isReviewAnswer({ problems: [{ i: 0, problem: 'p', suggestion: 's' }] })).toBe(true);
+  expect(isReviewAnswer({ problems: [{ i: 0, problem: 'p', suggestion: 's', kind: 'what' }] })).toBe(true);
+  const ids = firstBatchIds();
+  for (const id of ids) await svc.rejectReview(id);
+  await mkReview(answer(() => ({ problems: [
+    { i: 0, problem: '어미', suggestion: '종류-말투', kind: 'tone' },
+    { i: 1, problem: '모름', suggestion: '종류-모름', kind: 'what' },
+  ] }))).start();
+  expect(svc.entry(ids[0]).review).toMatchObject({ problem: '어미', kind: 'tone' });
+  expect(svc.entry(ids[1]).review).toBeDefined(); expect('kind' in svc.entry(ids[1]).review!).toBe(false);
+  await svc.rejectReview(ids[0]); expect(svc.entry(ids[0]).pastReview).toMatchObject({ kind: 'tone', taken: 'before' });
 });

@@ -127,6 +127,10 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
     } else if (status === 'review-passed') {
       if (r.pastReview?.taken !== 'before') return false;
     } else if (status !== 'all' && r.status !== status) return false;
+    if (q.reviewKind) {
+      const note = r.review ?? r.pastReview;
+      if (!note || (note.kind ?? 'none') !== q.reviewKind) return false;
+    }
     if (text === '') return true;
     return r.source.toLowerCase().includes(text)
       || (r.target !== null && r.target.toLowerCase().includes(text))

@@ -292,6 +292,8 @@ const actions = {
   setQuery(patch: RowQuery): void {
     set((s) => {
       const q = { ...s.query, ...patch };
+      // Kinds differ per status (open remarks vs handled ones): a kind picked for one status would hide rows of the next.
+      if (patch.status !== undefined && patch.status !== s.query.status && !('reviewKind' in patch)) delete q.reviewKind;
       for (const k of Object.keys(q) as (keyof RowQuery)[]) if (q[k] === undefined) delete q[k];
       return { query: q };
     });

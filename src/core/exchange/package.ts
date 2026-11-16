@@ -10,11 +10,11 @@ import { finalPrompt } from '../glossary/prompts.js';
 import type { Glossary } from '../glossary/types.js';
 import type { ProjectMeta } from '../project/project.js';
 import { composeSpeaker, splitSpeaker } from '../text/speaker.js';
-import type { Issue, TextUnit, TranslationEntry, UnitKind } from '../types.js';
+import { REVIEW_KIND_LABEL, type Issue, type ReviewKind, type TextUnit, type TranslationEntry, type UnitKind } from '../types.js';
 
 export interface ExchangeLine { speaker: string | null; source: string; target: string | null }
 /** A reviewer's remark on the item: still waiting for a look ('대기'), taken ('받음') or passed over ('넘김'). before is the translation it was about, once handled. */
-export interface ExchangeReview { problem: string; before?: string; suggestion: string; result: '대기' | '받음' | '넘김' }
+export interface ExchangeReview { problem: string; kind?: string; before?: string; suggestion: string; result: '대기' | '받음' | '넘김' }
 export interface ExchangeItem {
   id: string; kind: UnitKind; speaker: string | null; text: string; keep?: string[]; current?: string;
   review?: ExchangeReview;
@@ -100,10 +100,12 @@ export function buildPackage(o: {
       const current = entry.target;
       if (current !== null) item.current = bodyOf(current, p.speakerLine);
       // Why a line reads as it does now: the open remark first, else the last one that was handled.
-      if (entry.review) item.review = { problem: entry.review.problem, suggestion: bodyOf(entry.review.suggestion, p.speakerLine), result: '대기' };
+      // The kind goes out by its Korean name: the package is read by a person or another tool, not by this app.
+      const kindOf = (k: ReviewKind | undefined) => (k ? { kind: REVIEW_KIND_LABEL[k] } : {});
+      if (entry.review) item.review = { problem: entry.review.problem, ...kindOf(entry.review.kind), suggestion: bodyOf(entry.review.suggestion, p.speakerLine), result: '대기' };
       else if (entry.pastReview) {
         const past = entry.pastReview;
-        item.review = { problem: past.problem, before: bodyOf(past.before, p.speakerLine), suggestion: bodyOf(past.suggestion, p.speakerLine), result: past.taken === 'suggestion' ? '받음' : '넘김' };
+        item.review = { problem: past.problem, ...kindOf(past.kind), before: bodyOf(past.before, p.speakerLine), suggestion: bodyOf(past.suggestion, p.speakerLine), result: past.taken === 'suggestion' ? '받음' : '넘김' };
       }
       for (let k = index - 1; k >= 0 && item.before.length < CONTEXT; k--) if (CONTEXT_KINDS.has(list[k].kind)) item.before.unshift(line(list[k]));
       for (let k = index + 1; k < list.length && item.after.length < CONTEXT; k++) if (CONTEXT_KINDS.has(list[k].kind)) item.after.push(line(list[k]));

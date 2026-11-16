@@ -124,3 +124,29 @@ test('설정의 대본 읽기 모델: 비우면 용어집 정리와 같음', asy
   expect((api.calls.at(-1) as any)[1].stageModels.glossaryRead).toBe('claude-haiku-5-5');
   expect(screen.getByLabelText('용어집 정리')).toBeVisible();
 });
+test('검수 의견을 종류로 거르고, 종류는 의견 상자에 보인다', async () => {
+  cleanup();
+  const formRow = (id: string, n: number): Row => ({ ...extraRows[1], id, location: `맵1 · 이벤트${10 + n}`, review: { problem: '쉼표', suggestion: '고침', model: 'm', kind: 'form' } });
+  const soundPast: Row = { ...extraRows[2], id: 'r-sound', pastReview: { ...extraRows[2].pastReview!, kind: 'sound' } };
+  api = fakeApi({ rows: [...baseRows, ...extraRows, formRow('r-form1', 1), formRow('r-form2', 2), soundPast] });
+  user = await openFakeWith(api, { select: 'r-form1' });
+  expect(screen.queryByRole('group', { name: '검수 의견 종류' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: '검토 필요 3' }));
+  const kinds = screen.getByRole('group', { name: '검수 의견 종류' });
+  expect(within(kinds).getByRole('button', { name: '종류 없음 1' })).toBeVisible();
+  await user.click(within(kinds).getByRole('button', { name: '표기 2' }));
+  expect(useApp.get().query.reviewKind).toBe('form');
+  expect(screen.getByRole('table', { name: '텍스트 표' })).toHaveAttribute('aria-rowcount', '3');
+  expect(within(kinds).getByRole('button', { name: '표기 2' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(within(kinds).getByRole('button', { name: '표기 2' }));
+  expect(useApp.get().query.reviewKind).toBeUndefined();
+  await user.click(within(kinds).getByRole('button', { name: '표기 2' }));
+  // A new status starts with every kind again.
+  await user.click(screen.getByRole('button', { name: '검수로 바뀜 2' }));
+  expect(useApp.get().query.reviewKind).toBeUndefined();
+  const pastKinds = screen.getByRole('group', { name: '검수 의견 종류' });
+  expect(within(pastKinds).getByRole('button', { name: '의성어·신음 1' })).toBeVisible();
+  expect(within(screen.getByRole('region', { name: '검수 의견' })).getByText('표기')).toBeVisible();
+  await act(async () => { await useApp.selectRow('r-sound'); });
+  expect(within(screen.getByRole('region', { name: '지난 검수 의견' })).getByText('의성어·신음')).toBeVisible();
+});

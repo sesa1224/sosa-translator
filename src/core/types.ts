@@ -55,7 +55,16 @@ export interface TextUnit {
  * declined: the model would not translate it (declinedReason says why).
  */
 export type TranslationStatus = 'untranslated' | 'translated' | 'needs-review' | 'approved' | 'error' | 'declined';
-export interface ReviewNote { problem: string; suggestion: string; model: string }
+/** What a reviewer's remark is about, so remarks can be handled kind by kind. */
+export type ReviewKind = 'meaning' | 'tone' | 'term' | 'sound' | 'form' | 'style';
+export const REVIEW_KINDS: ReviewKind[] = ['meaning', 'tone', 'term', 'sound', 'form', 'style'];
+/** Korean names shown on screen and written into exported packages (one map so both say the same). */
+export const REVIEW_KIND_LABEL: Record<ReviewKind, string> = {
+  meaning: '오역·누락', tone: '말투·호칭', term: '용어', sound: '의성어·신음', form: '표기', style: '어색함',
+};
+export const NO_REVIEW_KIND_LABEL = '종류 없음';
+/** kind is missing on remarks stored before kinds existed, and when the reviewer gave none it knows. */
+export interface ReviewNote { problem: string; suggestion: string; model: string; kind?: ReviewKind }
 /** A remark the user has dealt with: the translation it was about (before), and which of the two was taken. */
 export interface PastReview extends ReviewNote { before: string; taken: 'suggestion' | 'before'; at: string }
 /** One row of translations.json, keyed by TextUnit.id. */

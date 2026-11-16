@@ -95,3 +95,16 @@ test('꾸러미: 검수 의견이 있는 항목에는 이유가 함께 나간다
   expect('review' in pkg.items.find((i) => i.id === 'd2')!).toBe(false);
   expect(pkg.instructions).toContain('review 가 있으면');
 });
+
+test('꾸러미: 검수 의견의 종류는 한국어 이름으로 나간다', () => {
+  const entries = store({
+    d0: { target: '첫 말', status: 'needs-review', review: { problem: '쉼표', suggestion: '첫 말.', model: 'm', kind: 'form' } },
+    d3: { target: '끝말', status: 'translated', pastReview: { problem: '오역', suggestion: '끝말', model: 'm', kind: 'meaning', before: '마지막 단어', taken: 'suggestion', at: '' } },
+    d2: { target: '어라', status: 'needs-review', review: { problem: '옛 의견', suggestion: '어라?', model: 'm' } },
+  });
+  const pkg = buildPackage({ meta, units, entryOf: entries, glossary: glossary(), decisions, ids: ['d0', 'd2', 'd3'] });
+  const by = Object.fromEntries(pkg.items.map((i) => [i.id, i.review]));
+  expect(by.d0).toEqual({ problem: '쉼표', kind: '표기', suggestion: '첫 말.', result: '대기' });
+  expect(by.d3).toMatchObject({ kind: '오역·누락', result: '받음' });
+  expect('kind' in by.d2!).toBe(false);
+});

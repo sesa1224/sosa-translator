@@ -101,6 +101,7 @@ const DEFAULT_TEMPLATES: Record<PromptKind, string> = {
     '- 취향 차이만 있는 것은 돌려주지 않는다.',
     '- 지침의 "남기는 말투"에 든 말(장르 관용 말투)은 번역이 그대로 썼어도, 한국어 감탄사로 바꿔 썼어도 돌려주지 않는다. 지침의 "번역투 피하기" 표에 든 것(원어를 그대로 둔 단어, 어색한 피동, 일본어식 문장 구조)은 돌려준다.',
     '- problem 에 무엇이 문제인지 한 문장으로 적는다.',
+    '- kind 에 의견의 종류를 적는다: meaning(오역·누락), tone(말투·어미·호칭), term(용어), sound(의성어·신음 표기), form(문장부호·전각/반각 같은 표기), style(어색한 한국어·번역투). 여러 가지면 가장 큰 것 하나.',
     '- suggestion 은 고친 번역문 전체이고 제어문자를 그대로 유지한다. 화자 이름은 넣지 않고 target 과 같은 범위만 쓴다.',
   ].join('\n'),
   export: [
@@ -113,7 +114,7 @@ const DEFAULT_TEMPLATES: Record<PromptKind, string> = {
     '',
     '돌려줄 형식: items 의 항목마다 { "id": 그 항목의 id, "target": text 의 번역 } 을 담은 JSON 배열. 화자 이름(speaker)은 번역하지 않고 text 만 옮긴다.',
     'before/after 는 앞뒤 대사로 참고만 한다.',
-    'review 가 있으면 그 항목에 달렸던 검수 의견이다(problem 지적, before 고치기 전 번역, suggestion 고친 안, result 는 대기·받음·넘김). 왜 지금 번역이 되었는지 알려 주는 것이고, 돌려주지 않는다.',
+    'review 가 있으면 그 항목에 달렸던 검수 의견이다(problem 지적, kind 의견 종류, before 고치기 전 번역, suggestion 고친 안, result 는 대기·받음·넘김). 왜 지금 번역이 되었는지 알려 주는 것이고, 돌려주지 않는다.',
   ].join('\n'),
 };
 

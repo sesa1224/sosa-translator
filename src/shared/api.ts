@@ -7,14 +7,15 @@
 //
 // Adding a request/response channel takes four steps: the entry in InvokeChannels, the method in Api,
 // the handler in src/main/ipc.ts and the call in src/preload/index.ts.
-import type { Issue, PastReview, PathSeg, ReviewNote, TranslationStatus, UnitKind } from '../core/types.js';
+import type { Issue, PastReview, PathSeg, ReviewKind, ReviewNote, TranslationStatus, UnitKind } from '../core/types.js';
 import type { Decision, DecisionGroup, KeepRule } from '../core/decisions/types.js';
 import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patches/types.js';
 import type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
 import type { Layout, PreviewContext, PreviewSettings, WindowMetrics } from '../core/preview/types.js';
 import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
 
-export type { Issue, PastReview, ReviewNote, TranslationStatus, UnitKind, PathSeg };
+export type { Issue, PastReview, ReviewKind, ReviewNote, TranslationStatus, UnitKind, PathSeg };
+export { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS } from '../core/types.js';
 export type { Decision, DecisionGroup, KeepRule };
 export type { EventCommand, ListOp, Patch, PatchBody, PatchState, PatchStatus } from '../core/patches/types.js';
 export type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
@@ -47,7 +48,8 @@ export interface Row {
 /** A needs-decision row's state: no decision, confirmed (translate / skip), or only suggested. null for other rows. */
 export type RowDecision = 'none' | 'translate' | 'skip' | 'suggested-translate' | 'suggested-skip';
 export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed' | 'review-taken' | 'review-passed';
-export interface RowQuery { text?: string; status?: StatusFilter; file?: string; decisionKey?: string }
+/** reviewKind: the kind of the open (else the last handled) remark; 'none' is a remark without a kind. */
+export interface RowQuery { text?: string; status?: StatusFilter; file?: string; decisionKey?: string; reviewKind?: ReviewKind | 'none' }
 /**
  * Counts for the sidebar and status bar. undecided: needs-decision rows without a confirmed decision;
  * changed: rows with a previous version's sentence; carried: those whose old translation was filled in.
