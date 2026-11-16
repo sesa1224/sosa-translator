@@ -403,6 +403,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('unit:acceptReview', (id: string) => svc().acceptReview(id));
   handle('unit:rejectReview', (id: string) => svc().rejectReview(id));
   handle('unit:switchPastReview', (id: string) => svc().switchPastReview(id));
+  handle('unit:acceptReviews', (ids: string[]) => svc().acceptReviews(ids));
+  handle('unit:rejectReviews', (ids: string[]) => svc().rejectReviews(ids));
 
   // ---- jobs (one at a time) ----
   function busy(): boolean {

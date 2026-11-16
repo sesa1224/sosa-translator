@@ -102,7 +102,10 @@ export function toRow(unit: TextUnit, entry: TranslationEntry, usesProvisional =
   return row;
 }
 
-/** Plain-text (not regex), case-insensitive search over source, target and speaker; plus status and file filters. */
+/**
+ * Plain-text (not regex), case-insensitive search over source, target, speaker and what a reviewer's remark said
+ * (so remarks of one kind can be gathered and handled together); plus status and file filters.
+ */
 export function filterRows(rows: Row[], q: RowQuery): Row[] {
   const text = (q.text ?? '').toLowerCase();
   const status = q.status ?? 'all';
@@ -127,7 +130,8 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
     if (text === '') return true;
     return r.source.toLowerCase().includes(text)
       || (r.target !== null && r.target.toLowerCase().includes(text))
-      || (r.speaker !== undefined && r.speaker.toLowerCase().includes(text));
+      || (r.speaker !== undefined && r.speaker.toLowerCase().includes(text))
+      || (r.review ?? r.pastReview)?.problem.toLowerCase().includes(text) === true;
   });
 }
 

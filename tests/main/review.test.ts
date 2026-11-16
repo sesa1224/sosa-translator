@@ -110,3 +110,16 @@ test('받아도 달라지는 것이 없는 의견은 올라오지 않는다', as
   expect(svc.entry(ids[0]).review).toBeUndefined(); expect(svc.entry(ids[0]).status).not.toBe('needs-review');
   expect(ids.map((id) => svc.entry(id).target)).toEqual(before);
 });
+test('검수 의견을 한꺼번에 받고 넘긴다', async () => {
+  const open = units().filter((u) => svc.entry(u.id).target !== null && !svc.entry(u.id).review).slice(0, 4).map((u) => u.id);
+  const [x, y, z, plain] = open;
+  for (const id of [x, y, z]) await svc.setReview(id, { problem: '전각 괄호', suggestion: `고침-${id}`, model: 'm' }, 'review');
+  const zBefore = svc.entry(z).target;
+  // Ids without an open remark are passed by, not an error: the list on screen may be a moment old.
+  expect(await svc.acceptReviews([x, y, plain])).toBe(2);
+  expect(svc.entry(x)).toMatchObject({ target: `고침-${x}`, pastReview: { taken: 'suggestion', problem: '전각 괄호' } });
+  expect(svc.entry(y).review).toBeUndefined(); expect(svc.entry(z).review).toBeDefined();
+  expect(await svc.rejectReviews([z, plain])).toBe(1);
+  expect(svc.entry(z)).toMatchObject({ target: zBefore, status: 'translated', pastReview: { taken: 'before', suggestion: `고침-${z}` } });
+  expect(await svc.rejectReviews([plain])).toBe(0);
+});

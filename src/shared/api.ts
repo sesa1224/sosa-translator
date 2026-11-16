@@ -271,6 +271,8 @@ export interface InvokeChannels {
   'unit:acceptReview': (id: string) => Issue[];
   'unit:rejectReview': (id: string) => void;
   'unit:switchPastReview': (id: string) => Issue[];
+  'unit:acceptReviews': (ids: string[]) => number;
+  'unit:rejectReviews': (ids: string[]) => number;
 
   'glossary:get': () => Glossary;
   'glossary:upsertTerm': (t: Omit<Term, 'id'>) => Term;
@@ -398,6 +400,7 @@ export interface Api {
     get: Call<'unit:get'>; setTranslation: Call<'unit:setTranslation'>;
     setStatus: Call<'unit:setStatus'>; clear: Call<'unit:clear'>;
     acceptReview: Call<'unit:acceptReview'>; rejectReview: Call<'unit:rejectReview'>; switchPastReview: Call<'unit:switchPastReview'>;
+    acceptReviews: Call<'unit:acceptReviews'>; rejectReviews: Call<'unit:rejectReviews'>;
   };
   chat: {
     send: Call<'chat:send'>; stop: Call<'chat:stop'>; reset: Call<'chat:reset'>;

@@ -1,6 +1,6 @@
 import { act, cleanup, screen, within } from '@testing-library/react';
 import { type UserEvent } from '@testing-library/user-event';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { useApp } from '../../src/renderer/state';
 import type { ChatUsage, Glossary, Row } from '../../src/shared/api';
 import { baseRows, fakeApi, itemId, openFakeWith, scopes, stats, type FakeApi } from './fakeApi';
@@ -51,6 +51,19 @@ test('검수 범위와 추정', async () => {
 test('검수 의견 받기', async () => {
   await openFake({ select: reviewedId }); expect(screen.getByText('어미가 인물과 안 맞음')).toBeVisible();
   await user.click(screen.getByRole('button', { name: '고친 안 받기' })); expect(api.calls.at(-1)).toEqual(['unit.acceptReview', reviewedId]);
+});
+test('보이는 검수 의견을 한꺼번에 처리한다', async () => {
+  await openFake();
+  const ask = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const group = screen.getByRole('group', { name: '보이는 검수 의견' });
+  expect(within(group).getByText('보이는 검수 의견 1개')).toBeVisible();
+  await user.click(within(group).getByRole('button', { name: '모두 그대로 두기' }));
+  expect(ask).toHaveBeenCalledOnce(); expect(api.calls.some((c) => c[0] === 'unit.rejectReviews')).toBe(false);   // not confirmed: nothing happens
+  ask.mockReturnValue(true);
+  await user.click(within(group).getByRole('button', { name: '모두 그대로 두기' })); expect(api.calls.at(-1)).toEqual(['unit.rejectReviews', [reviewedId]]);
+  expect(await screen.findByText('의견 1개를 넘겼어요')).toBeVisible();
+  await user.click(within(group).getByRole('button', { name: '모두 고친 안 받기' })); expect(api.calls.at(-1)).toEqual(['unit.acceptReviews', [reviewedId]]);
+  ask.mockRestore();
 });
 test('지난 검수 의견을 보고 되돌린다', async () => {
   await openFake({ select: 'r-past' });

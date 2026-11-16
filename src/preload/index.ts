@@ -38,6 +38,8 @@ const api: Api = {
     acceptReview: (id) => call('unit:acceptReview', id),
     rejectReview: (id) => call('unit:rejectReview', id),
     switchPastReview: (id) => call('unit:switchPastReview', id),
+    acceptReviews: (ids) => call('unit:acceptReviews', ids),
+    rejectReviews: (ids) => call('unit:rejectReviews', ids),
   },
   glossary: {
     get: () => call('glossary:get'),

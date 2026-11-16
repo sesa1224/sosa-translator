@@ -447,34 +447,63 @@ export class ProjectService extends EventEmitter {
     });
   }
 
+  /** Takes the open remark's suggestion as the translation; the remark moves to pastReview. null when there is no open remark. */
+  private takeReview(id: string): Issue[] | null {
+    const unit = this.require(id);
+    const e = this.store.get(id);
+    if (!e.review || e.target === null) return null;
+    const issues = this.check(unit, e.review.suggestion);
+    const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'translated';
+    this.remember(id, 'review');
+    const now = new Date().toISOString();
+    const pastReview: PastReview = { ...e.review, before: e.target, taken: 'suggestion', at: now };
+    this.store.restore(id, { target: e.review.suggestion, status, updatedAt: now, reviewedAt: now, pastReview });
+    return issues;
+  }
+
+  /** Keeps the translation and moves the open remark to pastReview. false when there is no open remark. */
+  private passReview(id: string): boolean {
+    this.require(id);
+    const e = this.store.get(id);
+    if (!e.review) return false;
+    this.remember(id, 'user');
+    const { review, flagged: _looked, ...rest } = e;
+    if (rest.target !== null) rest.pastReview = { ...review, before: rest.target, taken: 'before', at: new Date().toISOString() };
+    // A carried translation still waits for its own look.
+    this.store.restore(id, rest.status === 'needs-review' && !rest.carried ? { ...rest, status: 'translated' } : rest);
+    return true;
+  }
+
   /** Writes the reviewer's suggestion as the translation (origin 'review'); the remark moves to pastReview. */
   acceptReview(id: string): Promise<Issue[]> {
     return this.mutate('review', () => {
-      const unit = this.require(id);
-      const e = this.store.get(id);
-      if (!e.review || e.target === null) throw new Error('검수 의견이 없습니다');
-      const issues = this.check(unit, e.review.suggestion);
-      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'translated';
-      this.remember(id, 'review');
-      const now = new Date().toISOString();
-      const pastReview: PastReview = { ...e.review, before: e.target, taken: 'suggestion', at: now };
-      this.store.restore(id, { target: e.review.suggestion, status, updatedAt: now, reviewedAt: now, pastReview });
+      const issues = this.takeReview(id);
+      if (issues === null) throw new Error('검수 의견이 없습니다');
       return { ids: [id], result: issues };
     });
   }
 
   /** Keeps the translation and moves the remark to pastReview: it has been looked at, so it is a plain translation again. */
   rejectReview(id: string): Promise<void> {
+    return this.mutate('user', () => ({ ids: this.passReview(id) ? [id] : [], result: undefined }));
+  }
+
+  /**
+   * Takes the suggestions of many remarks in one write (hundreds of remarks of one kind are not worth a click
+   * each). Ids without an open remark are passed by. Returns how many were taken.
+   */
+  acceptReviews(ids: string[]): Promise<number> {
+    return this.mutate('review', () => {
+      const done = ids.filter((id) => this.takeReview(id) !== null);
+      return { ids: done, result: done.length };
+    });
+  }
+
+  /** Passes over many remarks in one write. Returns how many were passed over. */
+  rejectReviews(ids: string[]): Promise<number> {
     return this.mutate('user', () => {
-      this.require(id);
-      const e = this.store.get(id);
-      if (!e.review) return { ids: [], result: undefined };
-      this.remember(id, 'user');
-      const { review, flagged: _looked, ...rest } = e;
-      if (rest.target !== null) rest.pastReview = { ...review, before: rest.target, taken: 'before', at: new Date().toISOString() };
-      // A carried translation still waits for its own look.
-      this.store.restore(id, rest.status === 'needs-review' && !rest.carried ? { ...rest, status: 'translated' } : rest);
-      return { ids: [id], result: undefined };
+      const done = ids.filter((id) => this.passReview(id));
+      return { ids: done, result: done.length };
     });
   }
 

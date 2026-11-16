@@ -17,3 +17,15 @@ test('지난 검수 의견은 행에 실리고, 받은 것과 넘긴 것으로 �
   expect(filterRows(rows, { status: 'review-passed' }).map((r) => r.id)).toEqual(['b']);
   expect(computeStats(rows)).toMatchObject({ reviewTaken: 1, reviewPassed: 1 });
 });
+
+test('검색은 검수 의견의 지적 내용도 찾는다', () => {
+  const rows = [
+    toRow(unit('a'), entry({ status: 'needs-review', review: { problem: '전각 괄호를 반각으로 바꿨다', suggestion: 's', model: 'm' } })),
+    toRow(unit('b'), entry({ status: 'needs-review', review: { problem: '어미가 인물과 안 맞음', suggestion: 's', model: 'm' } })),
+    toRow(unit('c'), entry({ pastReview: past('before') })),
+  ];
+  expect(filterRows(rows, { text: '괄호' }).map((r) => r.id)).toEqual(['a']);
+  expect(filterRows(rows, { status: 'needs-review', text: '어미' }).map((r) => r.id)).toEqual(['b']);
+  // A handled remark is found by what it said as well, so a kind of remark can be looked over afterwards.
+  expect(filterRows(rows, { status: 'review-passed', text: 'p' }).map((r) => r.id)).toEqual(['c']);
+});

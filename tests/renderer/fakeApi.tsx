@@ -112,6 +112,8 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       acceptReview: rec('unit.acceptReview', () => []),
       rejectReview: rec('unit.rejectReview', () => undefined),
       switchPastReview: rec('unit.switchPastReview', () => []),
+      acceptReviews: rec('unit.acceptReviews', (ids: string[]) => ids.length),
+      rejectReviews: rec('unit.rejectReviews', (ids: string[]) => ids.length),
     },
     glossary: {
       get: rec('glossary.get', () => fake.glossaryValue),

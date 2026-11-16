@@ -62,6 +62,46 @@ function JobActions() {
   );
 }
 
+/**
+ * Takes or passes over every open remark among the rows the table now shows. With the search (which also reads
+ * what the remark said) this handles one kind of remark in one go instead of a click per line.
+ */
+function ReviewBulkActions({ ids }: { ids: string[] }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (ids.length === 0 && note === null && error === null) return null;
+  const run = async (question: string, f: () => Promise<number>, done: (n: number) => string) => {
+    if (!window.confirm(question)) return;
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      setNote(done(await f()));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const n = num(ids.length);
+  return (
+    <span className="exchange-actions" role="group" aria-label="보이는 검수 의견">
+      {ids.length > 0 && <>
+        <span className="small sub">{`보이는 검수 의견 ${n}개`}</span>
+        <button type="button" className="btn small-btn" disabled={busy}
+          onClick={() => void run(`지금 보이는 검수 의견 ${n}개의 고친 안을 모두 받을까요? 번역이 고친 안으로 바뀌어요. 나중에 "검수로 바뀜"에서 하나씩 되돌릴 수 있어요.`,
+            () => useApp.acceptReviews(ids), (k) => `고친 안 ${num(k)}개를 받았어요`)}>모두 고친 안 받기</button>
+        <button type="button" className="btn small-btn" disabled={busy}
+          onClick={() => void run(`지금 보이는 검수 의견 ${n}개를 모두 넘길까요? 번역은 그대로 두어요. 나중에 "검수 의견 넘김"에서 하나씩 고친 안으로 바꿀 수 있어요.`,
+            () => useApp.rejectReviews(ids), (k) => `의견 ${num(k)}개를 넘겼어요`)}>모두 그대로 두기</button>
+      </>}
+      {note && <span className="mute small">{note}</span>}
+      {error && <span className="err-text small" role="alert">{error}</span>}
+    </span>
+  );
+}
+
 function FilterBar() {
   const { snapshot, query } = useApp();
   const [text, setText] = useState(query.text ?? '');
@@ -151,6 +191,7 @@ export function TextTable() {
         )}
         <span className="mono sub small">{`${num(rows.length)}줄`}</span>
         <ExchangeActions ids={rows.map((r) => r.id)} />
+        <ReviewBulkActions ids={rows.filter((r) => r.review).map((r) => r.id)} />
       </div>
       <JobActions />
       <FilterBar />

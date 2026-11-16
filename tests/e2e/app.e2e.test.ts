@@ -87,7 +87,7 @@ test('용어집 초안 → 확정 → 전체 번역 → 검수 → 빌드', asyn
   await expect(w.getByText(/검수 끝났어요/)).toBeVisible();
   await w.getByText('月光草', { exact: true }).click();
   await expect(w.getByText('용어가 어색함')).toBeVisible();
-  await w.getByRole('button', { name: '고친 안 받기' }).click();
+  await w.getByRole('button', { name: '고친 안 받기', exact: true }).click();   // "모두 고친 안 받기" stands above the table
   await expect(w.getByRole('row', { name: /月光草.*월광초\(검수\)/ })).toBeVisible();
 
   await w.getByRole('button', { name: '패치 빌드' }).click(); await expect(w.getByText(/패치를 만들었습니다/)).toBeVisible();
