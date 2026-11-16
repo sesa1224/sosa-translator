@@ -149,3 +149,22 @@ test('1.4.0 기본 지침에는 성 관련 용어 대응표가 더해진다', ()
   // A guide written from scratch is left alone.
   expect(upgradeStyleGuide('## 내 지침\n- 자연스럽게\n')).toBe('## 내 지침\n- 자연스럽게\n');
 });
+
+test('1.4.1 기본 지침은 절 단위로 새 지침이 되고, 고친 절은 그대로 남는다', () => {
+  const text = readFileSync(path.join(__dirname, '..', '..', 'src', 'core', 'glossary', 'guide-1.4.1.md'), 'utf8').replace(/\r\n/g, '\n');
+  const old = text.slice(text.search(/^## /m)).trim() + '\n';
+  expect(upgradeStyleGuide(old)).toBe(DEFAULT_STYLE_GUIDE);
+  // The contradictions of 1.4.1 are gone: sound words written by ear, line breaking against the format rules.
+  expect(DEFAULT_STYLE_GUIDE).not.toContain('쮸봅쮸봅');
+  expect(DEFAULT_STYLE_GUIDE).not.toContain('창을 넘치지 않게 줄을 나눈다');
+  expect(DEFAULT_STYLE_GUIDE).toContain('## 글의 종류별 문체');
+  expect(DEFAULT_STYLE_GUIDE).toContain('## 가린 글자');
+  expect(DEFAULT_STYLE_GUIDE.indexOf('## 가린 글자')).toBeLessThan(DEFAULT_STYLE_GUIDE.indexOf('## 성 관련 용어'));
+  // An edited section keeps the user's wording and does not get the section that follows it; the others move up.
+  const mine = old.replace('| じゅぽじゅぽ | 쮸봅쮸봅 |', '| じゅぽじゅぽ | 쥬폽쥬폽 |') + '\n## 이 게임의 말투\n어둡고 건조하다.\n';
+  const up = upgradeStyleGuide(mine);
+  expect(up).toContain('쥬폽쥬폽'); expect(up).not.toContain('## 가린 글자');
+  expect(up).toContain('## 글의 종류별 문체'); expect(up).toContain('| 中出し | 질내사정 / 안에 싸다 |');
+  expect(up).toContain('## 이 게임의 말투\n어둡고 건조하다.');
+  expect(upgradeStyleGuide(up)).toBe(up);
+});

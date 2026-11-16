@@ -2,7 +2,12 @@
 // default guide that made the reviewer flag correct translations are brought up to the current wording here,
 // but only where the project still has the old line word for word: anything the user rewrote, and everything
 // they added, stays as it is.
-import { DEFAULT_STYLE_GUIDE } from './defaultGuide.js';
+//
+// The 1.4.1 default contradicted itself in several places (sound words, line breaking, narration tense), so
+// the rewrite after it touches most sections. Those are brought up a whole section at a time: a section the
+// project still has exactly as 1.4.1 shipped it becomes the current one, an edited section is not touched.
+import { DEFAULT_STYLE_GUIDE, guideBody } from './defaultGuide.js';
+import previousGuide from './guide-1.4.1.md?raw';
 
 const TERMS_HEADING = '## 성 관련 용어\n';
 const FORMAT_HEADING = '## 형식\n';
@@ -13,6 +18,40 @@ function defaultSection(heading: string): string | null {
   if (at < 0) return null;
   const next = DEFAULT_STYLE_GUIDE.indexOf('\n## ', at);
   return next < 0 ? DEFAULT_STYLE_GUIDE.slice(at) : DEFAULT_STYLE_GUIDE.slice(at, next + 1);
+}
+
+/** The '## ' sections of a guide, each with the blank lines after it; text before the first heading is its own piece. */
+function sections(text: string): string[] {
+  return text.split(/^(?=## )/m);
+}
+
+const headingOf = (section: string): string => section.split('\n', 1)[0].trim();
+
+function byHeading(text: string): Map<string, string> {
+  return new Map(sections(text).filter((s) => s.startsWith('## ')).map((s) => [headingOf(s), s.trimEnd()]));
+}
+
+const PREVIOUS_SECTIONS = byHeading(guideBody(previousGuide));
+// Sections the rewrite added, and the 1.4.1 section each one follows. They only go in next to a section that
+// was itself brought up: the new wording of that section is what leans on them.
+const ADDED_AFTER: [string, string][] = [
+  ['## 지문과 대사', '## 글의 종류별 문체'],
+  ['## 의성어, 의태어, 신음', '## 가린 글자'],
+];
+
+/** Sections still worded as in 1.4.1 become the current default's, with the sections added after them. */
+function upgradeSections(guide: string): string {
+  const current = byHeading(DEFAULT_STYLE_GUIDE);
+  const pieces = sections(guide);
+  const present = new Set(pieces.map(headingOf));
+  return pieces.map((piece) => {
+    const heading = headingOf(piece);
+    const body = piece.trimEnd();
+    const next = current.get(heading);
+    if (!next || next === body || PREVIOUS_SECTIONS.get(heading) !== body) return piece;
+    const added = ADDED_AFTER.filter(([after, h]) => after === heading && !present.has(h)).map(([, h]) => current.get(h)).filter((x): x is string => !!x);
+    return [next, ...added].join('\n\n') + piece.slice(body.length);
+  }).join('');
 }
 
 const HONORIFICS ='ご主人様 는 "주인님".';
@@ -85,5 +124,6 @@ export function upgradeStyleGuide(guide: string): string {
     const at = s.indexOf(FORMAT_HEADING);
     if (section) s = at < 0 ? `${s.trimEnd()}\n\n${section.trimEnd()}\n` : s.slice(0, at) + section + s.slice(at);
   }
+  s = upgradeSections(s);
   return s === guide.replace(/\r\n/g, '\n') ? guide : s;
 }
