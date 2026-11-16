@@ -78,3 +78,20 @@ test('모양이 틀린 입력은 invalid 로 센다', () => {
   expect(p.ok.map((o) => o.id)).toEqual(['d0']);
   expect(planImport(units, store(), glossary(), decisions, { not: 'array' } as never)).toEqual({ ok: [], conflicts: [], unknownIds: [], invalid: 1 });
 });
+
+test('꾸러미: 검수 의견이 있는 항목에는 이유가 함께 나간다', () => {
+  const entries = store({
+    d0: { target: '첫 말', status: 'needs-review', review: { problem: '어색함', suggestion: '처음 한 말', model: 'm' } },
+    d1: { target: '【리나】\n월광초를 찾아 줘', status: 'translated', pastReview: { problem: '말투', suggestion: '【리나】\n월광초를 찾아 주세요', model: 'm', before: '【리나】\n월광초를 찾아 줘', taken: 'before', at: '' } },
+    d3: { target: '끝말', status: 'translated', pastReview: { problem: '오역', suggestion: '끝말', model: 'm', before: '마지막 단어', taken: 'suggestion', at: '' } },
+    d2: { target: '어라? \N[1] 아니잖아!', status: 'translated' },
+  });
+  const pkg = buildPackage({ meta, units, entryOf: entries, glossary: glossary(), decisions, ids: ['d0', 'd1', 'd2', 'd3'] });
+  const by = Object.fromEntries(pkg.items.map((i) => [i.id, i.review]));
+  expect(by.d0).toEqual({ problem: '어색함', suggestion: '처음 한 말', result: '대기' });
+  // Like text and current, the two translations come without the speaker line.
+  expect(by.d1).toEqual({ problem: '말투', before: '월광초를 찾아 줘', suggestion: '월광초를 찾아 주세요', result: '넘김' });
+  expect(by.d3).toEqual({ problem: '오역', before: '마지막 단어', suggestion: '끝말', result: '받음' });
+  expect('review' in pkg.items.find((i) => i.id === 'd2')!).toBe(false);
+  expect(pkg.instructions).toContain('review 가 있으면');
+});

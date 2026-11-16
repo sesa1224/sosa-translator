@@ -402,6 +402,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('glossary:setPromptText', (kind: glossaryTypes.PromptKind, text: string | null) => svc().setPromptText(promptKind(kind), typeof text === 'string' ? text : null));
   handle('unit:acceptReview', (id: string) => svc().acceptReview(id));
   handle('unit:rejectReview', (id: string) => svc().rejectReview(id));
+  handle('unit:switchPastReview', (id: string) => svc().switchPastReview(id));
 
   // ---- jobs (one at a time) ----
   function busy(): boolean {

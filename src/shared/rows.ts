@@ -96,6 +96,7 @@ export function toRow(unit: TextUnit, entry: TranslationEntry, usesProvisional =
   if (unit.decisionKey !== undefined) row.decisionKey = unit.decisionKey;
   if (entry.declinedReason !== undefined) row.declinedReason = entry.declinedReason;
   if (entry.review !== undefined) row.review = { ...entry.review };
+  if (entry.pastReview !== undefined) row.pastReview = { ...entry.pastReview };
   if (entry.previous !== undefined) row.previous = { source: entry.previous.source, target: entry.previous.target };
   if (entry.carried) row.carried = true;
   return row;
@@ -118,6 +119,10 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
       if (r.decision !== 'skip') return false;
     } else if (status === 'changed') {
       if (!r.previous) return false;
+    } else if (status === 'review-taken') {
+      if (r.pastReview?.taken !== 'suggestion') return false;
+    } else if (status === 'review-passed') {
+      if (r.pastReview?.taken !== 'before') return false;
     } else if (status !== 'all' && r.status !== status) return false;
     if (text === '') return true;
     return r.source.toLowerCase().includes(text)
@@ -127,7 +132,7 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
 }
 
 export function computeStats(rows: Row[]): Stats {
-  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0, translated: 0 };
+  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0 };
   for (const r of rows) {
     if (r.status === 'untranslated') s.untranslated++;
     else if (r.status === 'translated') s.translated++;
@@ -141,6 +146,7 @@ export function computeStats(rows: Row[]): Stats {
     if (r.needsDecision && r.decision !== 'translate' && r.decision !== 'skip') s.undecided++;
     if (r.previous) s.changed++;
     if (r.carried) s.carried++;
+    if (r.pastReview) s[r.pastReview.taken === 'suggestion' ? 'reviewTaken' : 'reviewPassed']!++;
   }
   return s;
 }

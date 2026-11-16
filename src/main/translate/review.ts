@@ -152,12 +152,14 @@ export class ReviewJob extends BatchJob<ReviewBatch> {
       if (!item || flagged.has(item.id)) continue;
       const current = svc.entry(item.id).target;
       if (current === null) continue;
-      flagged.add(item.id);
       // Only the body was reviewed: the translated speaker line is put back in front.
       // A value with pieces that must stay as they are (needs-decision) is not touched.
       const rules = svc.glossary().rules;
       const body = rules.halfWidth && !svc.unit(item.id)?.needsDecision ? toHalfWidth(p.suggestion, { brackets: rules.halfWidthBrackets }) : p.suggestion;
       const suggestion = item.speakerLine !== null && current.includes('\n') ? current.slice(0, current.indexOf('\n') + 1) + body : body;
+      // Taking it would change nothing (the reviewer only differed in width, or repeated the translation): not worth a look.
+      if (suggestion === current) continue;
+      flagged.add(item.id);
       await svc.setReview(item.id, { problem: p.problem, suggestion, model: this.o.model }, 'review');
     }
     const rest = batch.items.map((i) => i.id).filter((id) => !flagged.has(id));

@@ -113,6 +113,7 @@ const DEFAULT_TEMPLATES: Record<PromptKind, string> = {
     '',
     '돌려줄 형식: items 의 항목마다 { "id": 그 항목의 id, "target": text 의 번역 } 을 담은 JSON 배열. 화자 이름(speaker)은 번역하지 않고 text 만 옮긴다.',
     'before/after 는 앞뒤 대사로 참고만 한다.',
+    'review 가 있으면 그 항목에 달렸던 검수 의견이다(problem 지적, before 고치기 전 번역, suggestion 고친 안, result 는 대기·받음·넘김). 왜 지금 번역이 되었는지 알려 주는 것이고, 돌려주지 않는다.',
   ].join('\n'),
 };
 

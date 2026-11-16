@@ -56,11 +56,14 @@ export interface TextUnit {
  */
 export type TranslationStatus = 'untranslated' | 'translated' | 'needs-review' | 'approved' | 'error' | 'declined';
 export interface ReviewNote { problem: string; suggestion: string; model: string }
+/** A remark the user has dealt with: the translation it was about (before), and which of the two was taken. */
+export interface PastReview extends ReviewNote { before: string; taken: 'suggestion' | 'before'; at: string }
 /** One row of translations.json, keyed by TextUnit.id. */
 export interface TranslationEntry {
   target: string | null; status: TranslationStatus; updatedAt: string;
   declinedReason?: string;   // why the model would not translate it (status 'declined')
   review?: ReviewNote;       // reviewer's open remark
+  pastReview?: PastReview;   // the last remark that was taken or passed over; kept so the choice can be looked at again and turned around
   reviewedAt?: string;       // last time a review looked at it
   external?: true;           // came in from an outside translator's package
   previous?: { source: string; target: string | null; version: string };   // a changed sentence's source and translation in an older version

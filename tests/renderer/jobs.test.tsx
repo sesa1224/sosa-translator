@@ -15,6 +15,8 @@ const extraRows: Row[] = [
   { id: 'r-extra', kind: 'dialogue', speaker: 'リナ', source: 'またね', target: null, status: 'untranslated', needsDecision: false, file: 'data/Map001.json', location: '맵1 · 이벤트1', refCount: 1, usesProvisional: false },
   { id: reviewedId, kind: 'dialogue', source: 'ありがとう', target: '고마워요', status: 'needs-review', needsDecision: false, file: 'data/Map001.json', location: '맵1 · 이벤트2', refCount: 1, usesProvisional: false,
     review: { problem: '어미가 인물과 안 맞음', suggestion: '고마워', model: 'claude-fable-5-2' } },
+  { id: 'r-past', kind: 'dialogue', source: 'どうも', target: '고마워', status: 'translated', needsDecision: false, file: 'data/Map001.json', location: '맵1 · 이벤트4', refCount: 1, usesProvisional: false,
+    pastReview: { problem: '어미가 딱딱함', suggestion: '고마워', model: 'claude-fable-5-2', before: '고맙습니다', taken: 'suggestion', at: '2026-11-16T01:00:00.000Z' } },
   { id: 'r-declined', kind: 'dialogue', source: 'やめて', target: null, status: 'declined', declinedReason: '모델이 번역을 거절했습니다', needsDecision: false, file: 'data/Map001.json', location: '맵1 · 이벤트3', refCount: 1, usesProvisional: false },
 ];
 const itemRow = baseRows.find(r => r.id === itemId)!;
@@ -49,6 +51,13 @@ test('검수 범위와 추정', async () => {
 test('검수 의견 받기', async () => {
   await openFake({ select: reviewedId }); expect(screen.getByText('어미가 인물과 안 맞음')).toBeVisible();
   await user.click(screen.getByRole('button', { name: '고친 안 받기' })); expect(api.calls.at(-1)).toEqual(['unit.acceptReview', reviewedId]);
+});
+test('지난 검수 의견을 보고 되돌린다', async () => {
+  await openFake({ select: 'r-past' });
+  const box = screen.getByRole('region', { name: '지난 검수 의견' });
+  expect(within(box).getByText('어미가 딱딱함')).toBeVisible(); expect(within(box).getByText('고친 안 받음', { exact: false })).toBeVisible();
+  expect(within(box).getByText('고맙습니다')).toBeVisible();
+  await user.click(within(box).getByRole('button', { name: '고치기 전으로 되돌리기' })); expect(api.calls.at(-1)).toEqual(['unit.switchPastReview', 'r-past']);
 });
 test('고치는 중에 밖에서 바뀌면 덮지 않는다', async () => {
   await openFake({ select: itemId }); await user.type(screen.getByLabelText('번역'), ' 추가');

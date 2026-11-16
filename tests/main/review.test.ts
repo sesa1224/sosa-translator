@@ -83,3 +83,30 @@ test('승인된 항목에 의견이 붙으면 검토 필요로 돌아간다', as
   expect(svc.entry(id)).toMatchObject({ status: 'needs-review', target: '좋아' });
   expect((await svc.undo('review'))).toEqual([id]); expect(svc.entry(id).status).toBe('approved');
 });
+test('처리한 검수 의견은 남고, 반대쪽으로 바꿀 수 있다', async () => {
+  const id = idOf('いいよ');
+  await svc.setReview(id, { problem: '말투', suggestion: '좋아요', model: 'm' }, 'review');
+  await svc.acceptReview(id);
+  expect(svc.entry(id)).toMatchObject({ target: '좋아요', status: 'translated', pastReview: { problem: '말투', before: '좋아', suggestion: '좋아요', taken: 'suggestion' } });
+  expect(svc.entry(id).review).toBeUndefined();
+  await svc.switchPastReview(id);
+  expect(svc.entry(id)).toMatchObject({ target: '좋아', status: 'translated', pastReview: { before: '좋아', suggestion: '좋아요', taken: 'before' } });
+  await svc.switchPastReview(id); expect(svc.entry(id)).toMatchObject({ target: '좋아요', pastReview: { taken: 'suggestion' } });
+  expect(await svc.undo('user')).toEqual([id]); expect(svc.entry(id).target).toBe('좋아');
+  // An edit by hand keeps the record of the remark.
+  await svc.setTranslation(id, '좋지', 'user'); expect(svc.entry(id).pastReview).toMatchObject({ before: '좋아', suggestion: '좋아요' });
+  // Passing a remark over is recorded too, with the translation it was about.
+  await svc.setReview(id, { problem: '다른 지적', suggestion: '그래', model: 'm' }, 'review'); await svc.rejectReview(id);
+  expect(svc.entry(id)).toMatchObject({ target: '좋지', status: 'translated', pastReview: { problem: '다른 지적', before: '좋지', suggestion: '그래', taken: 'before' } });
+  expect(svc.entry(id).review).toBeUndefined();
+  await svc.switchPastReview(id); expect(svc.entry(id).target).toBe('그래');
+  const untouched = units().find((u) => svc.entry(u.id).target !== null && !svc.entry(u.id).pastReview)!.id;
+  await expect(svc.switchPastReview(untouched)).rejects.toThrow('지난 검수 의견이 없습니다');
+});
+test('받아도 달라지는 것이 없는 의견은 올라오지 않는다', async () => {
+  const ids = firstBatchIds();
+  const before = ids.map((id) => svc.entry(id).target);
+  await mkReview(answer(u => ({ problems: [{ i: 0, problem: '괄호', suggestion: u.items[0].target }] }))).start();
+  expect(svc.entry(ids[0]).review).toBeUndefined(); expect(svc.entry(ids[0]).status).not.toBe('needs-review');
+  expect(ids.map((id) => svc.entry(id).target)).toEqual(before);
+});

@@ -337,6 +337,7 @@ const actions = {
   },
   acceptReview: (id: string): Promise<Issue[]> => need().unit.acceptReview(id),
   rejectReview: (id: string): Promise<void> => need().unit.rejectReview(id),
+  switchPastReview: (id: string): Promise<Issue[]> => need().unit.switchPastReview(id),
   setRightTab(rightTab: AppState['rightTab']): void {
     set({ rightTab });
   },

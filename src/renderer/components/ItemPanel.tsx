@@ -2,7 +2,7 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
 import { changedWords, type WordPiece } from '../../core/update/carry';
-import type { Issue, KeepRule, Row } from '../../shared/api';
+import type { Issue, KeepRule, PastReview, Row } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { GamePreview } from './GamePreview';
@@ -112,6 +112,7 @@ export function ItemPanel() {
           </div>
         </section>
       )}
+      {!row.review && row.pastReview && <PastReviewBox row={row} past={row.pastReview} disabled={saving} onSwitch={() => void run(() => useApp.switchPastReview(row.id))} />}
       {conflict !== null && (
         <div className="conflict small" role="status">
           <span className="warn-text">다른 곳에서 이 줄이 바뀌었어요</span>
@@ -240,6 +241,30 @@ function PreviousBox({ row, onTake, disabled }: { row: Row; onTake: (target: str
       {row.carried && <span className="warn-text small">문장부호만 달라서 이전 번역을 넣어 뒀어요. 확인하고 승인하세요.</span>}
       <div className="row-gap">
         <button type="button" className="btn ghost small-btn" disabled={disabled || prev.target === null} onClick={() => onTake(prev.target ?? '')}>이전 번역 가져오기</button>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The last remark the user took or passed over, with the two translations it chose between and a way to
+ * turn the choice around (a wrong click, or a line that reads worse in the game than it did here).
+ */
+function PastReviewBox({ row, past, disabled, onSwitch }: { row: Row; past: PastReview; disabled: boolean; onSwitch: () => void }) {
+  const took = past.taken === 'suggestion';
+  // Edited by hand since: switching replaces that edit, so it is said before the click.
+  const edited = row.target !== (took ? past.suggestion : past.before);
+  return (
+    <section className="past-review" aria-label="지난 검수 의견">
+      <span className="label">{`지난 검수 의견 · ${took ? '고친 안 받음' : '그대로 둠'}${past.at ? ` · ${past.at.slice(0, 10)}` : ''}`}</span>
+      <span className="small">{past.problem}</span>
+      <span className="label">고치기 전</span>
+      <div className="textbox src"><CodeText text={past.before} /></div>
+      <span className="label">고친 안</span>
+      <div className="textbox src"><CodeText text={past.suggestion} /></div>
+      {edited && <span className="warn-text small">그 뒤에 직접 고친 번역이에요. 바꾸면 지금 번역은 사라져요.</span>}
+      <div className="row-gap">
+        <button type="button" className="btn ghost small-btn" disabled={disabled} onClick={onSwitch}>{took ? '고치기 전으로 되돌리기' : '고친 안으로 바꾸기'}</button>
       </div>
     </section>
   );

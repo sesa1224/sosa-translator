@@ -32,12 +32,13 @@ export class TranslationStore {
     return e ? { ...e } : { target: null, status: 'untranslated', updatedAt: '' };
   }
 
-  /** A new translation. The older version's sentence (previous) stays as a reference; a carried mark goes. */
+  /** A new translation. The older version's sentence (previous) and the last handled remark stay as references; a carried mark goes. */
   set(id: string, target: string, status: TranslationStatus = 'translated'): void {
     const previous = this.table[id]?.previous;
+    const pastReview = this.table[id]?.pastReview;
     this.table[id] = {
       target, status, updatedAt: new Date().toISOString(),
-      ...(previous ? { previous } : {}), ...(status === 'needs-review' ? { flagged: true as const } : {}),
+      ...(previous ? { previous } : {}), ...(pastReview ? { pastReview } : {}), ...(status === 'needs-review' ? { flagged: true as const } : {}),
     };
   }
 

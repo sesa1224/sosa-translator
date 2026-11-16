@@ -20,6 +20,7 @@ import {
   type ProjectMeta,
   type TextUnit,
   type TranslationEntry,
+  type PastReview,
   type ReviewNote,
   type TranslationStatus,
 } from '../core/index.js';
@@ -446,32 +447,55 @@ export class ProjectService extends EventEmitter {
     });
   }
 
-  /** Writes the reviewer's suggestion as the translation (origin 'review') and removes the remark. */
+  /** Writes the reviewer's suggestion as the translation (origin 'review'); the remark moves to pastReview. */
   acceptReview(id: string): Promise<Issue[]> {
     return this.mutate('review', () => {
       const unit = this.require(id);
       const e = this.store.get(id);
-      if (!e.review) throw new Error('검수 의견이 없습니다');
+      if (!e.review || e.target === null) throw new Error('검수 의견이 없습니다');
       const issues = this.check(unit, e.review.suggestion);
       const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'translated';
       this.remember(id, 'review');
       const now = new Date().toISOString();
-      this.store.restore(id, { target: e.review.suggestion, status, updatedAt: now, reviewedAt: now });
+      const pastReview: PastReview = { ...e.review, before: e.target, taken: 'suggestion', at: now };
+      this.store.restore(id, { target: e.review.suggestion, status, updatedAt: now, reviewedAt: now, pastReview });
       return { ids: [id], result: issues };
     });
   }
 
-  /** Removes the reviewer's remark and keeps the translation: it has been looked at, so it is a plain translation again. */
+  /** Keeps the translation and moves the remark to pastReview: it has been looked at, so it is a plain translation again. */
   rejectReview(id: string): Promise<void> {
     return this.mutate('user', () => {
       this.require(id);
       const e = this.store.get(id);
       if (!e.review) return { ids: [], result: undefined };
       this.remember(id, 'user');
-      const { review: _dropped, flagged: _looked, ...rest } = e;
+      const { review, flagged: _looked, ...rest } = e;
+      if (rest.target !== null) rest.pastReview = { ...review, before: rest.target, taken: 'before', at: new Date().toISOString() };
       // A carried translation still waits for its own look.
       this.store.restore(id, rest.status === 'needs-review' && !rest.carried ? { ...rest, status: 'translated' } : rest);
       return { ids: [id], result: undefined };
+    });
+  }
+
+  /**
+   * Turns the last handled remark around: a taken suggestion goes back to the translation it replaced, a
+   * passed-over one is taken after all. Whatever the translation was edited to since is replaced.
+   */
+  switchPastReview(id: string): Promise<Issue[]> {
+    return this.mutate('user', () => {
+      const unit = this.require(id);
+      const e = this.store.get(id);
+      const past = e.pastReview;
+      if (!past) throw new Error('지난 검수 의견이 없습니다');
+      const taken = past.taken === 'suggestion' ? 'before' : 'suggestion';
+      const target = past[taken];
+      const issues = this.check(unit, target);
+      const status: TranslationStatus = issues.some((i) => i.severity === 'error') ? 'error' : 'translated';
+      this.remember(id, 'user');
+      const { flagged: _looked, ...rest } = e;
+      this.store.restore(id, { ...rest, target, status, updatedAt: new Date().toISOString(), pastReview: { ...past, taken } });
+      return { ids: [id], result: issues };
     });
   }
 

@@ -37,6 +37,7 @@ const api: Api = {
     clear: (id) => call('unit:clear', id),
     acceptReview: (id) => call('unit:acceptReview', id),
     rejectReview: (id) => call('unit:rejectReview', id),
+    switchPastReview: (id) => call('unit:switchPastReview', id),
   },
   glossary: {
     get: () => call('glossary:get'),

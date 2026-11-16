@@ -213,6 +213,7 @@ select.input { padding: 0 12px; }
 .radio-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 36px; }
 .row-gap.end { justify-content: flex-end; }
 .review-box { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--warn); background: var(--warn-bg); }
+.past-review { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--line); }
 .conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .stage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 

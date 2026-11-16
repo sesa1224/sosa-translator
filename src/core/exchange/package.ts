@@ -13,8 +13,11 @@ import { composeSpeaker, splitSpeaker } from '../text/speaker.js';
 import type { Issue, TextUnit, TranslationEntry, UnitKind } from '../types.js';
 
 export interface ExchangeLine { speaker: string | null; source: string; target: string | null }
+/** A reviewer's remark on the item: still waiting for a look ('대기'), taken ('받음') or passed over ('넘김'). before is the translation it was about, once handled. */
+export interface ExchangeReview { problem: string; before?: string; suggestion: string; result: '대기' | '받음' | '넘김' }
 export interface ExchangeItem {
   id: string; kind: UnitKind; speaker: string | null; text: string; keep?: string[]; current?: string;
+  review?: ExchangeReview;
   before: ExchangeLine[]; after: ExchangeLine[];
 }
 /** A file handed to an outside translator: everything needed to translate the items, and how to answer. */
@@ -93,8 +96,15 @@ export function buildPackage(o: {
       const keep = keepOf(u, o.decisions);
       const pieces = keep ? keepPieces(u.source, keep) : null;
       if (pieces && pieces.some((x) => x !== '')) item.keep = pieces;
-      const current = o.entryOf(u.id).target;
+      const entry = o.entryOf(u.id);
+      const current = entry.target;
       if (current !== null) item.current = bodyOf(current, p.speakerLine);
+      // Why a line reads as it does now: the open remark first, else the last one that was handled.
+      if (entry.review) item.review = { problem: entry.review.problem, suggestion: bodyOf(entry.review.suggestion, p.speakerLine), result: '대기' };
+      else if (entry.pastReview) {
+        const past = entry.pastReview;
+        item.review = { problem: past.problem, before: bodyOf(past.before, p.speakerLine), suggestion: bodyOf(past.suggestion, p.speakerLine), result: past.taken === 'suggestion' ? '받음' : '넘김' };
+      }
       for (let k = index - 1; k >= 0 && item.before.length < CONTEXT; k--) if (CONTEXT_KINDS.has(list[k].kind)) item.before.unshift(line(list[k]));
       for (let k = index + 1; k < list.length && item.after.length < CONTEXT; k++) if (CONTEXT_KINDS.has(list[k].kind)) item.after.push(line(list[k]));
       items.push(item);

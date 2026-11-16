@@ -7,14 +7,14 @@
 //
 // Adding a request/response channel takes four steps: the entry in InvokeChannels, the method in Api,
 // the handler in src/main/ipc.ts and the call in src/preload/index.ts.
-import type { Issue, PathSeg, ReviewNote, TranslationStatus, UnitKind } from '../core/types.js';
+import type { Issue, PastReview, PathSeg, ReviewNote, TranslationStatus, UnitKind } from '../core/types.js';
 import type { Decision, DecisionGroup, KeepRule } from '../core/decisions/types.js';
 import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patches/types.js';
 import type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
 import type { Layout, PreviewContext, PreviewSettings, WindowMetrics } from '../core/preview/types.js';
 import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
 
-export type { Issue, ReviewNote, TranslationStatus, UnitKind, PathSeg };
+export type { Issue, PastReview, ReviewNote, TranslationStatus, UnitKind, PathSeg };
 export type { Decision, DecisionGroup, KeepRule };
 export type { EventCommand, ListOp, Patch, PatchBody, PatchState, PatchStatus } from '../core/patches/types.js';
 export type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
@@ -33,6 +33,8 @@ export interface Row {
   usesProvisional: boolean;   // translated, and the source holds a term still on its recommended candidate
   declinedReason?: string;
   review?: ReviewNote;
+  /** The last remark that was taken or passed over (the open one, if any, is in review). */
+  pastReview?: PastReview;
   // The fields below are filled by toRow; optional so rows built by hand (tests, older callers) stay valid.
   decision?: RowDecision | null;
   external?: boolean;
@@ -44,7 +46,7 @@ export interface Row {
 }
 /** A needs-decision row's state: no decision, confirmed (translate / skip), or only suggested. null for other rows. */
 export type RowDecision = 'none' | 'translate' | 'skip' | 'suggested-translate' | 'suggested-skip';
-export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed';
+export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed' | 'review-taken' | 'review-passed';
 export interface RowQuery { text?: string; status?: StatusFilter; file?: string; decisionKey?: string }
 /**
  * Counts for the sidebar and status bar. undecided: needs-decision rows without a confirmed decision;
@@ -56,6 +58,8 @@ export interface Stats {
   changed: number; carried: number;
   /** Rows with a translation nobody raised a doubt about. needsReview counts only the ones waiting for a look. */
   translated: number;
+  /** Rows whose last handled remark ended with the suggestion taken / with the translation kept. */
+  reviewTaken?: number; reviewPassed?: number;
 }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
@@ -266,6 +270,7 @@ export interface InvokeChannels {
   'unit:clear': (id: string) => void;
   'unit:acceptReview': (id: string) => Issue[];
   'unit:rejectReview': (id: string) => void;
+  'unit:switchPastReview': (id: string) => Issue[];
 
   'glossary:get': () => Glossary;
   'glossary:upsertTerm': (t: Omit<Term, 'id'>) => Term;
@@ -392,7 +397,7 @@ export interface Api {
   unit: {
     get: Call<'unit:get'>; setTranslation: Call<'unit:setTranslation'>;
     setStatus: Call<'unit:setStatus'>; clear: Call<'unit:clear'>;
-    acceptReview: Call<'unit:acceptReview'>; rejectReview: Call<'unit:rejectReview'>;
+    acceptReview: Call<'unit:acceptReview'>; rejectReview: Call<'unit:rejectReview'>; switchPastReview: Call<'unit:switchPastReview'>;
   };
   chat: {
     send: Call<'chat:send'>; stop: Call<'chat:stop'>; reset: Call<'chat:reset'>;
