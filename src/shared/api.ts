@@ -136,7 +136,7 @@ export interface Term {
 export interface CharacterCard { id: string; source: string; target: string; speech: string; firstPerson?: string; addressing?: string; moanStyle?: string }
 export interface ProjectRules {
   controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
-  maxLineWidthChars: number | null; speakerPattern: string | null; halfWidth: boolean;
+  maxLineWidthChars: number | null; speakerPattern: string | null; halfWidth: boolean; halfWidthBrackets: boolean;
 }
 export type PromptKind = 'translate' | 'review' | 'export';
 export interface Glossary {

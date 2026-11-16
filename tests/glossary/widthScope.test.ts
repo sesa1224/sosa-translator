@@ -168,3 +168,34 @@ test('1.4.1 기본 지침은 절 단위로 새 지침이 되고, 고친 절은 �
   expect(up).toContain('## 이 게임의 말투\n어둡고 건조하다.');
   expect(upgradeStyleGuide(up)).toBe(up);
 });
+
+test('괄호 규칙을 켜면 （ ） 도 반각이 되고, 물결표 〜 는 늘 ~ 가 된다', () => {
+  expect(toHalfWidth('（무슨 냄새지……？）', { brackets: true })).toBe('(무슨 냄새지……?)');
+  expect(toHalfWidth('（어라」', { brackets: true })).toBe('(어라」');
+  expect(toHalfWidth('「【이름】『책』」 ［Ａ］ ｛Ｂ｝ １００％', { brackets: true })).toBe('「【이름】『책』」 ［A］ ｛B｝ 100％');
+  expect(toHalfWidth('（%１）', { brackets: true })).toBe('（%１）');   // the placeholder guard still wins
+  expect(toHalfWidth('으응〜♥ 좋아～')).toBe('으응~♥ 좋아~');
+  expect(toHalfWidth('（응〜）')).toBe('（응~）');
+});
+
+test('괄호 규칙은 새 프로젝트에서 켜져 있고, 값이 없는 기존 용어집에서는 꺼져 있다', () => {
+  expect(defaultGlossary().rules.halfWidthBrackets).toBe(true);
+  expect(normalizeGlossary({ rules: { halfWidth: true } }).rules.halfWidthBrackets).toBe(false);
+  expect(normalizeGlossary({}).rules.halfWidthBrackets).toBe(false);
+  expect(normalizeGlossary({ rules: { halfWidthBrackets: true } }).rules.halfWidthBrackets).toBe(true);
+});
+
+test('지침의 괄호 문장은 규칙을 따른다', () => {
+  const g = defaultGlossary();
+  const on = '（ ） 는 반각 ( ) 로 쓴다';
+  const off = '괄호 「 」 『 』 （ ） 【 】 는 원문에 쓰인 글자 그대로 두고';
+  for (const kind of ['translate', 'review', 'export'] as const) {
+    expect(finalPrompt(kind, g)).toContain(on);
+    expect(finalPrompt(kind, g)).toContain('「 」 『 』 【 】 는 원문에 쓰인 글자 그대로');
+    expect(finalPrompt(kind, g)).not.toContain(off);
+    const kept = finalPrompt(kind, { ...g, rules: { ...g.rules, halfWidthBrackets: false } });
+    expect(kept).toContain(off); expect(kept).not.toContain(on);
+    // The bracket rule is part of the half-width rule: without that one nothing is said about width.
+    expect(finalPrompt(kind, { ...g, rules: { ...g.rules, halfWidth: false } })).not.toContain(on);
+  }
+});

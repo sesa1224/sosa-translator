@@ -44,7 +44,7 @@ test('없는 파일은 기본값, 기본 지침은 안내 문단을 뺀다', asy
   const g = await loadGlossary(await makeTempDir());
   expect(g).toEqual(defaultGlossary());
   expect(g.styleGuide.startsWith('## 기본 태도')).toBe(true);
-  expect(g.rules).toEqual({ controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true });
+  expect(g.rules).toEqual({ controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true, halfWidthBrackets: true });
   expect(termId('玃猿')).toMatch(/^[0-9a-f]{12}$/);
   expect(filterRows(rows, { status: 'provisional' })).toHaveLength(3);
 });

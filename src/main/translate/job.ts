@@ -252,7 +252,7 @@ export class TranslateJob extends BatchJob<Batch> {
       }
       const broken = fixLiteralBreaks(a.t, item.text);
       // The model mixes ？ and ? within one game; a value with kept pieces is left as it came.
-      const body = g.rules.halfWidth && !item.keep ? toHalfWidth(broken) : broken;
+      const body = g.rules.halfWidth && !item.keep ? toHalfWidth(broken, { brackets: g.rules.halfWidthBrackets }) : broken;
       const full = item.speakerLine !== null && item.speaker !== null
         ? composeSpeaker(item.speakerLine, item.speaker, this.speakerTarget(item.speaker, g), body)
         : body;

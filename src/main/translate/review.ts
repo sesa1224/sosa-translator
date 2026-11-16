@@ -155,7 +155,8 @@ export class ReviewJob extends BatchJob<ReviewBatch> {
       flagged.add(item.id);
       // Only the body was reviewed: the translated speaker line is put back in front.
       // A value with pieces that must stay as they are (needs-decision) is not touched.
-      const body = svc.glossary().rules.halfWidth && !svc.unit(item.id)?.needsDecision ? toHalfWidth(p.suggestion) : p.suggestion;
+      const rules = svc.glossary().rules;
+      const body = rules.halfWidth && !svc.unit(item.id)?.needsDecision ? toHalfWidth(p.suggestion, { brackets: rules.halfWidthBrackets }) : p.suggestion;
       const suggestion = item.speakerLine !== null && current.includes('\n') ? current.slice(0, current.indexOf('\n') + 1) + body : body;
       await svc.setReview(item.id, { problem: p.problem, suggestion, model: this.o.model }, 'review');
     }

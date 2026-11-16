@@ -89,6 +89,8 @@ test('인물 카드, 형식 규칙, 번역 지침으로 가기', async () => {
     expect(api.calls).toContainEqual(['glossary.setCharacters', [{ id: 'c1', source: 'リナ', target: '리나', speech: '존댓말' }]]);
     await user.click(screen.getByLabelText('줄 수를 원문과 같게'));
     expect(api.calls).toContainEqual(['glossary.setRules', { sameLineCount: true }]);
+    await user.click(screen.getByLabelText('괄호 （ ）도 반각으로'));
+    expect(api.calls).toContainEqual(['glossary.setRules', { halfWidthBrackets: false }]);
     const width = screen.getByLabelText('한 줄 최대 글자 수');
     await user.type(width, '28'); await user.tab();
     expect(api.calls).toContainEqual(['glossary.setRules', { maxLineWidthChars: 28 }]);

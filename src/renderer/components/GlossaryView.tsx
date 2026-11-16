@@ -256,7 +256,9 @@ function Rules({ rules }: { rules: ProjectRules }) {
   const [mode, setMode] = useState(presetId);
   useEffect(() => { setMode(presetId); }, [presetId]);
   const detect = async () => setFound(await useApp.detectSpeakerPattern());
-  const toggles: [keyof ProjectRules, string][] = [['controlCodes', '제어 코드 유지'], ['noLeftoverJapanese', '일본어 글자 남기지 않기'], ['sameLineCount', '줄 수를 원문과 같게'], ['halfWidth', '문장부호·숫자·영문을 반각으로']];
+  const toggles: [keyof ProjectRules, string][] = [['controlCodes', '제어 코드 유지'], ['noLeftoverJapanese', '일본어 글자 남기지 않기'], ['sameLineCount', '줄 수를 원문과 같게'], ['halfWidth', '문장부호·숫자·영문을 반각으로'], ['halfWidthBrackets', '괄호 （ ）도 반각으로']];
+  // The bracket rule only says how far the half-width rule goes.
+  const off = (k: keyof ProjectRules): boolean => k === 'halfWidthBrackets' && !rules.halfWidth;
   return (
     <section className="card" aria-labelledby="g-rules">
       <div className="card-head"><span id="g-rules" className="card-title">형식 규칙 · 프로그램이 검사</span></div>
@@ -264,7 +266,7 @@ function Rules({ rules }: { rules: ProjectRules }) {
         {toggles.map(([k, label]) => (
           <label key={k} className="rule-line check">
             <span>{label}</span>
-            <input type="checkbox" checked={rules[k] as boolean} onChange={(e) => set({ [k]: e.target.checked })} />
+            <input type="checkbox" checked={(rules[k] as boolean) && !off(k)} disabled={off(k)} onChange={(e) => set({ [k]: e.target.checked })} />
           </label>
         ))}
         <NumberRule id="g-max-lines" label="대사 최대 줄 수" value={rules.maxLines} onSave={(v) => set({ maxLines: v })} />

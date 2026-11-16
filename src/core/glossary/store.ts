@@ -17,7 +17,7 @@ export function termId(source: string): string {
 }
 
 export function defaultRules(): ProjectRules {
-  return { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true };
+  return { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true, halfWidthBrackets: true };
 }
 
 export function defaultGlossary(): Glossary {
@@ -74,6 +74,8 @@ export function normalizeGlossary(raw: unknown): Glossary {
       maxLineWidthChars: numOrNull(rr.maxLineWidthChars, d.rules.maxLineWidthChars),
       speakerPattern: rr.speakerPattern === null ? null : str(rr.speakerPattern) && rr.speakerPattern ? rr.speakerPattern : d.rules.speakerPattern,
       halfWidth: bool(rr.halfWidth, d.rules.halfWidth),
+      // A file written before this rule keeps its brackets: only new projects start with it on.
+      halfWidthBrackets: bool(rr.halfWidthBrackets, false),
     },
     confirmedAt: str(r.confirmedAt) && r.confirmedAt ? r.confirmedAt : null,
     ...(Object.keys(prompts).length > 0 ? { prompts } : {}),

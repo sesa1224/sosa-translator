@@ -18,7 +18,13 @@ const PREVIOUS_SLOT = '{{이전 번역 줄}}';
 
 const PREVIOUS_LINE = '- previous 가 있으면 원문이 조금 바뀐 문장이다. 바뀐 부분만 반영하고 나머지는 이전 번역의 표현과 말투를 그대로 둔다. (이때 previous 의 source 는 게임 이전 버전의 원문, target 은 그때의 번역이다. problems 와 함께 오는 previous 는 위에 적은 직전 번역이다.)';
 
-const HALF_WIDTH_LINE = '- 문장부호, 숫자, 영문은 반각으로 쓴다(？ ！ ： ＋ １ Ａ 가 아니라 ? ! : + 1 A). 전각 공백도 반각으로 써도 된다. 전각을 반각으로 바꾼 것은 원문을 바꾼 것이 아니다: 기호의 종류와 개수가 같으면 된다(！？ 를 !? 로 쓰는 것은 맞고, ! 하나로 줄이는 것은 틀리다). 괄호 「 」 『 』 （ ） 【 】 는 원문에 쓰인 글자 그대로 두고, 짝이 안 맞아도 원문대로 둔다.';
+const HALF_WIDTH_HEAD = '- 문장부호, 숫자, 영문은 반각으로 쓴다(？ ！ ： ＋ １ Ａ 가 아니라 ? ! : + 1 A). 전각 공백도 반각으로 써도 된다. 전각을 반각으로 바꾼 것은 원문을 바꾼 것이 아니다: 기호의 종류와 개수가 같으면 된다(！？ 를 !? 로 쓰는 것은 맞고, ! 하나로 줄이는 것은 틀리다).';
+const BRACKETS_KEPT = '괄호 「 」 『 』 （ ） 【 】 는 원문에 쓰인 글자 그대로 두고, 짝이 안 맞아도 원문대로 둔다.';
+const BRACKETS_HALF = '괄호 （ ） 는 반각 ( ) 로 쓴다. 「 」 『 』 【 】 는 원문에 쓰인 글자 그대로 두고, 짝이 안 맞아도 원문대로 둔다.';
+
+function halfWidthLine(rules: ProjectRules): string {
+  return `${HALF_WIDTH_HEAD} ${rules.halfWidthBrackets ? BRACKETS_HALF : BRACKETS_KEPT}`;
+}
 const CARD_FIRST = '호칭과 말투는 인물 카드(characters)가 용어집(terms)보다 우선한다';
 
 /** The format rules written out for the model (translate and review jobs). */
@@ -26,7 +32,7 @@ export function formatRulesText(rules: ProjectRules): string[] {
   const out: string[] = [];
   if (rules.controlCodes) out.push('- 제어문자(\\C[2], \\N[1], \\V[3], \\{, \\. 같은 것)와 %1 같은 자리표시는 종류와 개수를 원문 그대로 둔다. 색 코드는 원문에서 감싸던 말과 같은 말을 감싸게 한다.');
   if (rules.noLeftoverJapanese) out.push('- 번역문에 일본어 글자(가나, 한자)를 남기지 않는다.');
-  if (rules.halfWidth) out.push(HALF_WIDTH_LINE);
+  if (rules.halfWidth) out.push(halfWidthLine(rules));
   out.push('- text 안의 줄바꿈은 번역에서도 실제 줄바꿈으로 둔다. 역슬래시와 n 두 글자로 바꿔 쓰지 않는다.');
   if (rules.sameLineCount) out.push('- 줄 수를 원문과 똑같이 맞춘다.');
   if (rules.maxLines !== null) out.push(`- 대사(kind 가 dialogue)는 ${rules.maxLines}줄을 넘기지 않는다.`);
@@ -39,7 +45,7 @@ function exportRulesText(rules: ProjectRules): string[] {
   const out: string[] = [];
   if (rules.controlCodes) out.push('- 제어문자(\\C[2], \\N[1], \\V[3], \\{, \\. 같은 것)와 %1 같은 자리표시는 종류와 개수를 원문 그대로 둔다.');
   if (rules.noLeftoverJapanese) out.push('- 번역문에 일본어 글자(가나, 한자)를 남기지 않는다.');
-  if (rules.halfWidth) out.push(HALF_WIDTH_LINE);
+  if (rules.halfWidth) out.push(halfWidthLine(rules));
   out.push('- text 안의 줄바꿈은 번역에서도 줄바꿈으로 둔다.');
   if (rules.sameLineCount) out.push('- 줄 수를 원문과 똑같이 맞춘다.');
   if (rules.maxLines !== null) out.push(`- 대사(kind 가 dialogue)는 ${rules.maxLines}줄을 넘기지 않는다.`);

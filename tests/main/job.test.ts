@@ -120,3 +120,10 @@ test('전각 문장부호는 반각으로 적힌다 (규칙을 끄면 그대로)
   await svc.setRules({ halfWidth: false }); await mk(call, { ids: [idOf('月光草')] }).start();
   expect(svc.entry(idOf('月光草')).target).toBe('번역！？');
 });
+test('괄호 규칙이 켜져 있으면 （ ） 도 반각으로 적힌다', async () => {
+  const call = answer(u => ({ items: u.items.map((x: any) => ({ i: x.i, t: '（번역！）' })) }));
+  await mk(call, { ids: [idOf('月光草')] }).start();
+  expect(svc.entry(idOf('月光草')).target).toBe('(번역!)');
+  await svc.setRules({ halfWidthBrackets: false }); await mk(call, { ids: [idOf('月光草')] }).start();
+  expect(svc.entry(idOf('月光草')).target).toBe('（번역!）');
+});
