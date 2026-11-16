@@ -10,7 +10,7 @@ import type { Decision, Decisions } from '../../src/core/decisions/types.js';
 import { extractAll } from '../../src/core/extract/index.js';
 import { TranslationStore } from '../../src/core/store/translations.js';
 import type { TextUnit } from '../../src/core/types.js';
-import { miniItems } from '../helpers/miniGame.js';
+import { miniActors, miniItems, PROFILE_NOTE } from '../helpers/miniGame.js';
 import { cleanupTempDirs } from '../helpers/fs.js';
 import { setupProject, translator } from '../helpers/project.js';
 
@@ -27,6 +27,9 @@ const orig = () => path.join(proj, 'original/v1');
 
 beforeEach(async () => {
   ({ proj } = await setupProject());
+  const actors = miniActors();
+  (actors[1] as { note: string }).note = PROFILE_NOTE;
+  await writeFile(path.join(orig(), 'data/Actors.json'), JSON.stringify(actors));
   const items = miniItems();
   (items[1] as { note: string }).note = '<SG説明:夜に光る草>\n<price:100>';
   await writeFile(path.join(orig(), 'data/Items.json'), JSON.stringify(items));
@@ -70,6 +73,16 @@ test('메모란: 그 값만 바뀐다', async () => {
   tr('夜に光る草', '밤에 빛나는 풀');
   const out = await files({ 'note:Items:SG説明': yes({ mode: 'whole' }) });
   expect(JSON.parse(out.get('data/Items.json')!)[1].note).toBe('<SG説明:밤에 빛나는 풀>\n<price:100>');
+});
+
+test('메모란: 조건 붙은 프로필 블록은 기본 <profile> 의 결정으로 들어가고 그 블록만 바뀐다', async () => {
+  const cond = units.find((u) => u.source === '地下迷宮で古い鍵を見つけた。\n夜ごと鍵の夢を見る。')!;
+  expect(cond.decisionKey).toBe('note:Actors:profile');
+  expect(cond.refs).toEqual([{ type: 'note', file: 'data/Actors.json', path: [1, 'note'], tag: 'profile Switch: 704', index: 0 }]);
+  tr('地下迷宮で古い鍵を見つけた。\n夜ごと鍵の夢を見る。', '지하 미궁에서 낡은 열쇠를 찾았다.\n밤마다 열쇠 꿈을 꾼다.');
+  const out = await files({ 'note:Actors:profile': yes({ mode: 'whole' }) });
+  expect(JSON.parse(out.get('data/Actors.json')!)[1].note)
+    .toBe(PROFILE_NOTE.replace('地下迷宮で古い鍵を見つけた。\n夜ごと鍵の夢を見る。', '지하 미궁에서 낡은 열쇠를 찾았다.\n밤마다 열쇠 꿈을 꾼다.'));
 });
 
 test('JS: 바뀐 구간만 다르고 따옴표는 이스케이프', async () => {

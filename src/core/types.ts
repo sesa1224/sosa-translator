@@ -31,7 +31,7 @@ export type UnitRef =
   | { type: 'value'; file: string; path: PathSeg[] }                       // a single value
   | { type: 'lines'; file: string; listPath: PathSeg[]; start: number; count: number; code: 401 | 405 } // run of consecutive lines
   | { type: 'choice'; file: string; listPath: PathSeg[]; index: number; choice: number }               // n-th choice of a 102
-  | { type: 'note'; file: string; path: PathSeg[]; tag: string; index: number }                       // value of the index-th <tag:value> in a note
+  | { type: 'note'; file: string; path: PathSeg[]; tag: string; index: number }                       // value of the index-th <tag:value> in a note (tag is 'name condition' for a <name condition>…</name> block)
   | { type: 'js'; file: string; start: number; end: number; quote: '"' | "'" | '`' }             // inside of a string literal (UTF-16 offsets)
   | { type: 'key'; file: string; path: PathSeg[]; key: string };                                    // name of a key of the object at path (key: the original name)
 

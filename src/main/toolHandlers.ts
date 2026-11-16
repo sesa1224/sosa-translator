@@ -457,7 +457,7 @@ const FIND_MAX = 10;
 TOOL_DEFS.push(
   {
     name: 'find_game_text',
-    description: '화면 글자가 게임의 어디에 있는지 찾을 때 쓴다(글자 전체가 같은 문자열만). 플러그인 설정 값·열쇠 이름, 플러그인 JS, data 파일과 번역 항목인지를 준다.',
+    description: '화면 글자가 게임의 어디에 있는지 찾을 때 쓴다. 글자 전체가 같은 문자열을 먼저, 세 글자 이상이면 글의 일부로 든 곳(data 파일·메모 칸, 플러그인 설정 값)도 찾는다. 자리와 번역 항목인지를 준다.',
     inputSchema: z.object({ text: z.string().min(1).describe('찾을 글자') }),
   },
   {
@@ -471,10 +471,38 @@ type Place = Awaited<ReturnType<ProjectService['findGameText']>>[number];
 
 const sameRef = (a: UnitRef, b: UnitRef) => JSON.stringify(a) === JSON.stringify(b);
 
+const pathKeys = (p: PathSeg[]) => JSON.stringify(p.map((s) => (typeof s === 'object' ? s.key : s)));
+
+/** Whether ref writes the data string at path (a whole value, or one line or choice of an event command list). */
+function refCovers(ref: UnitRef, file: string, at: PathSeg[]): boolean {
+  if (ref.file !== file) return false;
+  if (ref.type === 'value') return pathKeys(ref.path) === pathKeys(at);
+  if (ref.type !== 'lines' && ref.type !== 'choice') return false;
+  const n = ref.listPath.length;
+  if (at.length <= n || pathKeys(at.slice(0, n)) !== pathKeys(ref.listPath)) return false;
+  const i = at[n];
+  if (typeof i !== 'number') return false;
+  return ref.type === 'lines' ? i >= ref.start && i < ref.start + ref.count : i === ref.index;
+}
+
 /** The unit at a place, if it is one already. */
 function unitAt(svc: ProjectService, text: string, p: Place): TextUnit | undefined {
-  if (p.where === 'plugin-value' || p.where === 'plugin-key') return svc.units().find((u) => u.refs.some((r) => sameRef(r, p.ref)));
+  if (p.where === 'plugin-value' || p.where === 'plugin-key' || p.where === 'plugin-value-part') return svc.units().find((u) => u.refs.some((r) => sameRef(r, p.ref)));
+  if (p.where === 'data-part') {
+    if (p.note) {
+      const ref: UnitRef = { type: 'note', file: p.file, path: p.path, tag: p.note.tag, index: p.note.index };
+      return svc.units().find((u) => u.refs.some((r) => sameRef(r, ref)));
+    }
+    return svc.units().find((u) => u.source.includes(text) && u.refs.some((r) => refCovers(r, p.file, p.path)));
+  }
   return svc.units().find((u) => u.source === text && u.refs.some((r) => r.file === p.file));
+}
+
+/** 'n번 항목의 note' for a database row's field, otherwise the path itself. */
+function fieldLabel(at: PathSeg[]): string {
+  const keys = at.map((s) => (typeof s === 'object' ? s.key : s));
+  if (keys.length === 2 && typeof keys[0] === 'number') return `${keys[0]}번 항목의 ${keys[1]}`;
+  return keys.join(' › ');
 }
 
 /** Places as the model sees them, at most FIND_MAX. */
@@ -484,6 +512,10 @@ function describePlaces(svc: ProjectService, text: string, places: Place[]) {
     const unit = u ? { id: u.id, status: svc.entry(u.id).status, target: svc.entry(u.id).target } : null;
     if (p.where === 'plugin-value' || p.where === 'plugin-key') {
       return { where: p.where === 'plugin-key' ? '플러그인 설정의 열쇠 이름' : '플러그인 설정 값', plugin: p.plugin, setting: p.setting, unit };
+    }
+    if (p.where === 'plugin-value-part') return { where: '플러그인 설정 값의 일부', plugin: p.plugin, setting: p.setting, snippet: p.snippet, unit };
+    if (p.where === 'data-part') {
+      return { where: 'data 파일 문자열의 일부', file: p.file, field: fieldLabel(p.path), ...(p.note ? { tag: p.note.tag } : {}), snippet: p.snippet, unit };
     }
     return { where: p.where === 'data' ? 'data 파일' : '플러그인 JS 문자열', file: p.file, count: p.count, unit };
   });

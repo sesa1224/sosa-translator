@@ -12,9 +12,9 @@ let svc: ProjectService | null = null;
 afterEach(async () => { await svc?.close(); svc = null; });
 afterAll(cleanupTempDirs);
 
-async function open(): Promise<ProjectService> {
+async function open(opts: { profiles?: boolean } = {}): Promise<ProjectService> {
   const game = await makeTempDir();
-  await makeMiniGame(game, { keys: true });
+  await makeMiniGame(game, { keys: true, ...opts });
   svc = await ProjectService.create(game, path.join(await makeTempDir(), 'proj'), '약초원');
   return svc;
 }
@@ -109,6 +109,75 @@ test('옛 추출기로 만든 프로젝트를 열면 다시 추출해 새 항목
   expect(await readFile(path.join(dir, 'history.json'), 'utf8')).toBe(history);
   expect(JSON.parse(await readFile(path.join(dir, EXTRACT_FILE), 'utf8')).extractorVersion).toBe(EXTRACTOR_VERSION);
   expect(JSON.parse(await readFile(unitsFile, 'utf8'))).toHaveLength(svc.units().length);
+});
+
+test('find_game_text: 메모 칸 안의 글 일부로 찾고, 어느 블록인지와 번역 항목인지 답한다', async () => {
+  const s = await open({ profiles: true });
+  const unit = s.units().find((u) => u.source === '地下迷宮で古い鍵を見つけた。\n夜ごと鍵の夢を見る。')!;
+  const r = data(await callTool(s, 'find_game_text', { text: '古い鍵を見つけた' }));
+  expect(r).toEqual({ total: 1, places: [{
+    where: 'data 파일 문자열의 일부', file: 'data/Actors.json', field: '1번 항목의 note', tag: 'profile Switch: 704',
+    snippet: '…e>\n<profile Switch: 704>\n地下迷宮で古い鍵を見つけた。\n夜ごと鍵の夢を見る。\n</profile>\n<Custo…',
+    unit: { id: unit.id, status: 'untranslated', target: null },
+  }] });
+
+  // Outside any tag block: found, but not a unit.
+  const actors = JSON.parse(await readFile(path.join(s.projectDir, 'original/v1/data/Actors.json'), 'utf8'));
+  expect(actors[1].note).toContain('<CustomStat: ona=0>');
+  const stat = data(await callTool(s, 'find_game_text', { text: 'CustomStat' }));
+  expect(stat.places).toEqual([expect.objectContaining({ file: 'data/Actors.json', field: '1번 항목의 note', unit: null })]);
+  expect(stat.places[0].tag).toBeUndefined();
+
+  // A part of a plugin setting value and of a dialogue line.
+  const label = data(await callTool(s, 'find_game_text', { text: 'FPS Sync' }));
+  expect(label.places).toContainEqual({ where: '플러그인 설정 값의 일부', plugin: 'Fps', setting: 'Command Name', snippet: 'Monitor FPS Sync', unit: null });
+  const line = data(await callTool(s, 'find_game_text', { text: '夜に来る' }));
+  expect(line.places).toEqual([expect.objectContaining({ file: 'data/Map001.json', unit: expect.objectContaining({ id: s.units().find((u) => u.source.includes('こんな夜に来るなんて'))!.id }) })]);
+
+  // A line shared by several blocks of one note: one place per block.
+  actors[1].note = '<profile>\n共通の一行\n</profile>\n<profile Switch: 1>\n共通の一行\n</profile>\n<profile Switch: 2>\n別\n</profile>';
+  await writeFile(path.join(s.projectDir, 'original/v1/data/Actors.json'), JSON.stringify(actors));
+  const shared = data(await callTool(s, 'find_game_text', { text: '共通の一行' }));
+  expect(shared.places.map((p: { tag: string }) => p.tag)).toEqual(['profile', 'profile Switch: 1']);
+});
+
+test('find_game_text: 두 글자 이하는 일부 찾기를 하지 않고, 결과는 10곳까지', async () => {
+  const s = await open({ profiles: true });
+  expect(data(await callTool(s, 'find_game_text', { text: '古い' }))).toEqual({ total: 0, places: [] });
+
+  // Twelve long descriptions holding the text: ten places, each a short piece around it.
+  const file = path.join(s.projectDir, 'original/v1/data/Items.json');
+  const items = JSON.parse(await readFile(file, 'utf8'));
+  for (let i = 2; i <= 13; i++) items.push({ id: i, name: `草${i}`, description: 'あ'.repeat(100) + '光る苔' + 'い'.repeat(100), note: '' });
+  await writeFile(file, JSON.stringify(items));
+  const r = data(await callTool(s, 'find_game_text', { text: '光る苔' }));
+  expect(r.total).toBe(12);
+  expect(r.places).toHaveLength(10);
+  expect(r.places[0]).toEqual({ where: 'data 파일 문자열의 일부', file: 'data/Items.json', field: '2번 항목의 description', snippet: '…' + 'あ'.repeat(30) + '光る苔' + 'い'.repeat(30) + '…', unit: null });
+});
+
+test('조건 붙은 블록이 없던 추출기 버전 1 프로젝트를 열면 새 프로필 항목이 생기고 번역표는 그대로다', async () => {
+  const s = await open({ profiles: true });
+  const dir = s.projectDir;
+  const base = s.units().find((u) => u.source === '薬草園の見習い。')!;
+  const cond = s.units().find((u) => (u.refs[0] as { tag?: string }).tag === 'profile Switch: 704')!;
+  await s.setTranslation(base.id, '약초원의 견습생.', 'user');
+  await s.close();
+  svc = null;
+
+  const unitsFile = path.join(dir, 'units.json');
+  const old = JSON.parse(await readFile(unitsFile, 'utf8')) as { id: string }[];
+  await writeFile(unitsFile, JSON.stringify(old.filter((u) => u.id !== cond.id)));
+  await writeFile(path.join(dir, EXTRACT_FILE), JSON.stringify({ extraStrings: [], extractorVersion: 1 }));
+  const translations = await readFile(path.join(dir, 'translations.json'), 'utf8');
+
+  svc = await ProjectService.open(dir);
+  expect(EXTRACTOR_VERSION).toBe(2);
+  expect(svc.unit(cond.id)).toMatchObject({ decisionKey: 'note:Actors:profile' });
+  expect(old.every((u) => svc!.unit(u.id))).toBe(true);
+  expect(svc.unit(base.id)!.refs).toEqual(base.refs);
+  expect(svc.entry(base.id).target).toBe('약초원의 견습생.');
+  expect(await readFile(path.join(dir, 'translations.json'), 'utf8')).toBe(translations);
 });
 
 test('채팅 시스템 프롬프트는 찾기 도구를 쓰라고 한다', () => {

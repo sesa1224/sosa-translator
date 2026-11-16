@@ -13,7 +13,7 @@ export const EXTRACT_FILE = 'extract.json';
  * extract.json are extracted again from their original copy when opened (unit ids do not change, so
  * translations, decisions and the action log stay).
  */
-export const EXTRACTOR_VERSION = 1;
+export const EXTRACTOR_VERSION = 2;
 
 export interface ExtractSettings {
   extraStrings: string[];

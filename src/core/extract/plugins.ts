@@ -99,6 +99,37 @@ export function setAtPath(root: unknown, path: PathSeg[], value: unknown): void 
   }
 }
 
+/**
+ * Calls fn with every string value in plugin parameters, descending into nested JSON strings the way the extractor
+ * does, so path is the path an extracted unit at that value would have.
+ */
+export function forEachPluginString(plugins: unknown[], fn: (value: string, path: PathSeg[], plugin: string) => void): void {
+  let plugin = '';
+  const visit = (v: unknown, path: PathSeg[]) => {
+    if (typeof v === 'string') {
+      const nested = parseNested(v);
+      if (nested === undefined) {
+        fn(v, path, plugin);
+        return;
+      }
+      const jsonPath: PathSeg[] = [...path.slice(0, -1), { key: segKey(path[path.length - 1]), json: true }];
+      if (typeof nested === 'string') fn(nested, jsonPath, plugin);
+      else visit(nested, jsonPath);
+      return;
+    }
+    if (v === null || typeof v !== 'object') return;
+    if (Array.isArray(v)) v.forEach((x, i) => visit(x, [...path, i]));
+    else for (const [k, x] of Object.entries(v)) visit(x, [...path, k]);
+  };
+  plugins.forEach((p, i) => {
+    if (p === null || typeof p !== 'object') return;
+    const name = (p as Record<string, unknown>).name;
+    plugin = typeof name === 'string' ? name : String(i);
+    const params = (p as Record<string, unknown>).parameters;
+    if (params !== null && typeof params === 'object') visit(params, [i, 'parameters']);
+  });
+}
+
 export interface PluginExtractOptions {
   /** Strings without Japanese the user asked to translate (extract.json); taken only where they match a whole value or key name. */
   extraStrings?: Iterable<string>;

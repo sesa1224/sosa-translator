@@ -101,13 +101,17 @@ export const SPEED_PLUGIN_JS =
 export const FPS_PLUGIN_JS =
   "/*:\n * @param Command Name\n * @default Monitor FPS Sync\n */\nvar fpsName = String(PluginManager.parameters('Fps')['Command Name'] || 'Monitor FPS Sync');\n";
 
+/** Actor 1's note of the profiles extras: a status plugin's default profile and one shown while switch 704 is on. */
+export const PROFILE_NOTE =
+  '<profile>\n薬草園の見習い。\n</profile>\n<profile Switch: 704>\n地下迷宮で古い鍵を見つけた。\n夜ごと鍵の夢を見る。\n</profile>\n<CustomStat: ona=0>';
+
 /**
  * Writes a tiny MV/MZ game into dir (test only). decisions: adds the decisions extras (note tag, MZ commands, plugin JS file).
- * keys: adds the key-name extras (KEY_PLUGINS and their files).
+ * keys: adds the key-name extras (KEY_PLUGINS and their files). profiles: gives actor 1 PROFILE_NOTE.
  */
 export async function makeMiniGame(
   dir: string,
-  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean; keys?: boolean; variant?: 'v2' } = {},
+  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean; keys?: boolean; profiles?: boolean; variant?: 'v2' } = {},
 ): Promise<void> {
   const engine = opts.engine ?? 'MZ';
   const root = opts.www ? path.join(dir, 'www') : dir;
@@ -156,6 +160,12 @@ export async function makeMiniGame(
     await mkdir(path.join(js, 'plugins'), { recursive: true });
     await writeFile(path.join(js, 'plugins', 'Speed.js'), SPEED_PLUGIN_JS, 'utf8');
     await writeFile(path.join(js, 'plugins', 'Fps.js'), FPS_PLUGIN_JS, 'utf8');
+  }
+
+  if (opts.profiles) {
+    const actors = miniActors();
+    (actors[1] as { note: string }).note = PROFILE_NOTE;
+    await writeFile(path.join(data, 'Actors.json'), JSON.stringify(actors), 'utf8');
   }
 
   if (opts.variant === 'v2') await writeV2(data, engine);
