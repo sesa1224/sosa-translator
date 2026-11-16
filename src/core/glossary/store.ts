@@ -17,7 +17,7 @@ export function termId(source: string): string {
 }
 
 export function defaultRules(): ProjectRules {
-  return { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true, halfWidthBrackets: true, notationCheck: true, unmask: true };
+  return { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true, halfWidthBrackets: true, notationCheck: true, unmask: true, autoRewrap: true };
 }
 
 export function defaultGlossary(): Glossary {
@@ -79,6 +79,8 @@ export function normalizeGlossary(raw: unknown): Glossary {
       // Only warnings, so older projects get them too: lines translated before a guide change are looked at again.
       notationCheck: bool(rr.notationCheck, true),
       unmask: bool(rr.unmask, true),
+      // Only line breaks move and only where the check finds no new problem, so older projects get it too.
+      autoRewrap: bool(rr.autoRewrap, true),
     },
     confirmedAt: str(r.confirmedAt) && r.confirmedAt ? r.confirmedAt : null,
     ...(Object.keys(prompts).length > 0 ? { prompts } : {}),

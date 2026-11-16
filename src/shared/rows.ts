@@ -129,6 +129,8 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
       if (r.pastReview?.taken !== 'before') return false;
     } else if (status === 'notation') {
       if (!r.notation) return false;
+    } else if (status === 'overflow') {
+      if (!r.overflow) return false;
     } else if (status !== 'all' && r.status !== status) return false;
     if (q.reviewKind) {
       const note = r.review ?? r.pastReview;
@@ -143,7 +145,7 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
 }
 
 export function computeStats(rows: Row[]): Stats {
-  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0, notation: 0 };
+  const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0, notation: 0, overflow: 0 };
   for (const r of rows) {
     if (r.status === 'untranslated') s.untranslated++;
     else if (r.status === 'translated') s.translated++;
@@ -158,6 +160,7 @@ export function computeStats(rows: Row[]): Stats {
     if (r.previous) s.changed++;
     if (r.carried) s.carried++;
     if (r.notation) s.notation!++;
+    if (r.overflow) s.overflow!++;
     if (r.pastReview) s[r.pastReview.taken === 'suggestion' ? 'reviewTaken' : 'reviewPassed']!++;
   }
   return s;

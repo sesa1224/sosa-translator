@@ -31,7 +31,9 @@ import { termsIn } from '../core/glossary/match.js';
 import { promptText, withPromptText } from '../core/glossary/prompts.js';
 import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term } from '../core/glossary/types.js';
-import type { PxCheck } from '../core/check/format.js';
+import { WINDOW_OVERFLOW_RULES, type PxCheck } from '../core/check/format.js';
+import { rewrapText } from '../core/preview/rewrap.js';
+import type { Layout, TextWindow } from '../core/preview/types.js';
 import { notationIssues } from '../core/check/notation.js';
 import { actionDetail, loadHistory, newActionId, sameEntry, saveHistory, summarize, trimHistory, unchangedSince } from '../core/history/store.js';
 import type { ActionChange, ActionDetail, ActionRecord, ActionSummary, CancelResult } from '../core/history/types.js';
@@ -59,7 +61,7 @@ import { describeCommand } from '../core/events/describe.js';
 import { listLabel } from '../core/events/browse.js';
 import { importVersion as coreImportVersion, readUpdateSummary, rollbackVersion as coreRollbackVersion, versionsOf } from '../core/update/importVersion.js';
 import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
-import type { ChangeEvent, Origin } from '../shared/api.js';
+import type { ChangeEvent, Origin, RewrapReason, RewrapReport, RewrapScope } from '../shared/api.js';
 import { rowDecisionOf, unitRowDecisions } from '../shared/rows.js';
 import { registerFontContributor } from './fontEmbed.js';
 
@@ -305,9 +307,10 @@ export class ProjectService extends EventEmitter {
       for (const t of todo) {
         const unit = this.byId.get(t.id);
         if (!unit) continue;
-        const status: TranslationStatus = this.check(unit, t.target).some((i) => i.severity === 'error') ? 'error' : 'translated';
+        const target = this.autoWrap(t.id, t.target);
+        const status: TranslationStatus = this.check(unit, target).some((i) => i.severity === 'error') ? 'error' : 'translated';
         this.remember(t.id, 'external');
-        this.store.restore(t.id, { target: t.target, status, updatedAt: new Date().toISOString(), external: true });
+        this.store.restore(t.id, { target, status, updatedAt: new Date().toISOString(), external: true });
         ids.push(t.id);
       }
       return { ids, result: { written: ids.length } };
@@ -729,12 +732,92 @@ export class ProjectService extends EventEmitter {
 
   /**
    * Makes setTranslation and issues use the pixel-width check (null = back to the character count).
-   * Announces every translated dialogue as changed, since its warnings may differ now.
+   * Announces every translated dialogue and database text as changed, since its warnings may differ now.
    */
   setPxChecker(fn: PxChecker | null, announce = true): void {
     this.pxChecker = fn;
-    const ids = this.unitList.filter((u) => u.kind === 'dialogue' && this.store.get(u.id).target !== null).map((u) => u.id);
+    const ids = this.unitList.filter((u) => (u.kind === 'dialogue' || u.kind === 'db') && this.store.get(u.id).target !== null).map((u) => u.id);
     if (announce && ids.length > 0) this.emit('changed', { ids, origin: 'user' });
+  }
+
+  /** Whether the unit's translation does not fit the game window it is drawn in (false without a game font). */
+  hasWindowOverflow(id: string): boolean {
+    const u = this.byId.get(id);
+    const target = this.store.get(id).target;
+    const px = u && target !== null ? this.pxChecker?.(u) : undefined;
+    return px ? windowOverflows(px.layout(target!, px.withFace), px) : false;
+  }
+
+  /** What a rewrap would do to one translation; the text is the new one only for 'fixed'. */
+  private rewrapFor(unit: TextUnit, target: string): RewrapOutcome {
+    const px = this.pxChecker?.(unit);
+    if (!px) return { state: 'skip', text: target };
+    const layout = (t: string) => px.layout(t, px.withFace);
+    if (!windowOverflows(layout(target), px)) return { state: 'fits', text: target, window: px.window ?? 'message' };
+    const window = px.window ?? 'message';
+    if (px.fixable === false) return { state: 'unfixable', text: target, window, reason: 'mixed' };
+    const r = rewrapText(target, { layout, maxLines: maxLinesOf(px, this.gloss.rules.maxLines), speakerPattern: this.gloss.rules.speakerPattern });
+    if (!r.ok) return { state: 'unfixable', text: target, window, reason: r.reason };
+    if (!acceptableRewrap(this.check(unit, target), this.check(unit, r.text))) return { state: 'unfixable', text: target, window, reason: 'check' };
+    return { state: 'fixed', text: r.text, window };
+  }
+
+  /**
+   * A translation coming in from a job, a reviewer, the chat or an import, with its line breaks moved to fit the
+   * window when the project's rule asks for it and the check allows it; otherwise the text as it is.
+   */
+  autoWrap(id: string, text: string): string {
+    const unit = this.byId.get(id);
+    if (!unit || unit.needsDecision || !this.gloss.rules.autoRewrap) return text;
+    const r = this.rewrapFor(unit, text);
+    return r.state === 'fixed' ? r.text : text;
+  }
+
+  /** Translations in scope that do not fit their window, as rewrapOverflow would sort them, without writing anything. */
+  planRewrap(scope: RewrapScope = {}): RewrapReport {
+    return this.sortRewrap(scope).report;
+  }
+
+  /**
+   * Moves the line breaks of every translation in scope that does not fit its game window, as one logged action.
+   * Status, review records and updatedAt stay as they are (only where lines break changed, so a review need not
+   * look again). Needs-decision units and units without a translation are passed by. Needs a game font.
+   */
+  rewrapOverflow(scope: RewrapScope, origin: Origin): Promise<RewrapReport> {
+    if (!this.pxChecker) return Promise.reject(new Error(NEED_FONT));
+    return this.mutate(origin, () => {
+      const { report, fixes } = this.sortRewrap(scope);
+      for (const [id, text] of fixes) {
+        this.remember(id, origin);
+        this.store.restore(id, { ...this.store.get(id), target: text });
+      }
+      return { ids: [...fixes.keys()], result: report };
+    }, { label: (n) => `줄바꿈 다시 맞추기 ${count(n)}줄` });
+  }
+
+  private sortRewrap(scope: RewrapScope): { report: RewrapReport; fixes: Map<string, string> } {
+    const report: RewrapReport = { fixed: 0, unfixable: 0, byWindow: { message: { fixed: 0, unfixable: 0 }, help: { fixed: 0, unfixable: 0 } }, unfixableIds: [], reasons: {} };
+    const fixes = new Map<string, string>();
+    if (!this.pxChecker) return { report, fixes };
+    const want = scope.ids ? new Set(scope.ids) : null;
+    for (const u of this.unitList) {
+      if (want && !want.has(u.id)) continue;
+      const e = this.store.get(u.id);
+      if (u.needsDecision || e.target === null || e.status === 'declined') continue;
+      const r = this.rewrapFor(u, e.target);
+      if (r.state === 'skip' || r.state === 'fits' || (scope.window && r.window !== scope.window)) continue;
+      if (r.state !== 'unfixable') {
+        report.fixed++;
+        report.byWindow[r.window].fixed++;
+        fixes.set(u.id, r.text);
+      } else {
+        report.unfixable++;
+        report.byWindow[r.window].unfixable++;
+        report.unfixableIds.push(u.id);
+        report.reasons[r.reason] = (report.reasons[r.reason] ?? 0) + 1;
+      }
+    }
+    return { report, fixes };
   }
 
   private enqueue<T>(job: () => Promise<T>): Promise<T> {
@@ -1149,8 +1232,37 @@ export class ProjectService extends EventEmitter {
   readonly buildSummaries: (() => Promise<Record<string, string[]>>)[] = [];
 }
 
-/** Gives the pixel-width check for a unit (only dialogue is checked), or undefined to use the character count. */
+/** Gives the pixel-width check for a unit drawn in a game window, or undefined to use the character count. */
 export type PxChecker = (unit: TextUnit) => PxCheck | undefined;
+
+export const NEED_FONT = '게임 폰트를 먼저 고르세요(설정 → 게임 폰트)';
+
+type RewrapOutcome =
+  | { state: 'skip'; text: string }
+  | { state: 'fits' | 'fixed'; text: string; window: TextWindow }
+  | { state: 'unfixable'; text: string; window: TextWindow; reason: RewrapReason };
+
+const windowOverflows = (l: Layout, px: PxCheck): boolean => l.lineOverflow > 0 || l.lines.some((x) => x.overflow > 0) || (px.maxLines !== undefined && l.lines.length > px.maxLines);
+
+/** The window's line count; checks made before windows had one fall back on the project's rule. */
+const maxLinesOf = (px: PxCheck, ruleLines: number | null): number => px.maxLines ?? ruleLines ?? 4;
+
+/**
+ * A rewrap is taken only when the check finds no problem the text did not have before (counted per rule and
+ * severity) and nothing left that does not fit the window.
+ */
+export function acceptableRewrap(before: Issue[], after: Issue[]): boolean {
+  if (after.some((i) => WINDOW_OVERFLOW_RULES.includes(i.rule))) return false;
+  const key = (i: Issue) => `${i.rule}|${i.severity}`;
+  const had = new Map<string, number>();
+  for (const i of before) had.set(key(i), (had.get(key(i)) ?? 0) + 1);
+  for (const i of after) {
+    const left = had.get(key(i)) ?? 0;
+    if (left === 0) return false;
+    had.set(key(i), left - 1);
+  }
+  return true;
+}
 
 /** Same text as the IPC layer's busy error. */
 const UPDATE_BUSY = '다른 작업이 진행 중입니다';

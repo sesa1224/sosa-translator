@@ -240,7 +240,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   async function adopt(s: ProjectService): Promise<void> {
     await closeProject();
     deps.holder.svc = s;
-    rows = new Map(s.units().map((u: TextUnit) => [u.id, rowOf(s, u)]));
+    rows = new Map();   // made once the preview has set the window check (below)
     gameTitle = await readGameTitle(s.projectDir);
     s.on('changed', (e) => {
       if (deps.holder.svc !== s) return;
@@ -276,6 +276,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       }
     });
     await startPreview(s);
+    // The window check is set now (without announcing every row), so the rows can say which lines overflow.
+    if (deps.holder.svc === s) rows = new Map(s.units().map((u: TextUnit) => [u.id, rowOf(s, u)]));
     s.on('history-changed', (list) => {
       if (deps.holder.svc !== s) return;
       deps.broadcast('history:changed', list);
@@ -301,6 +303,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   function rowOf(s: ProjectService, u: TextUnit): Row {
     const r = toRow(u, s.entry(u.id), s.usesProvisional(u.id));
     if (s.hasNotationWarning(u.id)) r.notation = true;
+    if (s.hasWindowOverflow(u.id)) r.overflow = true;
     return r;
   }
 
@@ -510,7 +513,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     return preview;
   };
   const previewState = (p: PreviewService): PreviewState => ({
-    settings: p.settings(), metrics: p.metrics(), detected: p.detectedMetrics(), fontMissing: p.fontMissing, context: p.context(),
+    settings: p.settings(), metrics: p.metrics(), detected: p.detectedMetrics(), fontMissing: p.fontMissing, context: p.context(), windows: p.windows(),
   });
   const announcePreview = () => { if (preview) deps.broadcast('preview:changed', previewState(preview)); };
   const fontKey = (p: string) => path.resolve(p).toLowerCase();
@@ -527,6 +530,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       return;
     }
     preview = p;
+    // The chat's tools change window sizes too: every change reaches the screens.
+    p.onChange(announcePreview);
   }
 
   function stopPreview(): void {
@@ -545,13 +550,17 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   handle('preview:get', () => previewState(needPreview()));
   handle('preview:layout', (id: string, text?: string) => needPreview().layoutFor(String(id), typeof text === 'string' ? text : undefined));
+  // The service announces its own changes (onChange in startPreview).
   handle('preview:setFont', async (p: string | null) => {
     await needPreview().setFont(typeof p === 'string' && p ? p : null);
-    announcePreview();
   });
   handle('preview:setOverrides', async (o: Partial<core.WindowMetrics>) => {
     await needPreview().setOverrides(o && typeof o === 'object' ? o : {});
-    announcePreview();
+  });
+  handle('preview:setWindow', async (window: core.TextWindow, s: shared.WindowSetting) => {
+    const num = (v: unknown) => (v === null ? null : typeof v === 'number' ? v : undefined);
+    const o = s && typeof s === 'object' ? s : {};
+    await needPreview().setWindow(window, { width: num(o.width), maxLines: num(o.maxLines) });
   });
   handle('preview:countOverflow', (p?: string | null) => needPreview().countOverflow(typeof p === 'string' && p ? p : undefined));
   handle('preview:windowSkin', async (): Promise<Uint8Array | null> => {
@@ -625,6 +634,15 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('project:setGameTitle', async (target: string) => {
     await svc().setGameTitle(String(target ?? ''));
   });
+  const rewrapScope = (s: unknown): shared.RewrapScope => {
+    const o = (s && typeof s === 'object' ? s : {}) as shared.RewrapScope;
+    const out: shared.RewrapScope = {};
+    if (o.window === 'message' || o.window === 'help') out.window = o.window;
+    if (Array.isArray(o.ids)) out.ids = o.ids.map(String);
+    return out;
+  };
+  handle('project:rewrapPlan', (scope: shared.RewrapScope) => svc().planRewrap(rewrapScope(scope)));
+  handle('project:rewrap', (scope: shared.RewrapScope) => svc().rewrapOverflow(rewrapScope(scope), 'user'));
   handle('exchange:export', async (ids: string[]) => {
     const s = svc();
     const list = Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [];

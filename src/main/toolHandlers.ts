@@ -10,6 +10,8 @@ import type { ListOp, PatchBody } from '../core/patches/types.js';
 import { eventFiles, listEvents, readEvent } from '../core/events/browse.js';
 import { findUsage, type UsageTarget } from '../core/events/usage.js';
 import { imageServiceOf } from './images.js';
+import { previewServiceOf } from './preview.js';
+import { NEED_FONT } from './projectService.js';
 
 // The chat's tools: their names, Korean descriptions and input schemas (TOOL_DEFS), and what each one does
 // (HANDLERS). The MCP server in src/mcp lists TOOL_DEFS to the Claude CLI and forwards each call here through
@@ -27,7 +29,7 @@ const SEARCH_DEFAULT = 20;
 const SEARCH_MAX = 50;
 const CONTEXT_KINDS = new Set(['dialogue', 'scroll']);
 
-const statusFilter = z.enum(['all', 'untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined', 'needs-decision', 'provisional']);
+const statusFilter = z.enum(['all', 'untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined', 'needs-decision', 'provisional', 'overflow']);
 const termCategory = z.enum(['name', 'place', 'term', 'sfx', 'other']);
 const GLOSSARY_SEARCH_MAX = 30;
 
@@ -42,7 +44,7 @@ export const TOOL_DEFS: ToolDef[] = [
     description: '번역 항목을 찾을 때 쓴다. 원문, 번역, 화자에서 글자 그대로 찾는다(정규식 아님, 대소문자 무시). 빈 검색어는 전체.',
     inputSchema: z.object({
       query: z.string().describe('찾을 글자'),
-      status: statusFilter.optional().describe('상태로 좁히기'),
+      status: statusFilter.optional().describe('상태로 좁히기 (overflow: 게임 창을 넘는 번역)'),
       limit: z.number().int().positive().optional().describe(`돌려받을 최대 개수 (기본 ${SEARCH_DEFAULT}, 최대 ${SEARCH_MAX})`),
     }),
   },
@@ -130,7 +132,10 @@ const HANDLERS: Record<string, Handler> = {
     return { name: svc.meta.name, engine: svc.meta.engine, stats: computeStats(allRows(svc)) };
   },
   async search_units(svc, input: { query: string; status?: z.infer<typeof statusFilter>; limit?: number }) {
-    const found = filterRows(allRows(svc), { text: input.query, status: input.status });
+    // Laying out every row costs more than the other filters, so only this filter does it.
+    const found = input.status === 'overflow'
+      ? filterRows(svc.units().filter((u) => svc.hasWindowOverflow(u.id)).map((u) => rowOf(svc, u)), { text: input.query })
+      : filterRows(allRows(svc), { text: input.query, status: input.status });
     const limit = Math.min(input.limit ?? SEARCH_DEFAULT, SEARCH_MAX);
     return { total: found.length, items: found.slice(0, limit).map(brief) };
   },
@@ -141,8 +146,10 @@ const HANDLERS: Record<string, Handler> = {
     return { ...brief(row), refCount: row.refCount, issues: svc.issues(unit.id), ...context(svc, unit) };
   },
   async set_translation(svc, input: { id: string; target: string }) {
-    const issues = await svc.setTranslation(input.id, input.target, 'chat');
-    return { status: svc.entry(input.id).status, issues };
+    const target = svc.autoWrap(input.id, input.target);
+    const issues = await svc.setTranslation(input.id, target, 'chat');
+    // The model is told when its line breaks were moved, so it does not "fix" them back.
+    return { status: svc.entry(input.id).status, issues, ...(target !== input.target ? { rewrapped: target } : {}) };
   },
   async set_status(svc, input: { id: string; status: 'approved' | 'needs-review' | 'translated' }) {
     await svc.setStatus(input.id, input.status, 'chat');
@@ -516,4 +523,63 @@ HANDLERS.update_summary = async (svc) => {
   });
   const { patches: _all, ...rest } = s;
   return { ...rest, patches: { unchanged: s.patches.filter((m) => m.result === 'unchanged').length, moved: s.patches.filter((m) => m.result === 'moved').length, conflict: conflicts.length }, conflicts };
+};
+
+// ---- text that does not fit the game window ----
+const UNFIXED_MAX = 10;
+const textWindow = z.enum(['message', 'help']);
+
+TOOL_DEFS.push(
+  {
+    name: 'set_text_window',
+    description: '게임 창에서 글자가 잘릴 때 그 창의 한 줄 길이(와 줄 수)를 정한다. 대사창(message)과 설명창(help: 아이템·무기·방어구·스킬 설명)은 따로다. 길이는 chars, fits, px 가운데 하나로 준다.',
+    inputSchema: z.object({
+      window: textWindow,
+      chars: z.number().positive().optional().describe('한 줄에 들어가는 한글 글자 수'),
+      fits: z.string().optional().describe('게임에서 한 줄에 딱 맞게 들어간 글'),
+      px: z.number().positive().optional().describe('한 줄 너비 px'),
+      maxLines: z.number().int().positive().optional().describe('창의 줄 수'),
+      withFace: z.boolean().optional().describe('얼굴 그림이 있는 대사로 잰 길이면 true (대사창만)'),
+    }),
+  },
+  {
+    name: 'rewrap_overflow',
+    description: '게임 창을 넘는 번역의 줄바꿈 위치를 프로그램이 다시 맞춘다(글자는 바꾸지 않는다). 못 고친 줄은 문장을 줄여 고친다.',
+    inputSchema: z.object({ window: textWindow.optional().describe('한 창만 (없으면 전부)') }),
+  },
+);
+
+function needPreview(svc: ProjectService) {
+  const p = previewServiceOf(svc);
+  if (!p || !p.settings().fontPath || p.fontMissing) throw new Error(NEED_FONT);
+  return p;
+}
+
+HANDLERS.set_text_window = async (svc, input: { window: 'message' | 'help'; chars?: number; fits?: string; px?: number; maxLines?: number; withFace?: boolean }) => {
+  const p = needPreview(svc);
+  const given = [input.chars, input.fits, input.px].filter((v) => v !== undefined).length;
+  if (given > 1) throw new Error('chars, fits, px 가운데 하나만 주세요');
+  if (given === 0 && input.maxLines === undefined) throw new Error('chars, fits, px 가운데 하나나 maxLines 를 주세요');
+  const hangul = p.windows()[input.window].hangulWidth ?? 0;
+  let width: number | undefined;
+  if (input.chars !== undefined) width = input.chars * hangul;
+  else if (input.fits !== undefined) width = p.measureLine(input.fits.split('\n')[0], input.window) ?? undefined;
+  else if (input.px !== undefined) width = input.px;
+  // A length measured beside a face picture is the window's width less the face.
+  if (width !== undefined && input.window === 'message' && input.withFace) width += p.metrics().faceIndent;
+  await p.setWindow(input.window, { ...(width !== undefined ? { width: Math.ceil(width) } : {}), ...(input.maxLines !== undefined ? { maxLines: input.maxLines } : {}) });
+  const info = p.windows()[input.window];
+  const plan = svc.planRewrap({ window: input.window });
+  return {
+    window: input.window, width: info.limit.width,
+    ...(input.window === 'message' ? { widthWithFace: info.limit.width - info.faceIndent } : {}),
+    maxLines: info.limit.maxLines, hangulChars: hangul > 0 ? Math.floor(info.limit.width / hangul) : null,
+    overflowing: plan.fixed + plan.unfixable, canRewrap: plan.fixed,
+  };
+};
+
+HANDLERS.rewrap_overflow = async (svc, input: { window?: 'message' | 'help' }) => {
+  needPreview(svc);
+  const r = await svc.rewrapOverflow(input.window ? { window: input.window } : {}, 'chat');
+  return { fixed: r.fixed, unfixable: r.unfixable, unfixableIds: r.unfixableIds.slice(0, UNFIXED_MAX), reasons: r.reasons };
 };

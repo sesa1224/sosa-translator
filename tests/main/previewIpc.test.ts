@@ -140,3 +140,35 @@ test('고른 폰트 파일이 사라지면 fontMissing 이고 앱이 죽지 않�
   expect(p.fontMissing).toBe(true);
   expect(await invoke('preview:layout', rows[0].id)).toBeNull();
 });
+
+test('창 넘침: 행 표시와 개수, 창별 기준, 다시 맞추기 계획과 실행, 다시 열어도 표시', async () => {
+  const { invoke, sent, font, rows } = await setup();
+  const dialogue = rows.find((r) => r.source === 'やった！')!;
+  await invoke('glossary:setRules', { notationCheck: false });
+  await invoke('preview:setFont', font);
+  await invoke('preview:setWindow', 'message', { width: 26 * 4 });
+  const state = sent('preview:changed').at(-1);
+  expect(state.windows.message).toMatchObject({ limit: { width: 104 }, override: { width: 104 }, hangulWidth: 26 });
+  expect(state.windows.help.limit.maxLines).toBe(2);
+
+  await invoke('unit:setTranslation', dialogue.id, '가나다 가나다');
+  const changed = sent('project:changed').at(-1);
+  expect(changed.rows.find((r: Row) => r.id === dialogue.id).overflow).toBe(true);
+  expect(changed.stats.overflow).toBe(1);
+  expect((await invoke('unit:get', dialogue.id)).issues.map((i: { message: string }) => i.message)).toEqual(['1번째 줄이 대사창을 59px 넘어요']);
+
+  expect(await invoke('project:rewrapPlan', { window: 'message' })).toMatchObject({ fixed: 1, unfixable: 0 });
+  expect(await invoke('project:rewrapPlan', { window: 'help' })).toMatchObject({ fixed: 0 });
+  expect(await invoke('project:rewrap', { ids: [dialogue.id] })).toMatchObject({ fixed: 1 });
+  expect((await invoke('unit:get', dialogue.id)).row).toMatchObject({ target: '가나다\n가나다' });
+  expect(sent('project:changed').at(-1).rows.find((r: Row) => r.id === dialogue.id).overflow).toBeUndefined();
+
+  await invoke('unit:setTranslation', dialogue.id, '가나다가나다');
+  await invoke('project:close');
+  await invoke('project:open', (await invoke('project:list'))[0].dir);
+  const snap = await invoke('project:snapshot');
+  expect(snap.rows.find((r: Row) => r.id === dialogue.id).overflow).toBe(true);
+  expect(snap.stats.overflow).toBe(1);
+  await invoke('preview:setWindow', 'message', { width: null });
+  expect((await invoke('preview:get')).windows.message.override).toEqual({});
+});

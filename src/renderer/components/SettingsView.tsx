@@ -4,6 +4,7 @@ import { useApp } from '../state';
 import { FontPicker } from './FontPicker';
 import { ImageFolderSettings } from './ImageView';
 import { FontEmbedSection } from './PatchView';
+import { TextWindowSettings } from './TextWindowSettings';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 
@@ -147,6 +148,7 @@ export function SettingsView() {
       </section>
 
       <FontPicker />
+      <TextWindowSettings />
       <FontEmbedSection />
       <ImageFolderSettings />
       {error && <span className="err-text" role="alert">{error}</span>}

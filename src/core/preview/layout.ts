@@ -10,15 +10,19 @@ import type { LaidLine, Layout, Measure, PreviewContext, Run, WindowMetrics } fr
 /** Font size limits of \{ and \} per engine. */
 const SIZE_LIMITS = { MV: { min: 24, max: 96 }, MZ: { min: 12, max: 108 } } as const;
 
-const TOKEN = /\\([A-Za-z]+)(?:\[([^\]\r\n]*)\])?|\\([{}.|!><^$\\])/g;
+// The first alternative is a name box code (\n<name>, \nc<name>, \n1<name> ... of YEP_MessageCore and its
+// look-alikes): the name goes to a box of its own, so it takes no room in the line.
+const TOKEN = /\\[Nn][1-5CcRr]?<[^>\r\n]*>|\\([A-Za-z]+)(?:\[([^\]\r\n]*)\])?|\\([{}.|!><^$\\])/g;
 
 /**
  * Lays out a message the way the game draws it: control codes replaced or applied, line by line.
  * Text that came from a replacement (\V, \N, \P, \G) is not parsed again.
+ * width: the window's line width without a face picture, when it is not the message window's own (the help
+ * window, or a width the user set); the face indent still comes off it.
  */
-export function layoutMessage(text: string, m: WindowMetrics, measure: Measure, ctx: PreviewContext, o: { withFace: boolean }): Layout {
+export function layoutMessage(text: string, m: WindowMetrics, measure: Measure, ctx: PreviewContext, o: { withFace: boolean; width?: number }): Layout {
   const limits = SIZE_LIMITS[m.engine];
-  const available = availableWidth(m, o.withFace);
+  const available = o.width !== undefined ? o.width - (o.withFace ? m.faceIndent : 0) : availableWidth(m, o.withFace);
   let color = 0;
   let size = m.fontSize;
   let missingGlyphs = 0;
@@ -36,6 +40,7 @@ export function layoutMessage(text: string, m: WindowMetrics, measure: Measure, 
     for (const mt of raw.matchAll(TOKEN)) {
       addText(raw.slice(at, mt.index));
       at = mt.index + mt[0].length;
+      if (mt[1] === undefined && mt[3] === undefined) continue;   // name box code
       const sym = mt[3];
       if (sym !== undefined) {
         if (sym === '\\') addText('\\');

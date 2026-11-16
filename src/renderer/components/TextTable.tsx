@@ -8,6 +8,7 @@ import { CodeText } from './CodeText';
 import { ReviewDialog } from './ReviewDialog';
 import { StoryView } from './StoryView';
 import { ExchangeActions } from './ExchangeDialog';
+import { confirmAndRewrap } from './TextWindowSettings';
 
 /** What the translation cell shows for a needs-decision row whose decision says more than the target (null = the usual). */
 function decisionCell(r: Row): string | null {
@@ -102,6 +103,34 @@ function ReviewBulkActions({ ids }: { ids: string[] }) {
   );
 }
 
+/** "줄바꿈 다시 맞추기" for the lines the table shows under the "창 넘침" filter. */
+function RewrapVisible({ ids }: { ids: string[] }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (ids.length === 0 && note === null && error === null) return null;
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const n = await confirmAndRewrap({ ids }, '보이는 줄 가운데');
+      if (n !== null) setNote(n);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="exchange-actions" role="group" aria-label="보이는 줄 줄바꿈">
+      {ids.length > 0 && <button type="button" className="btn small-btn" disabled={busy} onClick={() => void run()}>줄바꿈 다시 맞추기</button>}
+      {note && <span className="mute small" role="status">{note}</span>}
+      {error && <span className="err-text small" role="alert">{error}</span>}
+    </span>
+  );
+}
+
 function FilterBar() {
   const { snapshot, query } = useApp();
   const [text, setText] = useState(query.text ?? '');
@@ -126,6 +155,7 @@ function FilterBar() {
   if ((s.reviewTaken ?? 0) > 0) chips.push(['review-taken', '검수로 바뀜', s.reviewTaken ?? 0]);
   if ((s.reviewPassed ?? 0) > 0) chips.push(['review-passed', '검수 의견 넘김', s.reviewPassed ?? 0]);
   if ((s.notation ?? 0) > 0) chips.push(['notation', '표기 경고', s.notation ?? 0]);
+  if ((s.overflow ?? 0) > 0 || query.status === 'overflow') chips.push(['overflow', '창 넘침', s.overflow ?? 0]);
   const current = query.status ?? 'all';
   return (
     <>
@@ -226,6 +256,7 @@ export function TextTable() {
         <span className="mono sub small">{`${num(rows.length)}줄`}</span>
         <ExchangeActions ids={rows.map((r) => r.id)} />
         <ReviewBulkActions ids={rows.filter((r) => r.review).map((r) => r.id)} />
+        {query.status === 'overflow' && <RewrapVisible ids={rows.map((r) => r.id)} />}
       </div>
       <JobActions />
       <FilterBar />

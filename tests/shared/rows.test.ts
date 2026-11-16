@@ -36,7 +36,7 @@ test('검색은 글자 그대로', () => {
 test('상태 필터와 통계', () => {
   expect(filterRows(rows, { status: 'needs-decision' }).every(r => r.needsDecision)).toBe(true);
   expect(filterRows(rows, { status: 'untranslated', file: 'data/Items.json' }).map(r => r.id)).toEqual(['item-desc']);
-  expect(computeStats(rows)).toEqual({ total: rows.length, untranslated: rows.length - 1, needsReview: 1, approved: 0, error: 0, needsDecision: 2, declined: 0, provisional: 0, external: 0, undecided: 2, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0, notation: 0 });
+  expect(computeStats(rows)).toEqual({ total: rows.length, untranslated: rows.length - 1, needsReview: 1, approved: 0, error: 0, needsDecision: 2, declined: 0, provisional: 0, external: 0, undecided: 2, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0, notation: 0, overflow: 0 });
   expect(computeScopes(rows).find(s => s.file === 'data/Items.json')).toEqual({ file: 'data/Items.json', label: 'Items', total: 2, done: 1 });
 });
 
@@ -59,4 +59,10 @@ test('표기 경고 거르기와 세기', () => {
   const marked = [row({ id: 'n1', source: 'あ…', file: 'f', target: '아…', status: 'translated', notation: true }), row({ id: 'n2', source: 'い', file: 'f', target: '이', status: 'translated' })];
   expect(filterRows(marked, { status: 'notation' }).map((r) => r.id)).toEqual(['n1']);
   expect(computeStats(marked).notation).toBe(1);
+});
+
+test('창 넘침 필터와 개수', () => {
+  const marked = rows.map((r) => (r.id === 'map-1' || r.id === 'item-desc' ? { ...r, overflow: true } : r));
+  expect(filterRows(marked, { status: 'overflow' }).map((r) => r.id)).toEqual(['item-desc', 'map-1']);
+  expect(computeStats(marked).overflow).toBe(2);
 });

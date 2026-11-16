@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { availableWidth, textLeft } from '../../core/preview/windows';
 import type { Layout, LaidLine, WindowMetrics } from '../../shared/api';
 import { ensureFontFace } from '../preview/fontFace';
 import { usePalette, usePreviewState } from '../preview/usePreview';
@@ -9,7 +10,7 @@ const LAYOUT_DELAY = 150;
 
 /** Width a line may use without a face picture (the same rule as core availableWidth). */
 function plainWidth(m: WindowMetrics): number {
-  return m.boxWidth - m.padding * 2 - m.textPadding * 2;
+  return availableWidth(m, false);
 }
 
 /** Width of the element, followed with a ResizeObserver. */
@@ -44,19 +45,25 @@ function LineRuns({ line, palette, family }: { line: LaidLine; palette: string[]
  */
 export function MessageWindow({ layout, metrics, palette, family }: { layout: Layout; metrics: WindowMetrics; palette: string[]; family: string | null }) {
   const [ref, outer] = useWidth<HTMLDivElement>();
-  const withFace = layout.available < plainWidth(metrics);
-  const height = metrics.padding * 2 + metrics.lineHeight * metrics.maxLines;
-  const left = metrics.padding + metrics.textPadding + (withFace ? metrics.faceIndent : 0);
-  const shown = layout.lines.slice(0, metrics.maxLines);
-  const rest = layout.lines.slice(metrics.maxLines);
+  const help = layout.window === 'help';
+  const withFace = !help && (layout.withFace ?? layout.available < plainWidth(metrics));
+  const maxLines = layout.maxLines ?? metrics.maxLines;
+  const height = metrics.padding * 2 + metrics.lineHeight * maxLines;
+  // The help window draws from the text padding (Window_Help); the message window as the engine does (textLeft).
+  const left = help ? metrics.padding + metrics.textPadding : textLeft(metrics, withFace);
+  // The window as wide as the line width in use (a width the user set may differ from the detected window).
+  const rightMargin = metrics.engine === 'MV' ? metrics.padding : metrics.padding + metrics.textPadding;
+  const boxWidth = left + layout.available + rightMargin;
+  const shown = layout.lines.slice(0, maxLines);
+  const rest = layout.lines.slice(maxLines);
   const restHeight = rest.length > 0 ? 24 + rest.length * metrics.lineHeight : 0;
   // Room for text that sticks out of the window, so the overflow stays visible inside the panel.
-  const content = Math.max(metrics.boxWidth, left + layout.maxWidth + 16);
+  const content = Math.max(boxWidth, left + layout.maxWidth + 16);
   const scale = outer > 0 ? Math.min(1, outer / content) : 1;
   return (
     <div ref={ref} className="gp-frame" style={{ height: (height + restHeight) * scale }}>
       <div className="gp-stage" style={{ width: content, transform: `scale(${scale})` }}>
-        <div className="gp-box" role="img" aria-label="대사창 미리보기" style={{ width: metrics.boxWidth, height }}>
+        <div className="gp-box" role="img" aria-label={help ? '설명창 미리보기' : '대사창 미리보기'} style={{ width: boxWidth, height }}>
           {withFace && (
             <div className="gp-face" aria-hidden="true"
               style={{ left: metrics.padding, top: metrics.padding, width: metrics.faceIndent - 24, height: Math.min(144, height - metrics.padding * 2) }} />
@@ -73,7 +80,7 @@ export function MessageWindow({ layout, metrics, palette, family }: { layout: La
         </div>
         {rest.length > 0 && (
           <div className="gp-rest" style={{ height: restHeight }}>
-            <span className="gp-rest-note">다음 창으로 넘어가요</span>
+            <span className="gp-rest-note">{help ? '창에 보이지 않아요' : '다음 창으로 넘어가요'}</span>
             {rest.map((line, i) => (
               <div key={i} className="gp-line gp-line-rest" style={{ top: 24 + i * metrics.lineHeight, left, lineHeight: `${metrics.lineHeight}px` }}>
                 <LineRuns line={line} palette={palette.map(() => 'var(--mute)')} family={family} />
@@ -91,6 +98,7 @@ export function LayoutStats({ layout, metrics }: { layout: Layout; metrics: Wind
   const ratio = layout.available > 0 ? layout.maxWidth / layout.available : 0;
   const over = ratio > 1;
   const lines = layout.lines.length;
+  const maxLines = layout.maxLines ?? metrics.maxLines;
   return (
     <div className="gp-stats small">
       <div className="gp-bar-row">
@@ -100,7 +108,7 @@ export function LayoutStats({ layout, metrics }: { layout: Layout; metrics: Wind
         <span className={`mono${over ? ' warn-text' : ' sub'}`} data-testid="width-text">{`${Math.round(layout.maxWidth)} / ${layout.available}px`}</span>
       </div>
       <div className="row-between">
-        <span className={lines > metrics.maxLines ? 'warn-text mono' : 'sub mono'}>{`${lines} / ${metrics.maxLines}줄`}</span>
+        <span className={lines > maxLines ? 'warn-text mono' : 'sub mono'}>{`${lines} / ${maxLines}줄`}</span>
         {layout.missingGlyphs > 0 && <span className="warn-text">{`이 폰트에 없는 글자 ${layout.missingGlyphs}개`}</span>}
       </div>
     </div>

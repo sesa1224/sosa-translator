@@ -263,6 +263,10 @@ select.input { padding: 0 12px; }
 .fp-metrics[open] { display: flex; flex-direction: column; gap: 10px; }
 .fp-metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
 .fp-metric-grid .input::placeholder { color: var(--mute); }
+.tw-row { display: grid; grid-template-columns: 64px minmax(110px, 140px) minmax(80px, 100px) 1fr auto; gap: 10px; align-items: end; }
+.tw-row .input::placeholder { color: var(--mute); }
+.tw-name { font-weight: 600; padding-bottom: 8px; }
+.tw-chars { padding-bottom: 8px; }
 
 /* ---- story view ---- */
 .story { flex: 1 1 auto; min-height: 0; overflow-y: auto; }

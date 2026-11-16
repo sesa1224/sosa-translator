@@ -11,6 +11,7 @@ export const CHAT_TOOLS = [
   'event_files', 'event_list', 'event_read', 'usage_search', 'event_patch', 'set_josa_plugin',
   'update_summary',
   'find_game_text', 'add_extract_text',
+  'set_text_window', 'rewrap_overflow',
 ];
 export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;
 

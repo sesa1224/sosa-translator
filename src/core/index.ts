@@ -33,6 +33,8 @@ export * from './text/speaker.js';
 export * from './preview/types.js';
 export * from './preview/metrics.js';
 export * from './preview/layout.js';
+export { detectedLimits, HELP_LINES, refWindow, TEXT_WINDOW_LABEL, TEXT_WINDOWS, textLeft, unitWindows, windowLimits } from './preview/windows.js';
+export * from './preview/rewrap.js';
 export * from './project/originals.js';
 export * from './decisions/types.js';
 export * from './decisions/keys.js';

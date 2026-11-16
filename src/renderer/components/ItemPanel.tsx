@@ -16,6 +16,7 @@ const RULE_LABEL: Record<Issue['rule'], string> = {
   glossary: '용어집',
   'line-width': '줄 폭',
   'line-width-px': '창 폭',
+  'window-lines': '창 줄 수',
   skeleton: '그대로 둘 부분',
   notation: '표기',
 };

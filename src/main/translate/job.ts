@@ -285,7 +285,8 @@ export class TranslateJob extends BatchJob<Batch> {
       const full = item.speakerLine !== null && item.speaker !== null
         ? composeSpeaker(item.speakerLine, item.speaker, this.speakerTarget(item.speaker, g), body)
         : body;
-      const issues = await svc.setTranslation(item.id, full, 'batch');
+      // Lines too wide for the game window get their breaks moved (the project's rule; the user's own edits never).
+      const issues = await svc.setTranslation(item.id, svc.autoWrap(item.id, full), 'batch');
       const errors = issues.filter((i) => i.severity === 'error').map((i) => i.message);
       if (errors.length > 0) bad.push({ item, info: { previous: a.t, problems: errors } });
     }

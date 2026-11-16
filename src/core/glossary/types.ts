@@ -24,6 +24,7 @@ export interface ProjectRules extends FormatRules {
   halfWidthBrackets: boolean;         // with halfWidth: （ ） become ( ) as well. Off in projects made before the rule, and for games whose plugins read the bracket
   notationCheck: boolean;             // the program warns about notation the style guide fixes (check/notation.ts)
   unmask: boolean;                    // with notationCheck: a masked word (お○んこ) must not keep its mask in the translation
+  autoRewrap: boolean;                // translations coming from jobs, the chat and imports get their line breaks moved to fit the game window (preview/rewrap.ts)
 }
 /** Who the instruction text is for: the translate job, the review job, or an exported package. */
 export type PromptKind = 'translate' | 'review' | 'export';

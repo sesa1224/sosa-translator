@@ -61,7 +61,7 @@ test('checkTranslation: px 가 있으면 가장 많이 넘친 줄 하나만, 글
   const layout = (text: string, withFace: boolean) => layoutMessage(text, DEFAULT_METRICS.MZ, measure, { actorNames: {}, variables: {}, currencyUnit: '', partyNames: {} }, { withFace });
   const glossary = { terms: [], maxLineWidthChars: 5 };
   const issues = checkTranslation(unit, `${'가'.repeat(30)}\n${'가'.repeat(31)}`, undefined, glossary, { layout, withFace: false });
-  expect(issues).toEqual([{ rule: 'line-width-px', severity: 'warning', message: '2번째 줄이 창을 38px 넘어요' }]);
+  expect(issues).toEqual([{ rule: 'line-width-px', severity: 'warning', message: '2번째 줄이 대사창을 38px 넘어요' }]);
   // Without px the character count rule still runs.
   expect(checkTranslation(unit, `${'가'.repeat(6)}\n가`, undefined, glossary).map((i) => i.rule)).toEqual(['line-width']);
   // Only dialogue is checked by width.
@@ -87,7 +87,7 @@ test('폰트를 정하면 창을 넘는 번역에 line-width-px 경고, 상태�
   expect(preview.settings().fontPath).toBe(f);
   expect(seen.some((e) => e.ids.includes(idOf('ながい')))).toBe(true);   // warnings may change: rows are announced
   const issues = await svc.setTranslation(idOf('ながい'), LONG, 'user');
-  expect(issues).toEqual([{ rule: 'line-width-px', severity: 'warning', message: '1번째 줄이 창을 12px 넘어요' }]);
+  expect(issues).toEqual([{ rule: 'line-width-px', severity: 'warning', message: '1번째 줄이 대사창을 12px 넘어요' }]);
   expect(svc.issues(idOf('ながい'))).toEqual(issues);
   expect(svc.entry(idOf('ながい')).status).toBe('translated');
   const l = preview.layoutFor(idOf('ながい'))!;
@@ -110,7 +110,7 @@ test('얼굴 그림이 있는 대사는 더 일찍 넘치고, 같은 문장이 �
   const { svc, preview, idOf, proj } = await start([say('Actor1', 'かお'), say('', 'なし'), say('', 'りょうほう'), say('Actor1', 'りょうほう')]);
   await preview.setFont(await font(await makeTempDir(), 'W', 1000));
   expect(await svc.setTranslation(idOf('なし'), MID, 'user')).toEqual([]);
-  expect((await svc.setTranslation(idOf('かお'), MID, 'user')).map((i) => i.message)).toEqual(['1번째 줄이 창을 20px 넘어요']);
+  expect((await svc.setTranslation(idOf('かお'), MID, 'user')).map((i) => i.message)).toEqual(['1번째 줄이 대사창을 20px 넘어요']);
   expect((await svc.setTranslation(idOf('りょうほう'), MID, 'user')).map((i) => i.rule)).toEqual(['line-width-px']);
   expect(preview.layoutFor(idOf('りょうほう'))!.available).toBe(604);
   const faces = await faceMap(proj, svc.units());

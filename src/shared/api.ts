@@ -11,7 +11,7 @@ import type { Issue, PastReview, PathSeg, ReviewKind, ReviewNote, TranslationSta
 import type { Decision, DecisionGroup, KeepRule } from '../core/decisions/types.js';
 import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patches/types.js';
 import type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
-import type { Layout, PreviewContext, PreviewSettings, WindowMetrics } from '../core/preview/types.js';
+import type { Layout, PreviewContext, PreviewSettings, TextWindow, TextWindowInfo, WindowMetrics } from '../core/preview/types.js';
 import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
 import type { ActionDetail, ActionSummary, CancelResult } from '../core/history/types.js';
 
@@ -21,6 +21,8 @@ export type { Decision, DecisionGroup, KeepRule };
 export type { EventCommand, ListOp, Patch, PatchBody, PatchState, PatchStatus } from '../core/patches/types.js';
 export type { ImageEntry, ImageRecipe, ImageStatus, Rect, Region } from '../core/images/types.js';
 export type { LaidLine, Layout, PreviewContext, PreviewSettings, Run, WindowMetrics } from '../core/preview/types.js';
+export type { TextWindow, TextWindowInfo, WindowLimit, WindowOverride, WindowOverrides } from '../core/preview/types.js';
+export { TEXT_WINDOW_LABEL, TEXT_WINDOWS } from '../core/preview/windows.js';
 export type { PatchMove, UpdateSummary, VersionInfo } from '../core/update/types.js';
 export type { ActionDetail, ActionLine, ActionOrigin, ActionPreview, ActionSide, ActionSummary, CancelResult } from '../core/history/types.js';
 
@@ -48,10 +50,12 @@ export interface Row {
   carried?: boolean;
   /** The translation has a notation warning (src/core/check/notation.ts). */
   notation?: boolean;
+  /** The translation does not fit the game window it is drawn in (too wide or too many lines; needs a game font). */
+  overflow?: boolean;
 }
 /** A needs-decision row's state: no decision, confirmed (translate / skip), or only suggested. null for other rows. */
 export type RowDecision = 'none' | 'translate' | 'skip' | 'suggested-translate' | 'suggested-skip';
-export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed' | 'review-taken' | 'review-passed' | 'notation';
+export type StatusFilter = 'all' | TranslationStatus | 'needs-decision' | 'provisional' | 'external' | 'skipped' | 'changed' | 'review-taken' | 'review-passed' | 'notation' | 'overflow';
 /** reviewKind: the kind of the open (else the last handled) remark; 'none' is a remark without a kind. */
 export interface RowQuery { text?: string; status?: StatusFilter; file?: string; decisionKey?: string; reviewKind?: ReviewKind | 'none' }
 /**
@@ -68,6 +72,8 @@ export interface Stats {
   reviewTaken?: number; reviewPassed?: number;
   /** Rows whose translation has a notation warning. */
   notation?: number;
+  /** Rows whose translation does not fit its game window. */
+  overflow?: number;
 }
 export interface Scope { file: string; label: string; total: number; done: number }   // done = rows with a target
 
@@ -151,7 +157,7 @@ export interface CharacterCard { id: string; source: string; target: string; spe
 export interface ProjectRules {
   controlCodes: boolean; noLeftoverJapanese: boolean; sameLineCount: boolean; maxLines: number | null;
   maxLineWidthChars: number | null; speakerPattern: string | null; halfWidth: boolean; halfWidthBrackets: boolean;
-  notationCheck: boolean; unmask: boolean;
+  notationCheck: boolean; unmask: boolean; autoRewrap: boolean;
 }
 export type PromptKind = 'translate' | 'review' | 'export';
 export interface Glossary {
@@ -200,10 +206,28 @@ export interface PreviewState {
   detected: WindowMetrics;
   fontMissing: boolean;
   context: PreviewContext;
+  /** Each window's line width and line count (detected and in use). Optional for states made before windows had them. */
+  windows?: Record<TextWindow, TextWindowInfo>;
 }
 export interface OverflowCount { overflowing: number; checked: number; missingGlyphs: number }
 /** skippedCollections: font collection files (.ttc) found but not listed. */
 export interface FontList { fonts: FontInfo[]; skippedCollections: number }
+/** Which translations a rewrap looks at: all of them, those of one window, or the given ids. */
+export interface RewrapScope { window?: TextWindow; ids?: string[] }
+/**
+ * Why a line could not be fitted: no space to break at, still too many lines, drawn in more than one kind of
+ * place (only measured), or the check would find a new problem.
+ */
+export type RewrapReason = 'no-break' | 'too-many-lines' | 'mixed' | 'check';
+/** What a rewrap fixed and could not fix, in all and per window. unfixableIds: every line it could not fix. */
+export interface RewrapReport {
+  fixed: number; unfixable: number;
+  byWindow: Record<TextWindow, { fixed: number; unfixable: number }>;
+  unfixableIds: string[];
+  reasons: Partial<Record<RewrapReason, number>>;
+}
+/** A window's new line width and line count; null removes the user's value, a missing key keeps it. */
+export interface WindowSetting { width?: number | null; maxLines?: number | null }
 /** One line of a scene in the story view (order: position in the event's command list). */
 export interface SceneLine { id: string; kind: UnitKind; order: number; speaker: string | null; choiceGroup?: number }
 /** One event page (or common event, or troop page) read as a scene. */
@@ -276,6 +300,10 @@ export interface InvokeChannels {
   'project:undo': () => string[];
   'project:build': () => BuildResult;
   'project:setGameTitle': (target: string) => void;
+  /** How many translations in scope a rewrap would fix and could not fix (nothing is written). */
+  'project:rewrapPlan': (scope: RewrapScope) => RewrapReport;
+  /** Moves the line breaks of translations in scope that do not fit their window (one logged action). */
+  'project:rewrap': (scope: RewrapScope) => RewrapReport;
 
   'unit:get': (id: string) => UnitDetail;
   'unit:setTranslation': (id: string, target: string) => Issue[];
@@ -336,6 +364,8 @@ export interface InvokeChannels {
   'preview:layout': (id: string, text?: string) => Layout | null;
   'preview:setFont': (path: string | null) => void;
   'preview:setOverrides': (o: Partial<WindowMetrics>) => void;
+  /** Sets or clears the user's line width and line count of one window. */
+  'preview:setWindow': (window: TextWindow, s: WindowSetting) => void;
   'preview:countOverflow': (path?: string | null) => OverflowCount;
   'preview:windowSkin': () => Uint8Array | null;
   'fonts:list': () => FontList;
@@ -420,6 +450,7 @@ export interface Api {
     close: Call<'project:close'>; snapshot: Call<'project:snapshot'>;
     undo: Call<'project:undo'>; build: Call<'project:build'>;
     setGameTitle: Call<'project:setGameTitle'>;
+    rewrapPlan: Call<'project:rewrapPlan'>; rewrap: Call<'project:rewrap'>;
   };
   unit: {
     get: Call<'unit:get'>; setTranslation: Call<'unit:setTranslation'>;
@@ -460,6 +491,7 @@ export interface Api {
     get: Call<'preview:get'>; layout: Call<'preview:layout'>;
     setFont: Call<'preview:setFont'>; setOverrides: Call<'preview:setOverrides'>;
     countOverflow: Call<'preview:countOverflow'>; windowSkin: Call<'preview:windowSkin'>;
+    setWindow: Call<'preview:setWindow'>;
   };
   fonts: { list: Call<'fonts:list'>; bytes: Call<'fonts:bytes'>; pickFile: Call<'fonts:pickFile'> };
   story: { scenes: Call<'story:scenes'> };

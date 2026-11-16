@@ -122,7 +122,7 @@ test('게임 폰트 고르기 → 긴 번역 → 미리보기 넘침과 px 경�
   // MZ window, no face: 768 px; 40 characters at 26 px = 1040 px.
   await expect(w.getByText('1040 / 768px')).toBeVisible();
   await expect(w.getByTestId('overflow-mark')).toBeVisible();
-  await expect(w.getByText('1번째 줄이 창을 272px 넘어요')).toBeVisible();
+  await expect(w.getByText('1번째 줄이 대사창을 272px 넘어요')).toBeVisible();
   await expect(w.getByText('프로그램이 흉내 내어 그린 화면이에요. 실제 확인은 게임에서 해요.')).toBeVisible();
 
   await w.getByRole('button', { name: '스토리' }).click();

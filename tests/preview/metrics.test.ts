@@ -5,6 +5,7 @@ import { createProject } from '../../src/core/project/project.js';
 import {
   availableWidth, DEFAULT_METRICS, detectMetrics, effectiveMetrics, loadPreviewSettings, savePreviewSettings,
 } from '../../src/core/preview/metrics.js';
+import { detectedLimits, windowLimits } from '../../src/core/preview/windows.js';
 import type { Engine } from '../../src/core/types.js';
 import { cleanupTempDirs, makeTempDir } from '../helpers/fs.js';
 import { makeMiniGame } from '../helpers/miniGame.js';
@@ -57,10 +58,76 @@ test('MV: Community_Basic 의 screenWidth', async () => {
 });
 
 test('쓸 수 있는 폭', () => {
-  expect(availableWidth(DEFAULT_METRICS.MV, false)).toBe(768);
-  expect(availableWidth(DEFAULT_METRICS.MV, true)).toBe(600);
+  // MV: Window_Message draws from x 0 (168 with a face) of contents 816 - 18 * 2 wide.
+  expect(availableWidth(DEFAULT_METRICS.MV, false)).toBe(780);
+  expect(availableWidth(DEFAULT_METRICS.MV, true)).toBe(612);
   expect(availableWidth(DEFAULT_METRICS.MZ, false)).toBe(768);
   expect(availableWidth(DEFAULT_METRICS.MZ, true)).toBe(604);
+});
+
+test('창 종류별 기준: 감지한 값, 설명창 기본 2줄, 덮어쓴 값', () => {
+  // MV help window: drawTextEx at textPadding (6), clipped at the contents width 816 - 36.
+  expect(detectedLimits(DEFAULT_METRICS.MV)).toEqual({ message: { width: 780, maxLines: 4, fontSize: 28 }, help: { width: 774, maxLines: 2, fontSize: 28 } });
+  // Metrics made before the help fields existed still give a help window.
+  const { helpWidth: _w, helpMaxLines: _l, helpFontSize: _f, ...old } = DEFAULT_METRICS.MZ;
+  expect(detectedLimits(old).help).toEqual({ width: 768, maxLines: 2, fontSize: 26 });
+  const l = windowLimits(DEFAULT_METRICS.MV, { message: { width: 600 }, help: { maxLines: 3 } });
+  expect(l.message).toEqual({ width: 600, maxLines: 4, fontSize: 28 });
+  expect(l.help).toEqual({ width: 774, maxLines: 3, fontSize: 28 });
+  expect(windowLimits(DEFAULT_METRICS.MV, { message: { width: -1, maxLines: 0 } }).message.width).toBe(780);
+});
+
+const msgCore = (params: Record<string, string>) => ({ name: 'YEP_MessageCore', status: true, description: '', parameters: params });
+
+test('MV: YEP_MessageCore 의 너비·줄 수·글자 크기·얼굴 밀림과 YEP_CoreEngine 의 여백·얼굴 너비', async () => {
+  // The game the feature was made for: Community_Basic (800) loads before YEP_CoreEngine (1280), which wins.
+  const m = await detectMetrics(await project('MV', { plugins: [
+    { name: 'Community_Basic', status: true, description: '', parameters: { screenWidth: '800' } },
+    yep(true, { 'Screen Width': '1280', 'Font Size': '28', 'Window Padding': '18', 'Text Padding': '18', 'Face Width': '144', 'Line Height': '36', 'Icon Width': '32' }),
+    msgCore({ 'Default Rows': '3', 'Default Width': '800', 'Face Indent': 'Window_Base._faceWidth + 24', 'Font Size': '28', 'Word Wrapping': 'false' }),
+  ] }));
+  expect(m.boxWidth).toBe(800);
+  expect(m.maxLines).toBe(3);
+  expect(m.faceIndent).toBe(168);
+  expect(m.textPadding).toBe(18);
+  expect(availableWidth(m, false)).toBe(764);
+  expect(availableWidth(m, true)).toBe(596);
+  // The help window spans the screen: 1280 - 18 * 2 - 18.
+  expect(detectedLimits(m).help).toEqual({ width: 1226, maxLines: 2, fontSize: 28 });
+});
+
+test('MV: 플러그인 순서대로 나중 것이 이긴다, 식은 아는 꼴만 읽는다', async () => {
+  const later = await detectMetrics(await project('MV', { plugins: [
+    yep(true, { 'Screen Width': '1280' }),
+    { name: 'Community_Basic', status: true, description: '', parameters: { screenWidth: '1104' } },
+  ] }));
+  expect(later.boxWidth).toBe(1104);
+  // Default Width left at Graphics.boxWidth; message font apart from the base font; a face width the indent follows.
+  const m = await detectMetrics(await project('MV', { plugins: [
+    yep(true, { 'Screen Width': '1000', 'Font Size': '24', 'Face Width': '120' }),
+    msgCore({ 'Default Rows': '4', 'Default Width': 'Graphics.boxWidth', 'Face Indent': 'Window_Base._faceWidth + 24', 'Font Size': '30' }),
+  ] }));
+  expect(m.boxWidth).toBe(1000);
+  expect(m.fontSize).toBe(30);
+  expect(m.helpFontSize).toBe(24);
+  expect(m.faceIndent).toBe(144);
+  // An expression the program cannot read keeps the screen width.
+  const odd = await detectMetrics(await project('MV', { plugins: [msgCore({ 'Default Width': 'Math.min(Graphics.boxWidth, 700)' })] }));
+  expect(odd.boxWidth).toBe(816);
+  // Without YEP_MessageCore the engine indents by 168 whatever the face width.
+  const plain = await detectMetrics(await project('MV', { plugins: [yep(true, { 'Face Width': '120' })] }));
+  expect(plain.faceIndent).toBe(168);
+});
+
+test('preview.json: 창별 덮어쓰기를 저장하고, 옛 파일은 그대로 읽힌다', async () => {
+  const proj = await project('MV');
+  await writeFile(path.join(proj, 'preview.json'), JSON.stringify({ fontPath: null, fontName: null, overrides: { boxWidth: 700 } }), 'utf8');
+  expect(await loadPreviewSettings(proj)).toEqual({ fontPath: null, fontName: null, overrides: { boxWidth: 700 } });
+  const s = { fontPath: null, fontName: null, overrides: {}, windows: { message: { width: 600 }, help: { maxLines: 3, width: 0 } } };
+  await savePreviewSettings(proj, s);
+  expect(await loadPreviewSettings(proj)).toEqual({ fontPath: null, fontName: null, overrides: {}, windows: { message: { width: 600 }, help: { maxLines: 3 } } });
+  await savePreviewSettings(proj, { fontPath: null, fontName: null, overrides: {}, windows: {} });
+  expect(JSON.parse(await readFile(path.join(proj, 'preview.json'), 'utf8'))).toEqual({ fontPath: null, fontName: null, overrides: {} });
 });
 
 test('effectiveMetrics 는 overrides 값만 덮고, 설정은 저장 후 다시 읽어도 같다', async () => {

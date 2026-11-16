@@ -29,6 +29,8 @@ const api: Api = {
     undo: () => call('project:undo'),
     build: () => call('project:build'),
     setGameTitle: (target) => call('project:setGameTitle', target),
+    rewrapPlan: (scope) => call('project:rewrapPlan', scope),
+    rewrap: (scope) => call('project:rewrap', scope),
   },
   unit: {
     get: (id) => call('unit:get', id),
@@ -100,6 +102,7 @@ const api: Api = {
     layout: (id, text) => call('preview:layout', id, text),
     setFont: (path) => call('preview:setFont', path),
     setOverrides: (o) => call('preview:setOverrides', o),
+    setWindow: (window, s) => call('preview:setWindow', window, s),
     countOverflow: (path) => call('preview:countOverflow', path),
     windowSkin: () => call('preview:windowSkin'),
   },

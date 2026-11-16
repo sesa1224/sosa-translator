@@ -82,6 +82,6 @@ export interface TranslationEntry {
 }
 
 /** A problem the format check found in a translation. Errors keep it out of the build; warnings do not. */
-export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width' | 'line-width-px' | 'skeleton' | 'notation'; severity: 'error' | 'warning'; message: string }
+export interface Issue { rule: 'control-codes' | 'leftover-japanese' | 'line-count' | 'empty' | 'glossary' | 'line-width' | 'line-width-px' | 'window-lines' | 'skeleton' | 'notation'; severity: 'error' | 'warning'; message: string }
 /** A file the program could not read or use fully; the work goes on without it. */
 export interface Warning { file: string; message: string }

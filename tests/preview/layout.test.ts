@@ -23,7 +23,7 @@ test('평범한 글', () => {
   expect(l.lines[0].runs).toEqual([{ type: 'text', text: '가나다', color: 0, size: 28 }]);
   expect(l.lines[0].width).toBe(84);
   expect(l.lines[0].overflow).toBe(0);
-  expect(l.available).toBe(768);
+  expect(l.available).toBe(780);
 });
 
 test('색 바꾸기', () => {
@@ -88,9 +88,21 @@ test('넘침', () => {
   const line = '가'.repeat(28);
   const l = lay(line);
   expect(l.lines[0].width).toBe(784);
-  expect(l.lines[0].overflow).toBe(16);
+  // MV message window: 816 - 18 * 2 = 780 (Window_Message draws from x 0 of its contents, no text padding).
+  expect(l.lines[0].overflow).toBe(4);
   expect(l.maxWidth).toBe(784);
-  expect(lay(line, ctx(), true).lines[0].overflow).toBe(184);
+  expect(lay(line, ctx(), true).lines[0].overflow).toBe(172);
+});
+
+test('이름 칸 코드(\\n<이름>)는 폭을 차지하지 않는다', () => {
+  expect(lay('\\n<리나>가나').lines[0].width).toBe(56);
+  expect(lay('\\NC<리나 언니>가').lines[0].width).toBe(28);
+  expect(lay('\\N[1]가', ctx({ actorNames: { 1: '리나' } })).lines[0].width).toBe(84);
+});
+
+test('width 를 주면 그 폭에서 얼굴만큼 뺀다', () => {
+  expect(layoutMessage('가', MV, fake, ctx(), { withFace: false, width: 500 }).available).toBe(500);
+  expect(layoutMessage('가', MV, fake, ctx(), { withFace: true, width: 500 }).available).toBe(332);
 });
 
 test('줄 수와 빈 줄', () => {

@@ -5,7 +5,7 @@ import { useApp } from '../../src/renderer/state';
 import {
   DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type Api, type ChooseResult, type GameDirCheck, type Glossary, type ReviewPlan, type SpeakerDetection, type AppSettings, type BuildResult, type ProjectMeta, type PushChannel, type Row, type Snapshot, type UnitDetail,
 } from '../../src/shared/api';
-import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, WindowMetrics } from '../../src/shared/api';
+import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, RewrapReport, WindowMetrics } from '../../src/shared/api';
 import type { SceneInfo } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
 import type { ActionLine, ActionSummary, CancelResult, DecisionGroup, ImportPlan } from '../../src/shared/api';
@@ -47,7 +47,7 @@ export function manyRows(n: number): Row[] {
 
 export const defaultFakeGlossary = (): Glossary => ({
   terms: [], characters: [], styleGuide: '## 기본 태도\n- 자연스럽게', confirmedAt: null,
-  rules: { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true, halfWidthBrackets: true, notationCheck: true, unmask: true },
+  rules: { controlCodes: true, noLeftoverJapanese: true, sameLineCount: false, maxLines: 4, maxLineWidthChars: null, speakerPattern: null, halfWidth: true, halfWidthBrackets: true, notationCheck: true, unmask: true, autoRewrap: true },
 });
 
 export type FakeApi = Api & {
@@ -109,6 +109,8 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       undo: rec('project.undo', () => []),
       build: rec('project.build', () => build),
       setGameTitle: rec('project.setGameTitle', () => undefined),
+      rewrapPlan: rec('project.rewrapPlan', () => pv.rewrapPlan),
+      rewrap: rec('project.rewrap', () => pv.rewrapResult),
     },
     unit: {
       get: rec('unit.get', detail),
@@ -178,6 +180,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       setOverrides: rec('preview.setOverrides', () => undefined),
       countOverflow: rec('preview.countOverflow', (p?: string | null) => pv.overflow(p)),
       windowSkin: rec('preview.windowSkin', () => null),
+      setWindow: rec('preview.setWindow', () => undefined),
     },
     fonts: {
       list: rec('fonts.list', () => pv.fontList),
@@ -305,9 +308,13 @@ export interface PreviewFake {
   picked: FontInfo | null;
   /** Scenes per file for story.scenes. */
   scenes: Record<string, SceneInfo[]>;
+  /** What project.rewrapPlan and project.rewrap give back. */
+  rewrapPlan: RewrapReport; rewrapResult: RewrapReport;
 }
+export const emptyRewrap = (): RewrapReport => ({ fixed: 0, unfixable: 0, byWindow: { message: { fixed: 0, unfixable: 0 }, help: { fixed: 0, unfixable: 0 } }, unfixableIds: [], reasons: {} });
 function defaultPreviewFake(): PreviewFake {
   return {
+    rewrapPlan: emptyRewrap(), rewrapResult: emptyRewrap(),
     state: { settings: { fontPath: null, fontName: null, overrides: {} }, metrics: MZ_METRICS, detected: MZ_METRICS, fontMissing: false, context: { actorNames: {}, variables: {}, currencyUnit: 'G', partyNames: {} } },
     layout: () => null,
     overflow: () => ({ overflowing: 0, checked: 0, missingGlyphs: 0 }),

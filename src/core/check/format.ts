@@ -11,7 +11,8 @@ import type { Issue, TextUnit } from '../types.js';
 
 import { DEFAULT_RULES, type FormatRules } from './rules.js';
 import { notationIssues } from './notation.js';
-import type { Layout } from '../preview/types.js';
+import type { Layout, TextWindow } from '../preview/types.js';
+import { TEXT_WINDOW_LABEL } from '../preview/windows.js';
 import { keepPieces } from '../decisions/keys.js';
 import { checkSkeleton, translatedParts } from '../decisions/skeleton.js';
 import type { Decisions, KeepRule } from '../decisions/types.js';
@@ -44,7 +45,7 @@ export interface GlossaryCheck { terms: Term[]; maxLineWidthChars: number | null
  * plugin commands, scripts and the like, which are not laid out in the message window.
  */
 export function checkTranslation(unit: TextUnit, target: string, rules: FormatRules = DEFAULT_RULES, glossary?: GlossaryCheck, extra?: PxCheck | KeepRule): Issue[] {
-  const px = extra && 'layout' in extra ? extra : undefined;
+  const pxIn = extra && 'layout' in extra ? extra : undefined;
   const keep = extra && 'mode' in extra ? extra : undefined;
   if (target.trim() === '') {
     return [{ rule: 'empty', severity: 'error', message: '번역이 비어 있습니다' }];
@@ -87,7 +88,9 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
   if (rules.sameLineCount && srcLines !== dstLines) {
     issues.push({ rule: 'line-count', severity: 'error', message: `줄 수가 원문(${srcLines}줄)과 다릅니다: ${dstLines}줄` });
   }
-  if (rules.maxLines !== null && unit.kind === 'dialogue' && dstLines > rules.maxLines) {
+  const px = pxIn && (pxIn.window !== undefined || unit.kind === 'dialogue') ? pxIn : undefined;
+  // The window's own line count replaces the rule's for text the program lays out in its window.
+  if (rules.maxLines !== null && unit.kind === 'dialogue' && !px && dstLines > rules.maxLines) {
     issues.push({ rule: 'line-count', severity: 'warning', message: `대사가 ${rules.maxLines}줄을 넘습니다: ${dstLines}줄` });
   }
   if (glossary) {
@@ -119,14 +122,21 @@ export function checkTranslation(unit: TextUnit, target: string, rules: FormatRu
   if (rules.notationCheck && !unit.needsDecision) {
     issues.push(...notationIssues(unit.source, target, { unmask: rules.unmask !== false, brackets: rules.halfWidth === true && rules.halfWidthBrackets === true }));
   }
-  if (px && unit.kind === 'dialogue') {
+  if (px) {
     // The pixel check replaces the character count. The whole text is laid out, so an MV speaker line counts as a line too.
     for (let i = issues.length - 1; i >= 0; i--) if (issues[i].rule === 'line-width') issues.splice(i, 1);
-    const pxIssue = pixelWidthIssue(px.layout(target, px.withFace));
+    const window = px.window ?? 'message';
+    const layout = px.layout(target, px.withFace);
+    const pxIssue = pixelWidthIssue(layout, window);
     if (pxIssue) issues.push(pxIssue);
+    const lines = windowLinesIssue(layout, window);
+    if (lines) issues.push(lines);
   }
   return issues;
 }
+
+/** Rules of the warnings about text that does not fit its window (the "창 넘침" filter and the rewrap look at these). */
+export const WINDOW_OVERFLOW_RULES: readonly Issue['rule'][] = ['line-width-px', 'window-lines'];
 
 /**
  * Checks every translated unit. Returns only units with issues.
@@ -153,15 +163,27 @@ export function checkAll(
   return out;
 }
 
-/** Lays out a message in the game's window with the chosen font. withFace: the narrowest place it is shown. */
-export interface PxCheck { layout: (text: string, withFace: boolean) => Layout; withFace: boolean }
+/**
+ * Lays out a text in the game window it is drawn in, with the chosen font. withFace: the narrowest place it is shown.
+ * window: which window (missing = the message window, checked for dialogue only, as before windows had names).
+ * maxLines: that window's line count (what layout's lineOverflow counts against). fixable: the text is drawn only in
+ * this window, so its line breaks may be moved.
+ */
+export interface PxCheck { layout: (text: string, withFace: boolean) => Layout; withFace: boolean; window?: TextWindow; maxLines?: number; fixable?: boolean }
 
 /** Warning for the line that overflows the window the most, or null. */
-export function pixelWidthIssue(l: Layout): Issue | null {
+export function pixelWidthIssue(l: Layout, window: TextWindow = 'message'): Issue | null {
   let worst = -1;
   l.lines.forEach((line, i) => {
     if (line.overflow > 0 && (worst < 0 || line.overflow > l.lines[worst].overflow)) worst = i;
   });
   if (worst < 0) return null;
-  return { rule: 'line-width-px', severity: 'warning', message: `${worst + 1}번째 줄이 창을 ${Math.ceil(l.lines[worst].overflow)}px 넘어요` };
+  return { rule: 'line-width-px', severity: 'warning', message: `${worst + 1}번째 줄이 ${TEXT_WINDOW_LABEL[window]}을 ${Math.ceil(l.lines[worst].overflow)}px 넘어요` };
+}
+
+/** Warning for more lines than the window shows, or null. */
+export function windowLinesIssue(l: Layout, window: TextWindow = 'message'): Issue | null {
+  if (l.lineOverflow <= 0) return null;
+  const n = l.lines.length;
+  return { rule: 'window-lines', severity: 'warning', message: `${TEXT_WINDOW_LABEL[window]}은 ${n - l.lineOverflow}줄인데 ${n}줄이에요` };
 }
