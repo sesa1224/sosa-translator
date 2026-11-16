@@ -22,7 +22,7 @@ function segValue(s: PathSeg | undefined): string | number | undefined {
 }
 
 function refPath(ref: UnitRef): PathSeg[] {
-  if (ref.type === 'note') return ref.path;
+  if (ref.type === 'note' || ref.type === 'key') return ref.path;
   if (ref.type === 'js') return [];
   return ref.type === 'value' ? ref.path : ref.listPath;
 }
@@ -53,7 +53,8 @@ export function locationLabel(unit: TextUnit): string {
   const ref = unit.refs[0];
   if (!ref) return '';
   const file = ref.file;
-  if (file === 'js/plugins.js') return '플러그인 설정';
+  // A key name is told apart: renaming it can break code that looks the name up, unlike a value.
+  if (file === 'js/plugins.js') return ref.type === 'key' ? '플러그인 설정 · 열쇠 이름' : '플러그인 설정';
   const name = dataName(file);
   if (name === null) return file;
   const p = refPath(ref);

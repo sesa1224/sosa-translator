@@ -10,8 +10,9 @@ import type { TextUnit, Warning } from '../types.js';
 import { readJsonFile, writeJsonFile } from '../util/json.js';
 import { extractFromDataFile } from './database.js';
 import type { RawUnit } from './events.js';
-import { extractFromPlugins, parsePluginsFile } from './plugins.js';
+import { extractFromPlugins, parsePluginsFile, type PluginExtractOptions } from './plugins.js';
 import { extractJsStringsDetailed } from './pluginJs.js';
+import { EXTRACTOR_VERSION, loadExtractSettings, saveExtractSettings } from './settings.js';
 
 export const UNITS_FILE = 'units.json';
 
@@ -42,16 +43,23 @@ function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** Extracts all units from original/<current>, writes units.json. Broken files become warnings. */
+/**
+ * Extracts all units from original/<current> with the project's extract.json, writes units.json and records the
+ * extractor version in extract.json. Broken files become warnings.
+ */
 export async function extractAll(projectDir: string): Promise<{ units: TextUnit[]; warnings: Warning[] }> {
   const meta = await openProject(projectDir);
-  const { units, warnings } = await extractFromDir(originalDir(projectDir, meta));
+  const settings = await loadExtractSettings(projectDir);
+  const { units, warnings } = await extractFromDir(originalDir(projectDir, meta), { extraStrings: settings.extraStrings });
   await writeJsonFile(path.join(projectDir, UNITS_FILE), units);
+  await saveExtractSettings(projectDir, { ...settings, extractorVersion: EXTRACTOR_VERSION });
   return { units, warnings };
 }
 
+export type ExtractOptions = PluginExtractOptions;
+
 /** Extracts all units from an original copy (data/, js/) without writing anything. */
-export async function extractFromDir(root: string): Promise<{ units: TextUnit[]; warnings: Warning[] }> {
+export async function extractFromDir(root: string, o: ExtractOptions = {}): Promise<{ units: TextUnit[]; warnings: Warning[] }> {
   const raw: RawUnit[] = [];
   const warnings: Warning[] = [];
 
@@ -75,7 +83,7 @@ export async function extractFromDir(root: string): Promise<{ units: TextUnit[];
     try {
       let text = await readFile(pluginsPath, 'utf8');
       if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-      raw.push(...extractFromPlugins(parsePluginsFile(text).plugins));
+      raw.push(...extractFromPlugins(parsePluginsFile(text).plugins, o));
     } catch (e) {
       warnings.push({ file: 'js/plugins.js', message: errorText(e) });
     }

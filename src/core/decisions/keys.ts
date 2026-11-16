@@ -102,6 +102,19 @@ export function paramKey(plugin: string, path: PathSeg[]): string {
   return `param:${plugin}:${s}`;
 }
 
+/**
+ * Key names of an object inside a plugin parameter: 'param-keys:<plugin>:<path>', path to the object as in paramKey.
+ * Kept apart from the values' keys because a plugin may show the values but look things up by the names, or the other way round.
+ */
+export function paramKeysKey(plugin: string, path: PathSeg[]): string {
+  return `param-keys${paramKey(plugin, path).slice('param'.length)}`;
+}
+
+/** Whether a decision key groups key names (paramKeysKey) rather than values. */
+export function isKeyNamesKey(key: string): boolean {
+  return key.startsWith('param-keys:');
+}
+
 /** Script (355/655) or comment (108/408): 'shape:<shape>'. */
 export function shapeKey(source: string): string {
   return `shape:${shapeOf(source)}`;
@@ -138,6 +151,7 @@ export function keyLabel(key: string): string {
   switch (kind) {
     case 'mz': return parts(key, 3).join(' · ');
     case 'param': case 'note': return parts(key, 2).join(' · ');
+    case 'param-keys': return `${parts(key, 2).join(' · ')} · 열쇠 이름`;
     case 'mv': case 'shape': case 'js': case 'unit': return parts(key, 1)[0];
     default: return key;
   }

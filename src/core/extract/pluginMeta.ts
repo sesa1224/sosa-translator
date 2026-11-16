@@ -68,6 +68,11 @@ function readStruct(body: string, fields: Record<string, ParamMeta>): Record<str
   return fields;
 }
 
+/** Where the header comment blocks are (UTF-16 offsets): text there documents the plugin and is not code. */
+export function headerBlockRanges(js: string): { start: number; end: number }[] {
+  return [...js.matchAll(new RegExp(BLOCK.source, 'g'))].map((m) => ({ start: m.index, end: m.index + m[0].length }));
+}
+
 /** Reads @param, @command, @arg, @type, @text and @desc from a plugin's header comments (a '/*:ja' block wins over the default one). */
 export function parsePluginMeta(js: string): PluginMeta {
   const main: { lang: string; body: string }[] = [];

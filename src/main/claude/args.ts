@@ -10,6 +10,7 @@ export const CHAT_TOOLS = [
   'image_sheet', 'image_view', 'image_set_recipe', 'image_set_status', 'image_list',
   'event_files', 'event_list', 'event_read', 'usage_search', 'event_patch',
   'update_summary',
+  'find_game_text', 'add_extract_text',
 ];
 export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;
 

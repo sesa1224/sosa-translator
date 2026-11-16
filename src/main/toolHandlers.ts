@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TextUnit } from '../core/types.js';
+import type { TextUnit, UnitRef } from '../core/types.js';
 import type { Row } from '../shared/api.js';
 import { computeStats, filterRows, toRow } from '../shared/rows.js';
 import type { ProjectService } from './projectService.js';
@@ -428,6 +428,62 @@ HANDLERS.image_list = async (svc, input: { status?: z.infer<typeof imageStatus>;
     total: all.length,
     items: all.slice(0, limit).map((e) => ({ file: e.file, width: e.width, height: e.height, status: e.status, ...(e.problem ? { problem: e.problem } : {}), usedByEvents: e.usedByEvents })),
   };
+};
+
+// ---- finding text in the game ----
+const FIND_MAX = 10;
+
+TOOL_DEFS.push(
+  {
+    name: 'find_game_text',
+    description: '화면 글자가 게임의 어디에 있는지 찾을 때 쓴다(글자 전체가 같은 문자열만). 플러그인 설정 값·열쇠 이름, 플러그인 JS, data 파일과 번역 항목인지를 준다.',
+    inputSchema: z.object({ text: z.string().min(1).describe('찾을 글자') }),
+  },
+  {
+    name: 'add_extract_text',
+    description: '일본어가 없어 번역 항목이 아닌 글자를 항목으로 넣을 때 쓴다. 플러그인 설정에 있을 때만 넣는다. 넣은 뒤 번역은 판단 필요 항목처럼 한다.',
+    inputSchema: z.object({ text: z.string().min(1).describe('넣을 글자') }),
+  },
+);
+
+type Place = Awaited<ReturnType<ProjectService['findGameText']>>[number];
+
+const sameRef = (a: UnitRef, b: UnitRef) => JSON.stringify(a) === JSON.stringify(b);
+
+/** The unit at a place, if it is one already. */
+function unitAt(svc: ProjectService, text: string, p: Place): TextUnit | undefined {
+  if (p.where === 'plugin-value' || p.where === 'plugin-key') return svc.units().find((u) => u.refs.some((r) => sameRef(r, p.ref)));
+  return svc.units().find((u) => u.source === text && u.refs.some((r) => r.file === p.file));
+}
+
+/** Places as the model sees them, at most FIND_MAX. */
+function describePlaces(svc: ProjectService, text: string, places: Place[]) {
+  return places.slice(0, FIND_MAX).map((p) => {
+    const u = unitAt(svc, text, p);
+    const unit = u ? { id: u.id, status: svc.entry(u.id).status, target: svc.entry(u.id).target } : null;
+    if (p.where === 'plugin-value' || p.where === 'plugin-key') {
+      return { where: p.where === 'plugin-key' ? '플러그인 설정의 열쇠 이름' : '플러그인 설정 값', plugin: p.plugin, setting: p.setting, unit };
+    }
+    return { where: p.where === 'data' ? 'data 파일' : '플러그인 JS 문자열', file: p.file, count: p.count, unit };
+  });
+}
+
+HANDLERS.find_game_text = async (svc, input: { text: string }) => {
+  const places = await svc.findGameText(input.text);
+  return { total: places.length, places: describePlaces(svc, input.text, places) };
+};
+HANDLERS.add_extract_text = async (svc, input: { text: string }) => {
+  const text = input.text;
+  const places = await svc.findGameText(text);
+  const inPlugins = places.filter((p) => p.where === 'plugin-value' || p.where === 'plugin-key');
+  if (inPlugins.length === 0) {
+    return { added: false, reason: places.length === 0 ? '게임에서 찾지 못했습니다' : '플러그인 설정에 없어 넣지 않았습니다', total: places.length, places: describePlaces(svc, text, places) };
+  }
+  if (inPlugins.every((p) => unitAt(svc, text, p))) {
+    return { added: false, reason: '이미 번역 항목입니다', total: places.length, places: describePlaces(svc, text, places) };
+  }
+  await svc.addExtraString(text);
+  return { added: true, total: places.length, places: describePlaces(svc, text, places) };
 };
 
 // ---- game updates ----

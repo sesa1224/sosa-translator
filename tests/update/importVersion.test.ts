@@ -231,3 +231,14 @@ test('그림: 지시서의 원본이 바뀌면 changed, 새 그림은 added', as
   expect(s.images.removed).toBe(1);
   expect(s.images.added).toBe(2);   // menu.png and new.png were not in v1's files.json
 });
+
+test('업데이트는 extract.json 의 목록으로 추출하고, 되돌리면 extract.json 도 돌아온다', async () => {
+  const { v2, proj } = await setup();
+  const { saveExtractSettings, loadExtractSettings, EXTRACTOR_VERSION } = await import('../../src/core/extract/settings.js');
+  await saveExtractSettings(proj, { extraStrings: ['4'], extractorVersion: 0 });
+  await importVersion(proj, v2, '1.1');
+  expect((await loadUnits(proj)).filter((u) => u.source === '4')).toHaveLength(1);
+  expect(await loadExtractSettings(proj)).toEqual({ extraStrings: ['4'], extractorVersion: EXTRACTOR_VERSION });
+  await rollbackVersion(proj);
+  expect(await loadExtractSettings(proj)).toEqual({ extraStrings: ['4'], extractorVersion: 0 });
+});

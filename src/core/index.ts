@@ -14,6 +14,8 @@ export * from './extract/database.js';
 export * from './extract/plugins.js';
 export * from './project/project.js';
 export * from './extract/index.js';
+export * from './extract/settings.js';
+export * from './extract/find.js';
 export * from './util/json.js';
 export * from './store/translations.js';
 export * from './check/format.js';

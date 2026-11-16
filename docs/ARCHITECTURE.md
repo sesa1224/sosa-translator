@@ -34,7 +34,7 @@ Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tool
 원본 게임 폴더에는 아무것도 쓰지 않는다. 모든 쓰기는 프로젝트 폴더 안에서, 앱에서는 `ProjectService` 만 한다.
 
 1. **가져오기** — `core/engine/detect.ts` 가 게임 폴더를 알아보고(게임이 exe 하나로 뭉쳐져 있으면 `core/engine/evb.ts` 가 그 안의 파일 목록을 읽어 알려 주고, 사용자가 누르면 `main/ipc.ts` 의 `unpackGame` 이 프로젝트 폴더의 `_풀린 게임/` 에 풀어 그 폴더를 게임 폴더로 쓴다. 압축된 파일은 `core/engine/aplib.ts` 가 편다), `core/project/project.ts` 의 `createProject` 가 `data/`, `js/plugins.js`, `js/plugins/*.js` 를 `original/v1/` 로, `core/project/originals.ts` 가 도우미 파일(`files.json`, `index.html`, `package.top.json`, `fonts/gamefont.css`)을 복사한다. 이후 글은 모두 이 사본에서 읽는다(그림, 폰트, 게임 실행은 게임 폴더를 읽기만 한다).
-2. **추출** — `core/extract/index.ts` 의 `extractAll` 이 사본에서 문장을 뽑아 `units.json` 을 쓴다. 데이터베이스(`database.ts`), 이벤트(`events.ts`), 플러그인 설정(`plugins.ts`), 메모란(`notes.ts`), 플러그인 JS(`pluginJs.ts`)가 각각 `RawUnit` 을 내고, `mergeUnits` 가 같은 문장을 하나로 합친다. 문장 id 는 종류·화자·원문으로 만든 해시라서 위치가 바뀌어도 그대로다.
+2. **추출** — `core/extract/index.ts` 의 `extractAll` 이 사본에서 문장을 뽑아 `units.json` 을 쓴다. 데이터베이스(`database.ts`), 이벤트(`events.ts`), 플러그인 설정(`plugins.ts`), 메모란(`notes.ts`), 플러그인 JS(`pluginJs.ts`)가 각각 `RawUnit` 을 내고, `mergeUnits` 가 같은 문장을 하나로 합친다. 문장 id 는 종류·화자·원문으로 만든 해시라서 위치가 바뀌어도 그대로다. 플러그인 설정은 값과 함께, 설정값 안 JSON 객체의 일본어 열쇠 이름도 뽑는다(`UnitRef` 의 `key`: 객체까지의 경로와 원래 이름. 판단 키 `param-keys:`, `distinct` 로 같은 글자의 값·대사와 합쳐지지 않음). `extract.json`(`core/extract/settings.ts`)의 `extraStrings` 는 일본어가 없어도 설정 값·열쇠 이름과 글자 전체가 같으면 뽑고, `extractorVersion` 은 `units.json` 을 만든 추출기 버전이다. `EXTRACTOR_VERSION` 보다 낮은 프로젝트는 `ProjectService.open` 이 원본 사본에서 다시 뽑는다(id 가 그대로라 번역표·판단·기록은 손대지 않는다). 추출이 새 항목을 찾게 바뀌면 이 숫자를 올린다.
 3. **번역표** — `translations.json`(`core/store/translations.ts`)은 문장 id → 번역. 원문으로 만든 id 를 열쇠로 쓰므로 같은 문장은 한 번만 번역하고, 다시 추출하거나 게임을 업데이트해도 번역이 떨어지지 않는다. 번역표를 바꾸는 `ProjectService` 의 쓰기는 모두 `history.json`(`core/history/`) 에 행동 단위로 남는다(바뀐 줄마다 before/after, 최근 200개). 쓰기 하나가 행동 하나이고, 긴 작업은 `beginAction`/`endAction` 으로 묶는다(번역·검수 작업은 `BatchJob.logAction`, 채팅 한 턴은 `ipc.ts` 의 `chat:send` 와 `turn-end`). 취소(`cancelAction`)와 되돌리기(`rollbackTo`)는 그 뒤에 바뀌지 않은 줄만 before 로 돌린다. 메모리의 `undo`(`project:undo`, `chat:undo`)는 이와 따로 돈다.
 4. **용어집과 판단** — `glossary.json`(`core/glossary/`)은 용어, 인물 카드, 지침 본문, 형식 규칙, 그리고 사용자가 고친 전달 글(`prompts`). 번역·검수·내보내기에 전달되는 글 전체는 `core/glossary/prompts.ts` 한 곳에서 만든다(번역 지침 화면이 보여 주는 글과 보내는 글이 같아야 한다). 용어의 `scope: 'speaker'` 는 화자 이름 자리에만 적용한다는 뜻으로, 본문에 보내는 용어 목록(`bodyTerms`), 검사(`checkSpeakerTerms`), 이름 바꾸기(`planRename`)가 같이 따른다. `scope: 'name'` 은 이름으로 쓰인 곳에만 적용한다는 뜻으로, 모델에는 `termForModel` 이 `onlyWhenUsedAsName` 을 붙여 보내고(메모 `note` 도 같이), 프로그램의 본문 검사(`checkedBodyTerms`)는 빼고 화자 자리 검사(`checkSpeakerTerms`)만 하며, 이름 바꾸기는 범위 없는 용어처럼 한다. 프로젝트에 저장된 지침 본문의 옛 기본 문구는 읽을 때 `guideUpgrade.ts` 가 새 문구로 올린다. `decisions.json`(`core/decisions/`)은 판단 필요 문자열의 결정.
 5. **검사** — 번역이 쓰일 때마다 `core/check/format.ts` 가 제어문자, 남은 일본어, 줄 수와 폭, 용어, 뼈대, 표기(`core/check/notation.ts`, 경고만)를 검사하고, 오류가 있으면 상태를 `error` 로 둔다. 목록의 "표기 경고" 표시는 `ipc.ts` 가 행을 만들 때 `ProjectService.hasNotationWarning` 으로 붙인다(바뀐 행과 용어집 규칙이 바뀔 때만 다시 계산).
@@ -51,8 +51,8 @@ Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tool
 | 용어집 초안 | `GlossaryView.tsx`, `DraftDialog.tsx` | `translate/draft.ts`(`DraftJob`), `translate/read.ts`(대본 조각 고르기), `translate/material.ts`(표본 자료) | `glossary/`, `text/speaker.ts` |
 | 전체 번역 | `TextTable.tsx`, `ItemPanel.tsx`, `StoryView.tsx` | `translate/job.ts`(`BatchJob`, `TranslateJob`), `translate/batches.ts`(묶기와 프롬프트), `claude/json.ts` | `check/format.ts`, `glossary/match.ts`, `decisions/keys.ts`(그대로 둘 조각) |
 | 검수 | `ReviewDialog.tsx`, `ItemPanel.tsx` | `translate/review.ts`(`ReviewJob`) | `glossary/match.ts` |
-| 판단 필요 | `DecisionView.tsx` | `translate/decide.ts`(`DecideJob`), `ProjectService` 의 결정 메서드 | `decisions/`(`keys.ts` 판단 키, `auto.ts` 확실한 것 자동 결정, `skeleton.ts` 뼈대 검사, `store.ts`), `extract/pluginMeta.ts` |
-| 채팅 | `ChatPanel.tsx` | `claude/chat.ts`, `claude/prompt.ts`, `bridge.ts`, `toolHandlers.ts` | (도구가 부르는 것 모두) |
+| 판단 필요 | `DecisionView.tsx` | `translate/decide.ts`(`DecideJob`, 열쇠 묶음·일본어 없는 항목 묶음에 붙이는 플러그인 코드 조각 `pluginCodeSnippet`), `ProjectService` 의 결정 메서드 | `decisions/`(`keys.ts` 판단 키, `auto.ts` 확실한 것 자동 결정, `skeleton.ts` 뼈대 검사, `store.ts`), `extract/pluginMeta.ts` |
+| 채팅 | `ChatPanel.tsx` | `claude/chat.ts`, `claude/prompt.ts`, `bridge.ts`, `toolHandlers.ts` | (도구가 부르는 것 모두). 게임에서 글자 찾기(`find_game_text`)는 `extract/find.ts`, 항목 더하기(`add_extract_text`)는 `ProjectService.addExtraString` → 다시 추출 → `units-changed` → `ipc.ts` 가 프로젝트를 닫지 않고 `project:reloaded` 로 새 스냅숏을 보냄 |
 | 이미지 | `ImageView.tsx` | `images.ts`(`ImageService`, 기여자, 그림 도구의 바탕), `render/` | `images/`(`catalog.ts` 찾기와 풀기, `store.ts` 지시서, `layoutText.ts` 줄 바꿈, `sheet.ts` 크기) |
 | 이벤트와 수정 | `EventView.tsx`, `PatchView.tsx` | `ProjectService` 의 수정 메서드, `gameRun.ts`(게임 실행), `fontEmbed.ts` | `events/`(풀어쓰기, 이름, 사용처), `patches/`(연산, 해시, 충돌 판단), `build/apply.ts` |
 | 미리보기와 폰트 | `GamePreview.tsx`, `FontPicker.tsx`, `src/renderer/preview/` | `preview.ts`(`PreviewService`, 픽셀 폭 검사), `fonts/`, `story.ts` | `preview/`(`metrics.ts` 대사창 치수, `layout.ts` 배치) |
@@ -96,9 +96,10 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 
 1. `src/core/extract/` 에 그 대상에서 `RawUnit` 을 내는 함수를 만들고 `extract/index.ts` 의 `extractFromDir`(또는 `database.ts` 의 `extractFromDataFile`)에서 부른다. 문장이 사는 자리를 나타낼 수 없으면 `src/core/types.ts` 의 `UnitRef` 에 종류를, 새 문장 종류면 `UnitKind` 를 더한다.
 2. 코드가 읽는 값일 수 있으면 `needsDecision: true` 와 판단 키(`src/core/decisions/keys.ts`)를 준다. 확실하지 않은 것을 말없이 번역 대상으로 두지 않는다.
-3. `src/core/build/apply.ts` 에서 그 자리에 번역을 다시 쓰는 길을 만든다. 제어문자와 파일의 나머지 바이트를 지킨다.
+3. `src/core/build/apply.ts` 에서 그 자리에 번역을 다시 쓰는 길을 만든다. 제어문자와 파일의 나머지 바이트를 지킨다. 열쇠 이름(`key`)은 값과 수정을 모두 쓴 뒤 깊은 객체부터 바꾼다(`applyKeyOps`). plugins.js 는 원본이 한 줄에 플러그인 하나면 그 모양으로 다시 쓴다(`PluginsFile.lineBreak`).
 4. 화면의 위치 이름은 `src/shared/rows.ts`(`locationLabel`, `scopeLabel`)에서 정한다.
-5. 시험용 작은 게임(`tests/helpers/miniGame.ts`)에 예를 더해 시험하고, 실제 MV 게임과 MZ 게임에서 `node dist/cli.js import` 를 돌려 본다(게임 폴더는 읽기만 한다).
+5. 기존 프로젝트도 새 항목을 받아야 하면 `src/core/extract/settings.ts` 의 `EXTRACTOR_VERSION` 을 올린다.
+6. 시험용 작은 게임(`tests/helpers/miniGame.ts`)에 예를 더해 시험하고, 실제 MV 게임과 MZ 게임에서 `node dist/cli.js import` 를 돌려 본다(게임 폴더는 읽기만 한다).
 
 ### 빌드에 파일 더하기
 
@@ -106,7 +107,7 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 
 ### 프로젝트 파일 더하기
 
-새 JSON 파일은 `ProjectService` 가 읽고 쓰게 하고, `core/util/json.ts` 의 `writeJsonFile`(임시 파일을 거쳐 쓰기)을 쓴다. 게임 업데이트를 되돌릴 때 함께 되돌려야 하면 `src/core/update/importVersion.ts` 의 `BACKUP_FILES` 에 더한다.
+새 JSON 파일은 `ProjectService` 가 읽고 쓰게 하고, `core/util/json.ts` 의 `writeJsonFile`(임시 파일을 거쳐 쓰기)을 쓴다. 게임 업데이트를 되돌릴 때 함께 되돌려야 하면 `src/core/update/importVersion.ts` 의 `BACKUP_FILES` 에 더한다(`extract.json` 은 `units.json` 과 짝이라 들어 있다).
 
 ## 5. 지켜야 할 것
 

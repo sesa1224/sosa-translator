@@ -11,6 +11,7 @@ import { detectGame } from '../engine/detect.js';
 import { describeCommand } from '../events/describe.js';
 import { loadNames } from '../events/names.js';
 import { extractFromDir, loadUnits, UNITS_FILE } from '../extract/index.js';
+import { EXTRACT_FILE, EXTRACTOR_VERSION, loadExtractSettings, saveExtractSettings } from '../extract/settings.js';
 import { getAtPath } from '../extract/plugins.js';
 import { GLOSSARY_FILE, loadGlossary } from '../glossary/store.js';
 import { readImage, scanImages, IMAGE_FOLDERS } from '../images/catalog.js';
@@ -30,7 +31,7 @@ import type { PatchMove, UpdateSummary, VersionInfo } from './types.js';
 const PROJECT_FILE = 'project.json';
 const PREVIEW_FILE = 'preview.json';
 /** Project files an update rewrites or that later work may change; a rollback puts them all back. */
-export const BACKUP_FILES = [PROJECT_FILE, UNITS_FILE, TRANSLATIONS_FILE, GLOSSARY_FILE, DECISIONS_FILE, PATCHES_FILE, IMAGES_FILE, PREVIEW_FILE];
+export const BACKUP_FILES = [PROJECT_FILE, UNITS_FILE, TRANSLATIONS_FILE, GLOSSARY_FILE, DECISIONS_FILE, PATCHES_FILE, IMAGES_FILE, PREVIEW_FILE, EXTRACT_FILE];
 export const NO_ROLLBACK = '되돌릴 수 있는 업데이트가 없어요';
 
 const backupDir = (projectDir: string, id: string) => path.join(projectDir, 'backups', `before-${id}`);
@@ -199,7 +200,8 @@ export async function importVersion(projectDir: string, gameDir: string, label: 
   try {
     await rm(tmpRoot, { recursive: true, force: true });
     await copyOriginals(game, tmpRoot);
-    const { units: newUnits, warnings } = await (o.extract ?? extractFromDir)(tmpRoot);
+    const extractSettings = await loadExtractSettings(projectDir);
+    const { units: newUnits, warnings } = await (o.extract ?? ((root: string) => extractFromDir(root, { extraStrings: extractSettings.extraStrings })))(tmpRoot);
 
     const oldUnits = await loadUnits(projectDir);
     const store = (await readJsonOr(path.join(projectDir, TRANSLATIONS_FILE))) as Record<string, TranslationEntry> | undefined;
@@ -271,6 +273,7 @@ export async function importVersion(projectDir: string, gameDir: string, label: 
     wrote = true;
     await rename(tmpRoot, finalRoot);
     await writeJsonFile(path.join(projectDir, UNITS_FILE), newUnits);
+    await saveExtractSettings(projectDir, { ...extractSettings, extractorVersion: EXTRACTOR_VERSION });
     await writeJsonFile(path.join(projectDir, TRANSLATIONS_FILE), carried.entries);
     if (Object.keys(carried.decisions).length > 0 || existsSync(path.join(projectDir, DECISIONS_FILE))) await writeJsonFile(path.join(projectDir, DECISIONS_FILE), carried.decisions);
     if (patches.length > 0 || existsSync(path.join(projectDir, PATCHES_FILE))) await writeJsonFile(path.join(projectDir, PATCHES_FILE), nextPatches);

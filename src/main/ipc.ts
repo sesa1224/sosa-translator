@@ -284,6 +284,14 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       if (deps.holder.svc !== s) return;
       deps.broadcast('decisions:changed', s.decisionGroups());
     });
+    // New units after an in-place extraction: the screens take a fresh snapshot, but the project (and the chat that
+    // asked for it, mid-turn) stays open, unlike after an update.
+    s.on('units-changed', () => {
+      if (deps.holder.svc !== s) return;
+      rows = new Map(s.units().map((u: TextUnit) => [u.id, rowOf(s, u)]));
+      deps.broadcast('project:reloaded', snapshotOf(s));
+      deps.broadcast('decisions:changed', s.decisionGroups());
+    });
     watchPatches(s);
     await startImages(s);
     s.setBusyCheck(() => busy());

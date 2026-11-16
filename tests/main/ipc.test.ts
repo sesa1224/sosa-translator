@@ -173,3 +173,20 @@ test('작업 기록: 채팅 한 턴은 기록 하나, 목록·취소·되돌리�
   expect(await invoke('history:rollback', edit.id)).toEqual({ restored: 0, skipped: 0 });
   await invoke('project:close');
 });
+
+test('항목을 더해 다시 추출하면 새 스냅숏을 보내고 채팅은 그대로 둔다', async () => {
+  await invoke('project:create', game, '다시 추출');
+  await invoke('chat:send', '찾아 줘', []);
+  const chatBefore = fakeChat;
+  const before = sent('project:reloaded').length;
+  // The Menu plugin's speed '4' has no Japanese: only the list makes it a unit.
+  await deps.holder.svc!.addExtraString('4');
+  const snap = sent('project:reloaded').at(-1);
+  expect(sent('project:reloaded')).toHaveLength(before + 1);
+  expect(snap.rows.find((r: Row) => r.source === '4')).toMatchObject({ kind: 'plugin-param', needsDecision: true, location: '플러그인 설정' });
+  expect(snap.stats.total).toBe(snap.rows.length);
+  expect(sent('decisions:changed').at(-1).some((g: any) => g.key === 'param:Menu:speed')).toBe(true);
+  expect(fakeChat).toBe(chatBefore);
+  expect((await invoke('project:snapshot')).rows.some((r: Row) => r.source === '4')).toBe(true);
+  await invoke('project:close');
+});

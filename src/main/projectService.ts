@@ -40,6 +40,8 @@ import { mergeSuggestions } from '../core/decisions/auto.js';
 import { confirmedDecisionFor, decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
 import type { Decision, DecisionGroup, Decisions, KeepRule, PluginMeta } from '../core/decisions/types.js';
 import { getAtPath } from '../core/extract/plugins.js';
+import { extractorOutdated, loadExtractSettings, saveExtractSettings } from '../core/extract/settings.js';
+import { findGameText, type GameTextPlace } from '../core/extract/find.js';
 import { pluginMetaFromDir } from '../core/extract/pluginMeta.js';
 import { ensureOriginals, FILES_LIST } from '../core/project/originals.js';
 import { originalDir } from '../core/project/project.js';
@@ -86,6 +88,8 @@ export interface ProjectService {
   on(event: 'patches-changed', listener: (p: Patch[]) => void): this;
   /** After a game update or a rollback replaced the project files. */
   on(event: 'reloaded', listener: () => void): this;
+  /** The units were extracted again in place (a string added to extract.json); the project stays open. */
+  on(event: 'units-changed', listener: () => void): this;
   /** The action log changed (a new action, or one cancelled). */
   on(event: 'history-changed', listener: (list: ActionSummary[]) => void): this;
   off(event: 'changed', listener: (e: ChangeEvent) => void): this;
@@ -93,12 +97,14 @@ export interface ProjectService {
   off(event: 'decisions-changed', listener: (d: Decisions) => void): this;
   off(event: 'patches-changed', listener: (p: Patch[]) => void): this;
   off(event: 'reloaded', listener: () => void): this;
+  off(event: 'units-changed', listener: () => void): this;
   off(event: 'history-changed', listener: (list: ActionSummary[]) => void): this;
   emit(event: 'changed', e: ChangeEvent): boolean;
   emit(event: 'glossary-changed', g: Glossary): boolean;
   emit(event: 'decisions-changed', d: Decisions): boolean;
   emit(event: 'patches-changed', p: Patch[]): boolean;
   emit(event: 'reloaded'): boolean;
+  emit(event: 'units-changed'): boolean;
   emit(event: 'history-changed', list: ActionSummary[]): boolean;
 }
 
@@ -185,6 +191,33 @@ export class ProjectService extends EventEmitter {
     } catch {
       return null;
     }
+  }
+
+  /** Places in the current original copy where a whole string equals text (read only). */
+  findGameText(text: string): Promise<GameTextPlace[]> {
+    return findGameText(originalDir(this.projectDir, this.meta), text);
+  }
+
+  /** Strings without Japanese the user asked to translate (extract.json). */
+  async extraStrings(): Promise<string[]> {
+    return (await loadExtractSettings(this.projectDir)).extraStrings;
+  }
+
+  /**
+   * Adds a string without Japanese to extract.json and extracts again from the original copy, so its plugin
+   * parameter places become units at once. Translations are keyed by id and stay. Emits 'units-changed'.
+   */
+  addExtraString(text: string): Promise<void> {
+    return this.enqueue(async () => {
+      const s = await loadExtractSettings(this.projectDir);
+      if (!s.extraStrings.includes(text)) await saveExtractSettings(this.projectDir, { ...s, extraStrings: [...s.extraStrings, text] });
+      const { units } = await extractAll(this.projectDir);
+      this.unitList.splice(0, this.unitList.length, ...units);
+      this.byId.clear();
+      for (const u of units) this.byId.set(u.id, u);
+      this.refreshRowDecisions();
+      this.emit('units-changed');
+    });
   }
 
   /** Merges suggestions (confirmed decisions stay), saves decisions.json and announces the change. */
@@ -312,8 +345,10 @@ export class ProjectService extends EventEmitter {
     const meta = await openProject(projectDir);
     await ensureOriginals(projectDir);
     const units = await loadUnits(projectDir);
-    // Projects extracted before decision keys existed are extracted again from the original copy (ids do not change).
-    if (units.some((u) => u.needsDecision && u.decisionKey === undefined)) units.splice(0, units.length, ...(await extractAll(projectDir)).units);
+    // Projects extracted before decision keys existed, or by an older extractor, are extracted again from the
+    // original copy. Ids do not change, so translations, decisions and the action log stay as they are.
+    const outdated = extractorOutdated(await loadExtractSettings(projectDir));
+    if (outdated || units.some((u) => u.needsDecision && u.decisionKey === undefined)) units.splice(0, units.length, ...(await extractAll(projectDir)).units);
     const store = await TranslationStore.load(projectDir);
     return new ProjectService(projectDir, meta, units, store, await loadGlossary(projectDir));
   }

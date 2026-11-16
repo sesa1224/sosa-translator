@@ -123,6 +123,56 @@ function applyOps(root: unknown, ops: Op[]): void {
   }
 }
 
+/**
+ * Renames key names (after values and patches, whose paths use the original names). All keys of one object are
+ * renamed at once by their original names, keeping order and values; deeper objects go first so the paths to them
+ * still hold. A new name that would clash with another key of the object leaves that key as it was, with a warning.
+ */
+function applyKeyOps(root: unknown, ops: Op[], warnings: Warning[]): void {
+  const byObject = new Map<string, { path: PathSeg[]; file: string; names: Map<string, string> }>();
+  for (const op of ops) {
+    if (op.ref.type !== 'key') continue;
+    const id = JSON.stringify(op.ref.path);
+    const g = byObject.get(id) ?? { path: op.ref.path, file: op.ref.file, names: new Map<string, string>() };
+    g.names.set(op.ref.key, op.target);
+    byObject.set(id, g);
+  }
+  for (const g of [...byObject.values()].sort((a, b) => b.path.length - a.path.length)) {
+    let obj: unknown;
+    try {
+      obj = getAtPath(root, g.path);
+    } catch {
+      obj = undefined;
+    }
+    if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+      warnings.push({ file: g.file, message: '열쇠 이름을 바꿀 객체를 찾을 수 없어 적용하지 않았습니다' });
+      continue;
+    }
+    const keys = Object.keys(obj);
+    const renames = new Map([...g.names].filter(([from, to]) => keys.includes(from) && from !== to));
+    for (const from of g.names.keys()) {
+      if (!keys.includes(from)) warnings.push({ file: g.file, message: `열쇠 이름 "${from}" 을 찾을 수 없어 적용하지 않았습니다` });
+    }
+    // Drop renames until every final name is unique; a dropped rename keeps its old name, which may clash in turn.
+    for (;;) {
+      const finalOf = (k: string) => renames.get(k) ?? k;
+      const seen = new Map<string, string[]>();
+      for (const k of keys) seen.set(finalOf(k), [...(seen.get(finalOf(k)) ?? []), k]);
+      const clashing = keys.filter((k) => renames.has(k) && seen.get(finalOf(k))!.length > 1);
+      if (clashing.length === 0) break;
+      for (const k of clashing) {
+        warnings.push({ file: g.file, message: `열쇠 이름 "${k}" 의 번역 "${renames.get(k)}" 이 같은 객체의 다른 열쇠와 겹쳐 바꾸지 않았습니다` });
+        renames.delete(k);
+      }
+    }
+    if (renames.size === 0) continue;
+    const src = obj as Record<string, unknown>;
+    const next: Record<string, unknown> = {};
+    for (const k of keys) next[renames.get(k) ?? k] = src[k];
+    setAtPath(root, g.path, next);
+  }
+}
+
 function applyNote(root: unknown, ref: NoteRef, target: string): void {
   const note = getAtPath(root, ref.path);
   if (typeof note !== 'string') throw new Error(`${ref.file}: 메모란을 찾을 수 없습니다`);
@@ -261,6 +311,7 @@ export async function applyTranslationsDetailed(
         const p = await readPlugins(abs);
         applyOps(p.plugins, ops);
         applyJsonPatches(p.plugins, filePatches);
+        applyKeyOps(p.plugins, ops, warnings);
         for (const fp of filePatches) {
           if (fp.body.kind === 'plugin') p.plugins.push({ name: fp.body.name, status: true, description: fp.body.description, parameters: { ...fp.body.parameters } });
         }
@@ -273,6 +324,7 @@ export async function applyTranslationsDetailed(
           throw new Error(`${file}: 원본 파일을 읽을 수 없습니다 (${e instanceof Error ? e.message : String(e)})`);
         }
         applyWithPatches(json, file, ops, filePatches);
+        applyKeyOps(json, ops, warnings);
         out.set(file, JSON.stringify(json));
       }
       continue;
@@ -291,6 +343,7 @@ export async function applyTranslationsDetailed(
     } else if (file === PLUGINS_FILE) {
       const p = await readPlugins(abs);
       applyOps(p.plugins, ops);
+      applyKeyOps(p.plugins, ops, warnings);
       out.set(file, serializePluginsFile(p));
     } else {
       let json: unknown;
@@ -300,6 +353,7 @@ export async function applyTranslationsDetailed(
         throw new Error(`${file}: 원본 파일을 읽을 수 없습니다 (${e instanceof Error ? e.message : String(e)})`);
       }
       applyOps(json, ops);
+      applyKeyOps(json, ops, warnings);
       out.set(file, JSON.stringify(json));
     }
   }

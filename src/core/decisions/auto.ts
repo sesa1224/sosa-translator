@@ -1,3 +1,4 @@
+import { isKeyNamesKey } from './keys.js';
 import type { Decision, DecisionGroup, Decisions } from './types.js';
 
 /** Plugin parameter types that hold a value the code reads (a file, a database id, a number, a choice). */
@@ -17,6 +18,8 @@ export function autoDecide(groups: DecisionGroup[]): Decisions {
   const out: Decisions = {};
   for (const g of groups) {
     if (g.decision?.status === 'confirmed') continue;
+    // Key names have no header type of their own, and file-name likeness says nothing about whether code looks them up.
+    if (isKeyNamesKey(g.key)) continue;
     const type = g.hints.metaType;
     const base = type?.replace(/(\[\])+$/, '');
     if (type !== undefined && base !== undefined && (CODE_TYPES.has(base) || type.startsWith('file'))) {

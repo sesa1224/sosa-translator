@@ -1,10 +1,18 @@
 import { hasJapanese } from '../text/japanese.js';
 import type { PathSeg } from '../types.js';
 import type { RawUnit } from './events.js';
-import { paramKey } from '../decisions/keys.js';
+import { paramKey, paramKeysKey } from '../decisions/keys.js';
 
-/** js/plugins.js split around its JSON array, so writing it back keeps the code before and after as it was. */
-export interface PluginsFile { prefix: string; plugins: unknown[]; suffix: string }
+/**
+ * js/plugins.js split around its JSON array, so writing it back keeps the code before and after as it was.
+ * lineBreak: set when the array was written the way RPG Maker writes it, one plugin per line; writing it back the
+ * same way keeps every plugin that did not change on its own unchanged line.
+ */
+export interface PluginsFile { prefix: string; plugins: unknown[]; suffix: string; lineBreak?: '\n' | '\r\n' }
+
+function perLine(plugins: unknown[], nl: string): string {
+  return `[${nl}${plugins.map((p) => JSON.stringify(p)).join(`,${nl}`)}${nl}]`;
+}
 
 /** Splits js/plugins.js into the text before the first '[', the plugin array, and the text after the last ']'. */
 export function parsePluginsFile(text: string): PluginsFile {
@@ -18,11 +26,19 @@ export function parsePluginsFile(text: string): PluginsFile {
     throw new Error('plugins.js 를 읽을 수 없습니다');
   }
   if (!Array.isArray(plugins)) throw new Error('plugins.js 를 읽을 수 없습니다');
-  return { prefix: text.slice(0, start), plugins, suffix: text.slice(end + 1) };
+  const out: PluginsFile = { prefix: text.slice(0, start), plugins, suffix: text.slice(end + 1) };
+  const array = text.slice(start, end + 1);
+  for (const nl of ['\r\n', '\n'] as const) {
+    if (plugins.length > 0 && array === perLine(plugins, nl)) {
+      out.lineBreak = nl;
+      break;
+    }
+  }
+  return out;
 }
 
 export function serializePluginsFile(p: PluginsFile): string {
-  return p.prefix + JSON.stringify(p.plugins) + p.suffix;
+  return p.prefix + (p.lineBreak ? perLine(p.plugins, p.lineBreak) : JSON.stringify(p.plugins)) + p.suffix;
 }
 
 /** If s is a JSON-encoded object, array or string, returns the decoded value; otherwise undefined. */
@@ -83,9 +99,20 @@ export function setAtPath(root: unknown, path: PathSeg[], value: unknown): void 
   }
 }
 
-/** Extracts every Japanese string from plugin parameters, descending into nested JSON strings. */
-export function extractFromPlugins(plugins: unknown[]): RawUnit[] {
+export interface PluginExtractOptions {
+  /** Strings without Japanese the user asked to translate (extract.json); taken only where they match a whole value or key name. */
+  extraStrings?: Iterable<string>;
+}
+
+/**
+ * Extracts every Japanese string from plugin parameters, descending into nested JSON strings, and the Japanese key
+ * names of objects inside them (some plugins show a JSON object's key names, e.g. an option's list of choices).
+ * The parameter names themselves are never taken: the plugin looks its settings up by them.
+ */
+export function extractFromPlugins(plugins: unknown[], o: PluginExtractOptions = {}): RawUnit[] {
   const out: RawUnit[] = [];
+  const extra = new Set(o.extraStrings ?? []);
+  const wanted = (s: string) => hasJapanese(s) || extra.has(s);
   let plugin = '';
   const key = (path: PathSeg[]) => paramKey(plugin, path.slice(2));
   const visit = (v: unknown, path: PathSeg[]) => {
@@ -96,20 +123,31 @@ export function extractFromPlugins(plugins: unknown[]): RawUnit[] {
         const last = path[path.length - 1];
         const jsonPath: PathSeg[] = [...path.slice(0, -1), { key: segKey(last), json: true }];
         if (typeof nested === 'string') {
-          if (hasJapanese(nested)) out.push({ kind: 'plugin-param', source: nested, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path: jsonPath }, decisionKey: key(jsonPath) });
+          if (wanted(nested)) out.push({ kind: 'plugin-param', source: nested, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path: jsonPath }, decisionKey: key(jsonPath) });
         } else {
           visitContainer(nested as object, jsonPath);
         }
         return;
       }
-      if (hasJapanese(v)) out.push({ kind: 'plugin-param', source: v, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path }, decisionKey: key(path) });
+      if (wanted(v)) out.push({ kind: 'plugin-param', source: v, needsDecision: true, ref: { type: 'value', file: 'js/plugins.js', path }, decisionKey: key(path) });
       return;
     }
     if (v !== null && typeof v === 'object') visitContainer(v, path);
   };
   const visitContainer = (v: object, path: PathSeg[]) => {
-    if (Array.isArray(v)) v.forEach((x, i) => visit(x, [...path, i]));
-    else for (const [k, x] of Object.entries(v)) visit(x, [...path, k]);
+    if (Array.isArray(v)) {
+      v.forEach((x, i) => visit(x, [...path, i]));
+      return;
+    }
+    // path [i, 'parameters'] is the parameter list itself: its keys are setting names the code reads.
+    if (path.length > 2) {
+      const group = paramKeysKey(plugin, path.slice(2));
+      for (const k of Object.keys(v)) {
+        // distinct: a key name never merges with an equal value or line, so translating one never renames the other.
+        if (wanted(k)) out.push({ kind: 'plugin-param', source: k, needsDecision: true, ref: { type: 'key', file: 'js/plugins.js', path, key: k }, decisionKey: group, distinct: group });
+      }
+    }
+    for (const [k, x] of Object.entries(v)) visit(x, [...path, k]);
   };
 
   plugins.forEach((p, i) => {

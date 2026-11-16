@@ -18,11 +18,15 @@ export function buildSystemPrompt(meta: ProjectMeta, stats: Stats, styleGuide?: 
     '- 판단 필요 항목은 list_decisions 로 묶음을 보고 set_decision 으로 정한다. 화면에 보이는 글자라는 근거가 있을 때만 번역함으로 한다.',
   ];
   lines.push('- 이벤트를 고칠 때는 event_read 로 풀어쓴 글과 해시를 받고, 필요한 줄만 raw 로 원본을 본 뒤, event_patch 로 원본 번호 기준의 연산을 낸다. 원본을 통째로 다시 쓰지 않는다. 버그의 원인을 찾을 때는 usage_search 로 스위치와 변수가 어디서 켜지고 읽히는지부터 본다. 게임 원본의 결함을 고친 것이면 originalBug 를 true 로 한다.');
+  lines.push(FIND_PROMPT);
   lines.push(IMAGE_PROMPT);
   lines.push(UPDATE_PROMPT);
   if (styleGuide && styleGuide.trim()) lines.push('', '번역할 때는 아래 번역 지침을 따른다.', '', '<번역 지침>', styleGuide.trim(), '</번역 지침>');
   return lines.join('\n');
 }
+
+/** Text on screen that is not a unit: looked up, never guessed at (the chat once said a plugin setting was in the plugin's code). */
+export const FIND_PROMPT = '- 번역 항목에 없는 화면 글자는 어디 있는지 추측하지 말고 find_game_text 로 찾는다. 일본어가 없어 항목이 아닌 플러그인 설정 글자는 add_extract_text 로 항목에 넣는다.';
 
 /** How the chat translates words inside pictures. */
 export const IMAGE_PROMPT = '- 그림 속 글자를 번역할 때는 image_sheet 로 모음판을 보고 글자가 있는 그림을 고른다. 글자가 없는 그림은 image_set_status 로 skip 한다. 고른 그림은 image_view 로 크게 보고, 글자마다 영역(원본 픽셀 좌표. 받은 그림은 scale 만큼 줄어 있으니 좌표를 scale 로 나눈다), 지우는 방식, 번역문, 크기, 색, 정렬을 image_set_recipe 로 낸다. 낸 뒤 image_view 의 rendered 로 결과를 확인하고 어긋나면 고친다. 배경이 복잡해 깔끔히 지울 수 없는 그림은 억지로 하지 말고 사용자에게 직접 고칠 그림이라고 알린다. 폰트는 사용자가 정한 기본 폰트를 쓰고 fontPath 를 지어내지 않는다.';

@@ -67,10 +67,47 @@ export function decisionCommands(): unknown[] {
   ];
 }
 
-/** Writes a tiny MV/MZ game into dir (test only). decisions: adds the decisions extras (note tag, MZ commands, plugin JS file). */
+/**
+ * Plugins of the key-name extras: Speed shows the Japanese key names of a JSON object in its option (and has a value
+ * equal to one of them), Fps has an English option name.
+ */
+export const KEY_PLUGINS = [
+  { name: 'Speed', status: true, description: '', parameters: {
+    'Speed Term': '速度',
+    'Speed List': '{"遅い": -1, "標準": 0, "速い": 1}',
+    'Default Label': '標準',
+  } },
+  { name: 'Fps', status: true, description: '', parameters: { 'Command Name': 'Monitor FPS Sync', 'Default Value': 'true' } },
+];
+
+/** js/plugins.js of the key-name extras: the mini game's Menu plugin and KEY_PLUGINS, one per line as RPG Maker writes it. */
+export const KEY_PLUGINS_JS_TEXT = (() => {
+  const menu = PLUGINS_JS_TEXT.slice(PLUGINS_JS_TEXT.indexOf('[') + 1, PLUGINS_JS_TEXT.lastIndexOf(']'));
+  return 'var $plugins =\n[\n' + [menu, ...KEY_PLUGINS.map((p) => JSON.stringify(p))].join(',\n') + '\n];\n';
+})();
+
+/** Speed.js: reads 'Speed List' into a variable and shows its key names in the options. */
+export const SPEED_PLUGIN_JS =
+  '/*:\n * @plugindesc 速度\n * @param Speed List\n * @default {"遅い": -1, "標準": 0}\n */\n' +
+  '(function() {\n' +
+  "  var parameters = PluginManager.parameters('Speed');\n" +
+  "  var speedList = JSON.parse(parameters['Speed List']);\n" +
+  '  Window_Options.prototype.speedText = function(i) {\n' +
+  '    return Object.keys(speedList)[i];\n' +
+  '  };\n' +
+  '})();\n';
+
+/** Fps.js: the English option name, also once as a string literal in code. */
+export const FPS_PLUGIN_JS =
+  "/*:\n * @param Command Name\n * @default Monitor FPS Sync\n */\nvar fpsName = String(PluginManager.parameters('Fps')['Command Name'] || 'Monitor FPS Sync');\n";
+
+/**
+ * Writes a tiny MV/MZ game into dir (test only). decisions: adds the decisions extras (note tag, MZ commands, plugin JS file).
+ * keys: adds the key-name extras (KEY_PLUGINS and their files).
+ */
 export async function makeMiniGame(
   dir: string,
-  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean; variant?: 'v2' } = {},
+  opts: { engine?: Engine; www?: boolean; encrypted?: boolean; decisions?: boolean; keys?: boolean; variant?: 'v2' } = {},
 ): Promise<void> {
   const engine = opts.engine ?? 'MZ';
   const root = opts.www ? path.join(dir, 'www') : dir;
@@ -112,6 +149,13 @@ export async function makeMiniGame(
     await writeFile(path.join(data, 'Map001.json'), JSON.stringify(map), 'utf8');
     await mkdir(path.join(js, 'plugins'), { recursive: true });
     await writeFile(path.join(js, 'plugins', 'Menu.js'), MENU_PLUGIN_JS, 'utf8');
+  }
+
+  if (opts.keys) {
+    await writeFile(path.join(js, 'plugins.js'), KEY_PLUGINS_JS_TEXT, 'utf8');
+    await mkdir(path.join(js, 'plugins'), { recursive: true });
+    await writeFile(path.join(js, 'plugins', 'Speed.js'), SPEED_PLUGIN_JS, 'utf8');
+    await writeFile(path.join(js, 'plugins', 'Fps.js'), FPS_PLUGIN_JS, 'utf8');
   }
 
   if (opts.variant === 'v2') await writeV2(data, engine);
