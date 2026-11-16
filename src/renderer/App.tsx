@@ -6,6 +6,7 @@ import { DecisionView } from './components/DecisionView';
 import { EventView } from './components/EventView';
 import { GlossaryView } from './components/GlossaryView';
 import { GuideView } from './components/GuideView';
+import { HistoryView } from './components/HistoryView';
 import { ImageView } from './components/ImageView';
 import { ItemPanel } from './components/ItemPanel';
 import { JobBar } from './components/JobBar';
@@ -55,6 +56,7 @@ const SCREENS: Record<AppState['view'], ComponentType> = {
   events: EventView,
   patches: PatchView,
   update: UpdateView,
+  history: HistoryView,
 };
 
 function Workspace() {

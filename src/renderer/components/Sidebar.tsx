@@ -40,6 +40,10 @@ export function Sidebar() {
       <PatchNavButton />
       <ImagesNavButton />
       <BuildsNavButton />
+      <button type="button" className={`nav-btn${view === 'history' ? ' on' : ''}`} aria-current={view === 'history' ? 'page' : undefined}
+        onClick={() => useApp.setView('history')}>
+        <span>작업 기록</span>
+      </button>
       <UpdateNavButton />
 
       <span className="nav-head spaced">범위별 진행률</span>

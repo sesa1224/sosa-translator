@@ -8,7 +8,7 @@ import {
 import type { FontInfo, FontList, Layout, OverflowCount, PreviewState, WindowMetrics } from '../../src/shared/api';
 import type { SceneInfo } from '../../src/shared/api';
 import { computeScopes, computeStats } from '../../src/shared/rows';
-import type { DecisionGroup, ImportPlan } from '../../src/shared/api';
+import type { ActionSummary, CancelResult, DecisionGroup, ImportPlan } from '../../src/shared/api';
 import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } from '../../src/shared/api';
 import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
@@ -55,6 +55,7 @@ export type FakeApi = Api & {
   inspect(dir: string): GameDirCheck;
   glossaryValue: Glossary; chooseResult: ChooseResult; speakerDetection: SpeakerDetection | null; reviewPlanValue: ReviewPlan;
   groupsValue: DecisionGroup[]; importPlanValue: ImportPlan | null; exportPath: string | null;
+  historyValue: ActionSummary[]; historyResult: CancelResult;
 };
 
 export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
@@ -85,6 +86,8 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     groupsValue: [],
     importPlanValue: null,
     exportPath: 'C:/out/약초원.json',
+    historyValue: [],
+    historyResult: { restored: 0, skipped: 0 },
     inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
@@ -244,6 +247,11 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       rollback: rec('update.rollback', () => ({ restored: 'v1' })),
       summary: rec('update.summary', () => upState.summary),
       versions: rec('update.versions', () => upState.versions),
+    },
+    history: {
+      list: rec('history.list', () => fake.historyValue),
+      cancel: rec('history.cancel', () => fake.historyResult),
+      rollback: rec('history.rollback', () => fake.historyResult),
     },
   };
   const upState = defaultUpdateFake();

@@ -4,7 +4,7 @@ import type {
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type {
-  BuildRecord, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
+  ActionSummary, BuildRecord, CancelResult, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
   NewPatch, Patch, PatchChange, PatchList, PathSeg, Rect, Region, StatusFilter, UpdateInspect, UpdateSummary, VersionInfo, UsageTarget,
 } from '../shared/api';
 
@@ -39,7 +39,7 @@ export interface AppState {
   detail: UnitDetail | null;
   query: RowQuery;
   /** The main screen. 'update' is the result of the last game update. */
-  view: 'text' | 'settings' | 'glossary' | 'guide' | 'decisions' | 'images' | 'builds' | 'events' | 'patches' | 'update';
+  view: 'text' | 'settings' | 'glossary' | 'guide' | 'decisions' | 'images' | 'builds' | 'events' | 'patches' | 'update' | 'history';
   glossary: Glossary | null;
   /** The glossary was edited after it was confirmed (this session). */
   glossaryDirty: boolean;
@@ -89,6 +89,8 @@ export interface AppState {
   claudeStatus?: ClaudeStatus | null;
   /** The last build's font embedding (null = none this session). */
   fontEmbed?: FontEmbedInfo | null;
+  /** The action log, newest first (null until the log screen opens, then pushed on change). */
+  history?: ActionSummary[] | null;
 }
 
 /** An event the chat message will carry. */
@@ -244,6 +246,7 @@ async function start(a: Api): Promise<void> {
     a.on('images:changed', onImagesChanged),
     a.on('job:progress', reloadBuildsAfterNotes),
     a.on('project:reloaded', onReloaded),
+    a.on('history:changed', (list) => set({ history: list })),
   ];
   const [settings, projects, snap, claudePath] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
@@ -481,6 +484,24 @@ const actions = {
   },
   polishNotes: (number: number): Promise<void> => need().builds.polishNotes(number),
   openBuildFolder: (number: number): Promise<void> => need().builds.openFolder(number),
+  async loadHistory(): Promise<void> {
+    try {
+      set({ history: await need().history.list() });
+    } catch {
+      set({ history: [] });
+    }
+  },
+  /** The list follows from the 'history:changed' push; it is read again here so the screen does not wait on it. */
+  async cancelAction(id: string): Promise<CancelResult> {
+    const r = await need().history.cancel(id);
+    await actions.loadHistory();
+    return r;
+  },
+  async rollbackTo(id: string): Promise<CancelResult> {
+    const r = await need().history.rollback(id);
+    await actions.loadHistory();
+    return r;
+  },
 };
 
 function subscribe(l: () => void): () => void {
@@ -628,7 +649,7 @@ function reloadBuildsAfterNotes(p: JobProgress): void {
 function onReloaded(snap: Snapshot): void {
   const onResult = state.view === 'update';
   adoptSnapshot(snap);
-  set({ images: null, builds: null, decisionGroups: [], patchList: undefined, idFilter: null, imageFilter: null, ...(onResult ? { view: 'update' } : {}) });
+  set({ images: null, builds: null, history: null, decisionGroups: [], patchList: undefined, idFilter: null, imageFilter: null, ...(onResult ? { view: 'update' } : {}) });
   void loadGlossary();
   void updateActions.loadSummary();
 }

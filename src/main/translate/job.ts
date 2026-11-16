@@ -6,7 +6,7 @@ import type { Glossary } from '../../core/glossary/types.js';
 import { composeSpeaker } from '../../core/text/speaker.js';
 import { toHalfWidth } from '../../core/text/width.js';
 import type { TranslationStatus } from '../../core/types.js';
-import type { ChatUsage, JobKind, JobProgress } from '../../shared/api.js';
+import type { ChatUsage, JobKind, JobProgress, Origin } from '../../shared/api.js';
 import { NEED_LOGIN } from '../claude/chat.js';
 import type { JsonCallResult, runClaudeJson } from '../claude/json.js';
 import type { ProjectService } from '../projectService.js';
@@ -48,6 +48,7 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
   private stopRequested = false;
   private loop: Promise<void> | null = null;
   private planned = false;
+  private logOpen = false;
 
   constructor(protected readonly o: JobOptions, kind: JobKind) {
     super();
@@ -62,6 +63,21 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
   protected abstract plan(): { batches: B[]; total: number };
   /** Handles one batch. Returns 'next' when it is finished, or how the run should stop. */
   protected abstract runBatch(b: B, signal: AbortSignal): Promise<'next' | 'limit' | 'failed' | 'stopped'>;
+  /**
+   * Jobs that write translations log the whole run as one action (label gets the number of changed lines), so it
+   * can be cancelled as the one thing the user started. A pause keeps it open; the end of the run closes it.
+   */
+  protected logAction(): { origin: Origin; label: (n: number) => string } | null {
+    return null;
+  }
+
+  /** Closes the run's action once the job has ended for good (not on a pause). */
+  private async closeLog(): Promise<void> {
+    const spec = this.logAction();
+    if (!this.logOpen || !spec || !['done', 'failed', 'stopped'].includes(this.p.state)) return;
+    this.logOpen = false;
+    await this.o.svc.endAction(spec.origin);
+  }
 
   protected update(patch: Partial<JobProgress>): void {
     this.p = { ...this.p, ...patch };
@@ -88,11 +104,16 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
       const { batches, total } = this.plan();
       this.queue = batches;
       this.planned = true;
+      const spec = this.logAction();
+      if (spec) {
+        this.logOpen = true;
+        void this.o.svc.beginAction(spec.origin, spec.label);
+      }
       this.update({ total });
     }
     this.pauseRequested = false;
     this.update({ state: 'running', message: undefined });
-    this.loop = this.runLoop().finally(() => { this.loop = null; });
+    this.loop = this.runLoop().then(() => this.closeLog()).finally(() => { this.loop = null; });
     return this.loop;
   }
 
@@ -110,7 +131,10 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
   stop(): void {
     this.stopRequested = true;
     this.abort?.abort();
-    if (!this.loop && this.p.state !== 'done' && this.p.state !== 'failed') this.update({ state: 'stopped' });
+    if (!this.loop && this.p.state !== 'done' && this.p.state !== 'failed') {
+      this.update({ state: 'stopped' });
+      void this.closeLog();
+    }
   }
 
   private async runLoop(): Promise<void> {
@@ -171,6 +195,11 @@ interface RetryInfo { previous: string; problems: string[] }
 export class TranslateJob extends BatchJob<Batch> {
   constructor(o: JobOptions) {
     super(o, 'translate');
+  }
+
+  protected logAction(): { origin: Origin; label: (n: number) => string } {
+    const what = this.o.ids ? '골라서 번역' : '전체 번역';
+    return { origin: 'batch', label: (n) => `${what} ${n.toLocaleString('en-US')}개` };
   }
 
   protected plan(): { batches: Batch[]; total: number } {

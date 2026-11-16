@@ -33,6 +33,8 @@ import { planRename } from '../core/glossary/rename.js';
 import type { CharacterCard, Glossary, ProjectRules, PromptKind, Term } from '../core/glossary/types.js';
 import type { PxCheck } from '../core/check/format.js';
 import { notationIssues } from '../core/check/notation.js';
+import { loadHistory, newActionId, sameEntry, saveHistory, summarize, trimHistory, unchangedSince } from '../core/history/store.js';
+import type { ActionChange, ActionRecord, ActionSummary, CancelResult } from '../core/history/types.js';
 import { groupDecisions } from '../core/decisions/keys.js';
 import { mergeSuggestions } from '../core/decisions/auto.js';
 import { confirmedDecisionFor, decisionFor, DECISIONS_FILE, saveDecisions } from '../core/decisions/store.js';
@@ -62,6 +64,17 @@ const UNDO_LIMIT = 200;
 
 interface UndoRecord { id: string; before: TranslationEntry; origin: Origin }
 
+/**
+ * How a translation write shows in the action log. label gets the number of changed lines. join: while an action of
+ * the same origin is open (beginAction), the write becomes part of it instead of an action of its own.
+ */
+interface LogSpec { label: string | ((n: number) => string); join?: boolean }
+/** An action collecting many writes (a job, a chat turn); a line changed twice keeps its first before. */
+interface OpenAction { label: (n: number) => string; changes: Map<string, ActionChange> }
+
+/** 1240 -> '1,240', as the log labels show counts. */
+const count = (n: number): string => n.toLocaleString('en-US');
+
 /** Reason stored for terms the model brought up while translating. */
 export const NEW_TERM_REASON = '번역 중 새로 나옴';
 
@@ -73,16 +86,20 @@ export interface ProjectService {
   on(event: 'patches-changed', listener: (p: Patch[]) => void): this;
   /** After a game update or a rollback replaced the project files. */
   on(event: 'reloaded', listener: () => void): this;
+  /** The action log changed (a new action, or one cancelled). */
+  on(event: 'history-changed', listener: (list: ActionSummary[]) => void): this;
   off(event: 'changed', listener: (e: ChangeEvent) => void): this;
   off(event: 'glossary-changed', listener: (g: Glossary) => void): this;
   off(event: 'decisions-changed', listener: (d: Decisions) => void): this;
   off(event: 'patches-changed', listener: (p: Patch[]) => void): this;
   off(event: 'reloaded', listener: () => void): this;
+  off(event: 'history-changed', listener: (list: ActionSummary[]) => void): this;
   emit(event: 'changed', e: ChangeEvent): boolean;
   emit(event: 'glossary-changed', g: Glossary): boolean;
   emit(event: 'decisions-changed', d: Decisions): boolean;
   emit(event: 'patches-changed', p: Patch[]): boolean;
   emit(event: 'reloaded'): boolean;
+  emit(event: 'history-changed', list: ActionSummary[]): boolean;
 }
 
 /**
@@ -93,6 +110,11 @@ export class ProjectService extends EventEmitter {
   private readonly byId: Map<string, TextUnit>;
   private readonly history: UndoRecord[] = [];
   private queue: Promise<unknown> = Promise.resolve();
+  /** The action log (history.json), oldest first. Unlike history above it survives closing the app. */
+  private log: ActionRecord[];
+  /** The before of every line the write in progress touches (filled by remember). */
+  private capture: Map<string, TranslationEntry> | null = null;
+  private readonly openActions = new Map<Origin, OpenAction>();
 
   private constructor(
     readonly projectDir: string,
@@ -103,6 +125,7 @@ export class ProjectService extends EventEmitter {
   ) {
     super();
     this.byId = new Map(unitList.map((u) => [u.id, u]));
+    this.log = loadHistory(projectDir);
     this.loadDecisionData();
     registerFontContributor(this); // font and plugin files of patches go into every build
     // The patch notes list the fixes that went into each build.
@@ -219,7 +242,7 @@ export class ProjectService extends EventEmitter {
       this.remember(unit.id, 'user');
       this.store.set(unit.id, text, 'approved');
       return { ids: [unit.id], result: undefined };
-    });
+    }, { label: '게임 제목 번역' });
   }
 
   /** Writes an exchange package for the given ids to filePath (UTF-8 JSON). */
@@ -254,7 +277,7 @@ export class ProjectService extends EventEmitter {
         ids.push(t.id);
       }
       return { ids, result: { written: ids.length } };
-    });
+    }, { label: (n) => `외부 번역 가져오기 ${count(n)}개` });
   }
 
   /** Puts every needs-decision unit's decision state where toRow reads it. */
@@ -400,7 +423,7 @@ export class ProjectService extends EventEmitter {
         if (!p.certain) uncertain.push(p.id);
       }
       return { ids: changed, result: { changed, uncertain } };
-    });
+    }, { label: (n) => `용어 바꾸기 ${count(n)}곳` });
   }
 
   setCharacters(cards: CharacterCard[]): Promise<void> {
@@ -437,7 +460,7 @@ export class ProjectService extends EventEmitter {
       this.remember(id, origin);
       this.store.restore(id, { target: null, status: 'declined', updatedAt: new Date().toISOString(), declinedReason: reason });
       return { ids: [id], result: undefined };
-    });
+    }, { label: '번역 거절 표시', join: true });
   }
 
   /**
@@ -457,7 +480,7 @@ export class ProjectService extends EventEmitter {
       } else delete next.review;
       this.store.restore(id, next);
       return { ids: [id], result: undefined };
-    });
+    }, { label: review ? '검수 의견 붙임' : '검수 의견 지움', join: true });
   }
 
   /** Takes the open remark's suggestion as the translation; the remark moves to pastReview. null when there is no open remark. */
@@ -493,12 +516,12 @@ export class ProjectService extends EventEmitter {
       const issues = this.takeReview(id);
       if (issues === null) throw new Error('검수 의견이 없습니다');
       return { ids: [id], result: issues };
-    });
+    }, { label: '검수 의견 받음' });
   }
 
   /** Keeps the translation and moves the remark to pastReview: it has been looked at, so it is a plain translation again. */
   rejectReview(id: string): Promise<void> {
-    return this.mutate('user', () => ({ ids: this.passReview(id) ? [id] : [], result: undefined }));
+    return this.mutate('user', () => ({ ids: this.passReview(id) ? [id] : [], result: undefined }), { label: '검수 의견 넘김' });
   }
 
   /**
@@ -509,7 +532,7 @@ export class ProjectService extends EventEmitter {
     return this.mutate('review', () => {
       const done = ids.filter((id) => this.takeReview(id) !== null);
       return { ids: done, result: done.length };
-    });
+    }, { label: (n) => `검수 의견 ${count(n)}개 받음` });
   }
 
   /** Passes over many remarks in one write. Returns how many were passed over. */
@@ -517,7 +540,7 @@ export class ProjectService extends EventEmitter {
     return this.mutate('user', () => {
       const done = ids.filter((id) => this.passReview(id));
       return { ids: done, result: done.length };
-    });
+    }, { label: (n) => `검수 의견 ${count(n)}개 넘김` });
   }
 
   /**
@@ -538,7 +561,7 @@ export class ProjectService extends EventEmitter {
       const { flagged: _looked, ...rest } = e;
       this.store.restore(id, { ...rest, target, status, updatedAt: new Date().toISOString(), pastReview: { ...past, taken } });
       return { ids: [id], result: issues };
-    });
+    }, { label: '지난 검수 의견 뒤집기' });
   }
 
   /** Records that a review looked at these units (status and translation unchanged, not undoable). */
@@ -575,7 +598,7 @@ export class ProjectService extends EventEmitter {
       this.remember(id, origin);
       this.store.set(id, target, status);
       return { ids: [id], result: issues };
-    });
+    }, { label: '번역 고침', join: true });
   }
 
   setStatus(id: string, status: TranslationStatus, origin: Origin): Promise<void> {
@@ -584,7 +607,7 @@ export class ProjectService extends EventEmitter {
       this.remember(id, origin);
       this.store.setStatus(id, status);
       return { ids: [id], result: undefined };
-    });
+    }, { label: '상태 바꿈', join: true });
   }
 
   clearTranslation(id: string, origin: Origin): Promise<void> {
@@ -593,7 +616,7 @@ export class ProjectService extends EventEmitter {
       this.remember(id, origin);
       this.store.restore(id, { target: null, status: 'untranslated', updatedAt: new Date().toISOString() });
       return { ids: [id], result: undefined };
-    });
+    }, { label: '번역 지움', join: true });
   }
 
   /** Check result for the current target ([] when there is none). */
@@ -648,6 +671,8 @@ export class ProjectService extends EventEmitter {
   /** Waits for pending writes to finish. */
   async close(): Promise<void> {
     await this.queue.catch(() => undefined);
+    // A job or chat turn still open (a paused job) is written now rather than lost.
+    for (const origin of [...this.openActions.keys()]) await this.endAction(origin).catch(() => undefined);
     this.removeAllListeners();
   }
 
@@ -658,6 +683,7 @@ export class ProjectService extends EventEmitter {
   }
 
   private remember(id: string, origin: Origin): void {
+    if (this.capture && !this.capture.has(id)) this.capture.set(id, structuredClone(this.store.get(id)));
     this.history.push({ id, before: this.store.get(id), origin });
     if (this.history.length > UNDO_LIMIT) this.history.shift();
   }
@@ -681,15 +707,135 @@ export class ProjectService extends EventEmitter {
     return run;
   }
 
-  private mutate<T>(origin: Origin, apply: () => { ids: string[]; result: T }): Promise<T> {
+  private mutate<T>(origin: Origin, apply: () => { ids: string[]; result: T }, log?: LogSpec): Promise<T> {
     return this.enqueue(async () => {
-      const { ids, result } = apply();
+      this.capture = new Map();
+      let out: { ids: string[]; result: T };
+      let captured: Map<string, TranslationEntry>;
+      try {
+        out = apply();
+      } finally {
+        captured = this.capture ?? new Map();
+        this.capture = null;
+      }
+      const { ids, result } = out;
       if (ids.length > 0) {
         await this.store.save();
+        if (log) await this.logWrite(origin, log, captured);
         this.emit('changed', { ids, origin });
       }
       return result;
     });
+  }
+
+  // ---- the action log (history.json) ----
+
+  /** Records one write: into the open action of its origin, or as an action of its own. */
+  private async logWrite(origin: Origin, log: LogSpec, captured: Map<string, TranslationEntry>): Promise<void> {
+    const open = log.join ? this.openActions.get(origin) : undefined;
+    const changes: ActionChange[] = [];
+    for (const [unitId, before] of captured) {
+      const after = structuredClone(this.store.get(unitId));
+      if (open) {
+        const had = open.changes.get(unitId);
+        open.changes.set(unitId, { unitId, before: had ? had.before : before, after });
+      } else if (!sameEntry(before, after)) changes.push({ unitId, before, after });
+    }
+    if (open) return;
+    const label = typeof log.label === 'function' ? log.label(changes.length) : log.label;
+    await this.appendAction(origin, label, changes);
+  }
+
+  private async appendAction(origin: Origin, label: string, changes: ActionChange[]): Promise<void> {
+    if (changes.length === 0) return;
+    this.log = trimHistory([...this.log, { id: newActionId(), at: new Date().toISOString(), origin, label, changes }]);
+    await this.saveLog();
+  }
+
+  private async saveLog(): Promise<void> {
+    await saveHistory(this.projectDir, this.log);
+    this.emit('history-changed', this.actions());
+  }
+
+  /**
+   * Opens one action for many writes of an origin (a translate or review job, a chat turn), so the log shows what the
+   * user started as one thing to cancel. Writes of other origins (the user's own edits meanwhile) stay separate, and
+   * so do writes that are actions by themselves (taking a remark). label gets the number of changed lines.
+   * An action already open for the origin goes on.
+   */
+  beginAction(origin: Origin, label: (n: number) => string): Promise<void> {
+    return this.enqueue(async () => {
+      if (!this.openActions.has(origin)) this.openActions.set(origin, { label, changes: new Map() });
+    });
+  }
+
+  /** Closes the open action of an origin and logs it (nothing is logged when no line ended up different). */
+  endAction(origin: Origin): Promise<void> {
+    return this.enqueue(async () => {
+      const open = this.openActions.get(origin);
+      if (!open) return;
+      this.openActions.delete(origin);
+      const changes = [...open.changes.values()].filter((c) => !sameEntry(c.before, c.after));
+      await this.appendAction(origin, open.label(changes.length), changes);
+    });
+  }
+
+  /** The action log, newest first, without the changes themselves. */
+  actions(): ActionSummary[] {
+    return this.log.map(summarize).reverse();
+  }
+
+  /** Takes one action back: a line goes back to its before only if nothing changed it since. */
+  cancelAction(id: string): Promise<CancelResult> {
+    return this.enqueue(async () => {
+      const a = this.log.find((x) => x.id === id);
+      if (!a) throw new Error(`없는 행동입니다: ${id}`);
+      if (a.undoneAt !== undefined) throw new Error('이미 취소한 행동입니다');
+      const touched: string[] = [];
+      const r = this.takeBack(a, touched);
+      await this.afterCancel(touched);
+      return r;
+    });
+  }
+
+  /** Cancels every action newer than the given one, newest first; the given action stays. */
+  rollbackTo(id: string): Promise<CancelResult> {
+    return this.enqueue(async () => {
+      const at = this.log.findIndex((x) => x.id === id);
+      if (at < 0) throw new Error(`없는 행동입니다: ${id}`);
+      const touched: string[] = [];
+      const sum: CancelResult = { restored: 0, skipped: 0 };
+      for (let i = this.log.length - 1; i > at; i--) {
+        if (this.log[i].undoneAt !== undefined) continue;
+        const r = this.takeBack(this.log[i], touched);
+        sum.restored += r.restored;
+        sum.skipped += r.skipped;
+      }
+      await this.afterCancel(touched);
+      return sum;
+    });
+  }
+
+  private takeBack(a: ActionRecord, touched: string[]): CancelResult {
+    const r: CancelResult = { restored: 0, skipped: 0 };
+    for (const c of a.changes) {
+      if (!this.byId.has(c.unitId) || !unchangedSince(this.store.get(c.unitId), c.after)) {
+        r.skipped++;
+        continue;
+      }
+      this.store.restore(c.unitId, structuredClone(c.before));
+      touched.push(c.unitId);
+      r.restored++;
+    }
+    a.undoneAt = new Date().toISOString();
+    return r;
+  }
+
+  /** One save of each file and one change event for a cancel or a roll back. */
+  private async afterCancel(touched: string[]): Promise<void> {
+    if (touched.length > 0) await this.store.save();
+    await this.saveLog();
+    if (touched.length > 0) this.emit('changed', { ids: [...new Set(touched)], origin: 'user' });
   }
 
   // ---- patches (bug fixes and additions recorded as changes against the original) ----

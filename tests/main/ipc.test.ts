@@ -153,3 +153,23 @@ test('표기 경고 표시는 바뀐 행과 규칙이 바뀔 때 다시 계산�
   await vi.waitFor(() => expect(sent('project:changed').at(-1)).toMatchObject({ rows: [{ id: moon }], stats: { notation: 0 } }));
   expect(sent('project:changed').at(-1).rows[0].notation).toBeUndefined();
 });
+
+test('작업 기록: 채팅 한 턴은 기록 하나, 목록·취소·되돌리기 채널', async () => {
+  await invoke('project:create', game, '기록');
+  const snap = await invoke('project:snapshot');
+  const moon = snap.rows.find((r: Row) => r.source === '月光草').id;
+  const rina = snap.rows.find((r: Row) => r.source === 'リナ').id;
+  await invoke('unit:setTranslation', moon, '월광초');
+  await invoke('chat:send', '고쳐 줘', []);
+  await deps.holder.svc!.setTranslation(moon, '달빛풀', 'chat');
+  await deps.holder.svc!.setTranslation(rina, '리나', 'chat');
+  fakeChat.emit('event', { type: 'turn-end', ok: true, usage: { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 } });
+  await vi.waitFor(async () => expect((await invoke('history:list'))[0]).toMatchObject({ origin: 'chat', label: '채팅에서 바꿈 2개', count: 2 }));
+  expect(sent('history:changed').length).toBeGreaterThan(0);
+  const [chatTurn, edit] = await invoke('history:list');
+  expect(chatTurn).not.toHaveProperty('changes');
+  expect(await invoke('history:cancel', chatTurn.id)).toEqual({ restored: 2, skipped: 0 });
+  expect(sent('project:changed').at(-1).rows.map((r: Row) => r.id).sort()).toEqual([moon, rina].sort());
+  expect(await invoke('history:rollback', edit.id)).toEqual({ restored: 0, skipped: 0 });
+  await invoke('project:close');
+});

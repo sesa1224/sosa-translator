@@ -163,6 +163,11 @@ const api: Api = {
     summary: () => call('update:summary'),
     versions: () => call('update:versions'),
   },
+  history: {
+    list: () => call('history:list'),
+    cancel: (id) => call('history:cancel', id),
+    rollback: (id) => call('history:rollback', id),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

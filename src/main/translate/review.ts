@@ -2,6 +2,7 @@ import { bodyTerms, termsIn } from '../../core/glossary/match.js';
 import { toHalfWidth } from '../../core/text/width.js';
 import type { Glossary, Term } from '../../core/glossary/types.js';
 import { REVIEW_KINDS, type ReviewKind, type TextUnit, type TranslationEntry, type UnitKind } from '../../core/types.js';
+import type { Origin } from '../../shared/api.js';
 import { scopeLabel } from '../../shared/rows.js';
 import { finalPrompt } from '../../core/glossary/prompts.js';
 import { targetBody, unitParts } from './batches.js';
@@ -134,6 +135,10 @@ export class ReviewJob extends BatchJob<ReviewBatch> {
 
   private readonly scope: { scope: ReviewScope; file?: string };
   private readonly skipPassed: boolean;
+
+  protected logAction(): { origin: Origin; label: (n: number) => string } {
+    return { origin: 'review', label: (n) => `검수: 의견 ${n.toLocaleString('en-US')}개` };
+  }
 
   protected plan(): { batches: ReviewBatch[]; total: number } {
     const svc = this.o.svc;

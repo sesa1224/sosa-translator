@@ -276,6 +276,10 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       }
     });
     await startPreview(s);
+    s.on('history-changed', (list) => {
+      if (deps.holder.svc !== s) return;
+      deps.broadcast('history:changed', list);
+    });
     s.on('decisions-changed', () => {
       if (deps.holder.svc !== s) return;
       deps.broadcast('decisions:changed', s.decisionGroups());
@@ -302,7 +306,11 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     const s = svc();
     const st = await settings();
     chat = deps.createChat({ cwd: s.projectDir, systemPrompt: buildSystemPrompt(s.meta, computeStats(allRows()), s.glossary().styleGuide), model: st.chatModel, claudePath: st.claudePath });
-    chat?.on('event', (ev) => deps.broadcast('chat:event', ev));
+    chat?.on('event', (ev) => {
+      deps.broadcast('chat:event', ev);
+      // The turn is over: what its tools changed is logged as one action.
+      if (ev.type === 'turn-end' || ev.type === 'error') void deps.holder.svc?.endAction('chat');
+    });
     return chat;
   }
 
@@ -385,6 +393,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       deps.broadcast('chat:event', { type: 'error', message: CANNOT_RUN_CLAUDE });
       return;
     }
+    void svc().beginAction('chat', (n) => `채팅에서 바꿈 ${n.toLocaleString('en-US')}개`);
     c.send(message, images ?? []);
   });
   handle('chat:stop', () => { chat?.stop(); });
@@ -846,6 +855,11 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   });
   handle('update:summary', () => svc().updateSummary());
   handle('update:versions', () => svc().versions());
+
+  // ---- the action log ----
+  handle('history:list', () => svc().actions());
+  handle('history:cancel', (id: string) => svc().cancelAction(String(id ?? '')));
+  handle('history:rollback', (id: string) => svc().rollbackTo(String(id ?? '')));
 
   // ---- Claude CLI status and the last font embedding ----
   handle('app:claudeStatus', async (): Promise<shared.ClaudeStatus> => {

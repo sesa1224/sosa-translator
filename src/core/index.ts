@@ -18,6 +18,8 @@ export * from './util/json.js';
 export * from './store/translations.js';
 export * from './check/format.js';
 export * from './check/notation.js';
+export * from './history/types.js';
+export * from './history/store.js';
 export * from './build/apply.js';
 export * from './build/patch.js';
 export * from './glossary/types.js';

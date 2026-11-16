@@ -410,6 +410,13 @@ select.input { padding: 0 12px; }
 .iv-font:hover { background: var(--card); }
 @media (max-width: 1500px) { .iv-pane { flex-basis: 100%; } }
 
+/* ---- action log ---- */
+.history-view { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; }
+.hv-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+.hv-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv-undone { opacity: 0.55; }
+.hv-undone .hv-label { text-decoration: line-through; }
+
 /* ---- build history ---- */
 .builds-view { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
 .bv-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
