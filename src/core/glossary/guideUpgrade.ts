@@ -31,7 +31,6 @@ function byHeading(text: string): Map<string, string> {
   return new Map(sections(text).filter((s) => s.startsWith('## ')).map((s) => [headingOf(s), s.trimEnd()]));
 }
 
-const PREVIOUS_SECTIONS = byHeading(guideBody(previousGuide));
 // Sections the rewrite added, and the 1.4.1 section each one follows. They only go in next to a section that
 // was itself brought up: the new wording of that section is what leans on them.
 const ADDED_AFTER: [string, string][] = [
@@ -62,7 +61,22 @@ const OLD_INTERJECTION = '| 일본식 감탄사 직역(え? あれ? ほら) | �
 const KEEP_HEADING = '## 남기는 말투';
 const MOAN_HEADING = '## 의성어, 의태어, 신음\n';
 const SOKUON = '   - 작은 っ(끊김) → 받침 ㅅ·ㄱ 이나 된소리로 끊는다: あっ → 앗, くっ → 큭';
+// The line that follows SOKUON in every guide made before the sentence-final rule existed.
+const LONG_VOWEL_START = '   - 장음 ';
 const MOAN_BREAKDOWN = '장면이 진행되며 인물이 무너지면 소리도 따라 풀어진다.';
+// The first sentence-final rule stretched every っ, so "좋아……っ" swallowed its ellipsis ("좋아아앗"). The
+// current line states the principle and leaves the rest to the scene: a stricter rule broke the same way.
+const OLD_FINAL_SOKUON = '   - 말끝의 작은 っ 는 "읏"을 단어 뒤에 붙이지 않는다(✕ 닿고 있어읏, 안 돼읏). 끝 모음을 한 번 늘리고 ㅅ 받침으로 끊는다: 있어っ → 있어엇, 같아っ → 같아앗, 안 돼っ → 안 돼엣, 까지っ → 까지잇, 하는데っ → 하는데엣, 무리야っ → 무리야앗. "읏"은 따로 선 신음(んっ, っ……)일 때만 쓴다.';
+const FINAL_SOKUON = '   - 말끝의 작은 っ 는 숨이 끊기는 자리다. 말에 바로 붙었으면 끝 모음을 한 번 늘려 ㅅ 받침으로 짧게 끊고(있어っ → 있어엇, 안 돼っ → 안 돼엣), 말줄임표 뒤에 있으면 말줄임표를 살리고 숨소리를 따로 쓴다(いい……っ → 좋아……읏). 감탄사는 쪼개지 않고 한 덩어리로 쓴다(え…っ → 엣……). 단어 뒤에 "읏"을 바로 붙이지만 않으면(✕ 있어읏) 나머지는 장면에 맞게 고른다.';
+const OLD_STUTTER = '9. **말더듬은 뒤에 오는 말의 첫소리를 되풀이한다.** 더듬은 소리와 실제 말이 따로 놀지 않게 한다(✕ 노…… 놔 → ○ 노…… 놓으라고, ○ 부…… 부끄러워). 더듬은 뒤 말이 한 음절로 끝나 어색하면 말을 조금 늘려서 맞춘다.';
+// The reviewer kept "fixing" moans that differed only in spelling, and translators added stutters the source
+// lacks. Rule 10 rides with the new rule 9 only, so a guide whose rule 9 the user rewrote gets neither.
+const STUTTER_AND_REVIEW = [
+  `${OLD_STUTTER} 원문에 없는 말더듬은 더하지 않는다(あの…… → 저기……, ✕ 저, 저기……).`,
+  '10. **검수에서는 신음과 말끝 소리의 표기 차이를 뜻이나 세기가 달라질 때만 지적한다.** 말줄임표가 사라졌거나, 짧은 숨이 길게 내지르는 소리로 바뀌었거나(좋아……읏 → ✕ 좋아아앗), 단어 뒤에 "읏"이 바로 붙은 것은 지적한다. 세기가 같은 다른 표기(엣과 앗, 읏과 흣)는 그대로 둔다.',
+].join('\n');
+const PREV_INTERJECTION = '| 캐릭터성이 없는 일반 감탄사 직역(え? あれ? ほら) | 한국어 감탄사(응? 어라? 자, 봐) |';
+const INTERJECTION = '| 캐릭터성이 없는 일반 감탄사 직역(え? あれ? ほら) | 한국어 감탄사(응? 어라? 자, 봐). 존대하는 인물은 "네?" |';
 
 const KEEP_SECTION = [
   `${KEEP_HEADING} (장르 관용 말투)`,
@@ -90,29 +104,43 @@ const LINES: [string, string][] = [
     [
       '| 어색한 피동(싸지다, 넣어지다, 쑤셔지다) | 능동으로 바꾸거나 "~당하다"로 푼다(안에 싸졌다 → 안에 쌌어, 안에 사정당했어) |',
       '| 원어의 소리만 옮긴 단어(시오후키, 나카다시), 영문 그대로 둔 단어(SEX) | 한국 성인물에서 쓰는 말로, 문장에 맞게(분수를 뿜다, 안에 싸다·질내사정, 섹스) |',
-      '| 캐릭터성이 없는 일반 감탄사 직역(え? あれ? ほら) | 한국어 감탄사(응? 어라? 자, 봐) |',
+      INTERJECTION,
     ].join('\n'),
   ],
-  // Without these two, sentence-final っ came out as "닿고 있어읏" and stutters as "노…… 놔".
-  [
-    `${SOKUON}\n`,
-    `${SOKUON}\n   - 말끝의 작은 っ 는 "읏"을 단어 뒤에 붙이지 않는다(✕ 닿고 있어읏, 안 돼읏). 끝 모음을 한 번 늘리고 ㅅ 받침으로 끊는다: 있어っ → 있어엇, 같아っ → 같아앗, 안 돼っ → 안 돼엣, 까지っ → 까지잇, 하는데っ → 하는데엣, 무리야っ → 무리야앗. "읏"은 따로 선 신음(んっ, っ……)일 때만 쓴다.\n`,
-  ],
-  [
-    `${MOAN_BREAKDOWN}\n`,
-    `${MOAN_BREAKDOWN}\n9. **말더듬은 뒤에 오는 말의 첫소리를 되풀이한다.** 더듬은 소리와 실제 말이 따로 놀지 않게 한다(✕ 노…… 놔 → ○ 노…… 놓으라고, ○ 부…… 부끄러워). 더듬은 뒤 말이 한 음절로 끝나 어색하면 말을 조금 늘려서 맞춘다.\n`,
-  ],
+  [PREV_INTERJECTION, INTERJECTION],
+  // Must come before the SOKUON entry below: that one only checks for its own result, so a guide with the old
+  // line would otherwise get the new lines next to it.
+  [OLD_FINAL_SOKUON, FINAL_SOKUON],
+  // Without a sentence-final line, っ came out as "닿고 있어읏". Only a guide with no such line at all gets one:
+  // one the user rewrote has its own line between these two.
+  [`${SOKUON}\n${LONG_VOWEL_START}`, `${SOKUON}\n${FINAL_SOKUON}\n${LONG_VOWEL_START}`],
+  // Before the MOAN_BREAKDOWN entry for the same reason as above. The old rule 9 is followed by a space in the
+  // new one, so this never matches its own result.
+  [`${OLD_STUTTER}\n`, `${STUTTER_AND_REVIEW}\n`],
+  // Without rule 9, stutters came out as "노…… 놔". Guides from before it end the list right after rule 8; one
+  // with a rule 9 of the user's own does not match.
+  [`${MOAN_BREAKDOWN}\n\n`, `${MOAN_BREAKDOWN}\n${STUTTER_AND_REVIEW}\n\n`],
 ];
+
+function upgradeLines(guide: string): string {
+  let s = guide;
+  for (const [from, to] of LINES) {
+    if (s.includes(to) || !s.includes(from)) continue;
+    s = s.replace(from, () => to);
+  }
+  return s;
+}
+
+// 1.4.1 as the line upgrades leave it: the lines run first, so a section changed by a line after 1.4.1 shipped
+// must still be recognised as untouched.
+const PREVIOUS_SECTIONS = byHeading(upgradeLines(guideBody(previousGuide)));
 
 /** The style guide with the old default lines it still holds replaced by the current ones. */
 export function upgradeStyleGuide(guide: string): string {
   let s = guide.replace(/\r\n/g, '\n');
   // Only a guide that still tells the reviewer to turn every interjection into a Korean one gets the section about the ones to keep.
   const addKeep = s.includes(OLD_INTERJECTION) && !s.includes(KEEP_HEADING);
-  for (const [from, to] of LINES) {
-    if (s.includes(to) || !s.includes(from)) continue;
-    s = s.replace(from, () => to);
-  }
+  s = upgradeLines(s);
   if (addKeep) {
     const at = s.indexOf(MOAN_HEADING);
     s = at < 0 ? `${s.trimEnd()}\n\n${KEEP_SECTION.trimEnd()}\n` : s.slice(0, at) + KEEP_SECTION + s.slice(at);

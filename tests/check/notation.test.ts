@@ -8,6 +8,8 @@ const u = (source: string, needsDecision = false): TextUnit => ({ id: 'i', kind:
 
 test('말끝에 붙은 읏: 낱말 뒤는 경고, 신음끼리는 괜찮다', () => {
   for (const ok of ['으읏', '크으읏', '하읏', '읏……', '응, 으읏!', '흐읏…… 하아']) expect(gluedMoanIssue(ok), ok).toBeNull();
+  // 읏 after an ellipsis stands apart from the word: the guide's way of writing いい……っ.
+  for (const ok of ['기분 좋아……읏', '빨아 버릴 거예요……읏']) expect(gluedMoanIssue(ok), ok).toBeNull();
   for (const bad of ['닿고 있어읏', '안 돼읏', '까지읏', '무리야읏……']) expect(gluedMoanIssue(bad), bad).toMatchObject({ rule: 'notation', severity: 'warning' });
 });
 

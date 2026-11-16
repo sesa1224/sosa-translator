@@ -125,7 +125,7 @@ test('1.3.0 기본 지침에는 말끝 끊김과 말더듬 규칙이 더해진�
   const text = readFileSync(path.join(__dirname, '..', 'fixtures', 'style-guide-1.3.0.md'), 'utf8').replace(/\r\n/g, '\n');
   const old = text.slice(text.search(/^## /m)).trim() + '\n';
   expect(upgradeStyleGuide(old)).toBe(DEFAULT_STYLE_GUIDE);
-  expect(DEFAULT_STYLE_GUIDE).toContain('닿고 있어읏');
+  expect(DEFAULT_STYLE_GUIDE).toContain('✕ 있어읏');
   expect(DEFAULT_STYLE_GUIDE).toContain('노…… 놓으라고');
   const mine = old + '\n## 이 게임의 말투\n- 말끝 끊김을 "읏"으로 붙인다.\n';
   const up = upgradeStyleGuide(mine);
@@ -167,6 +167,55 @@ test('1.4.1 기본 지침은 절 단위로 새 지침이 되고, 고친 절은 �
   expect(up).toContain('## 글의 종류별 문체'); expect(up).toContain('| 中出し | 질내사정 / 안에 싸다 |');
   expect(up).toContain('## 이 게임의 말투\n어둡고 건조하다.');
   expect(upgradeStyleGuide(up)).toBe(up);
+});
+
+const guideFixture = (name: string): string => {
+  const text = readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8').replace(/\r\n/g, '\n');
+  return text.slice(text.search(/^## /m)).trim() + '\n';
+};
+const countOf = (s: string, part: string) => s.split(part).length - 1;
+const NEW_FINAL = '말끝의 작은 っ 는 숨이 끊기는 자리다.';
+const NEW_STUTTER_TAIL = '원문에 없는 말더듬은 더하지 않는다';
+const NEW_REVIEW = '10. **검수에서는 신음과 말끝 소리의 표기 차이를';
+const NEW_INTERJECTION = '존대하는 인물은 "네?"';
+
+test('1.6.0 기본 지침은 말끝 っ, 말더듬, 검수 기준, 감탄사 줄이 새 문구가 된다', () => {
+  const old = guideFixture('style-guide-1.6.0.md');
+  expect(upgradeStyleGuide(old)).toBe(DEFAULT_STYLE_GUIDE);
+  expect(upgradeStyleGuide(DEFAULT_STYLE_GUIDE)).toBe(DEFAULT_STYLE_GUIDE);
+  expect(DEFAULT_STYLE_GUIDE).not.toContain('끝 모음을 한 번 늘리고 ㅅ 받침으로 끊는다');
+  for (const m of [NEW_FINAL, NEW_STUTTER_TAIL, NEW_REVIEW, NEW_INTERJECTION]) expect(countOf(DEFAULT_STYLE_GUIDE, m), m).toBe(1);
+  // Per-game additions stay, and a second run changes nothing.
+  const up = upgradeStyleGuide(old + '\n## 이 게임의 말투\n어둡다.\n');
+  expect(up).toContain('## 이 게임의 말투\n어둡다.');
+  expect(upgradeStyleGuide(up)).toBe(up);
+});
+
+test('고쳐 쓴 말끝 っ, 9번, 감탄사 줄은 그대로 두고 새 줄을 끼워 넣지 않는다', () => {
+  const old = guideFixture('style-guide-1.6.0.md');
+  const finalEdited = old.replace('끝 모음을 한 번 늘리고 ㅅ 받침으로 끊는다', '끝 모음을 두 번 늘리고 ㅅ 받침으로 끊는다');
+  const a = upgradeStyleGuide(finalEdited);
+  expect(a).toContain('끝 모음을 두 번 늘리고'); expect(a).not.toContain(NEW_FINAL);
+
+  const stutterEdited = old.replace('말을 조금 늘려서 맞춘다.', '말을 조금 늘려서 맞춘다. 내가 더한 말.');
+  const b = upgradeStyleGuide(stutterEdited);
+  expect(b).toContain('내가 더한 말.'); expect(b).not.toContain(NEW_STUTTER_TAIL); expect(b).not.toContain(NEW_REVIEW);
+
+  const interjectionEdited = old.replace('| 한국어 감탄사(응? 어라? 자, 봐) |', '| 내 감탄사 |');
+  const c = upgradeStyleGuide(interjectionEdited);
+  expect(c).toContain('| 내 감탄사 |'); expect(c).not.toContain(NEW_INTERJECTION);
+  for (const s of [a, b, c]) expect(upgradeStyleGuide(s)).toBe(s);
+});
+
+test('말끝 っ 규칙이 없던 지침에는 새 줄이 한 번만 들어간다', () => {
+  const SOKUON = '   - 작은 っ(끊김) → 받침 ㅅ·ㄱ 이나 된소리로 끊는다: あっ → 앗, くっ → 큭';
+  const older = `## 의성어, 의태어, 신음\n\n2. **길이**\n${SOKUON}\n   - 장음 ー\n`;
+  const up = upgradeStyleGuide(older);
+  expect(countOf(up, NEW_FINAL)).toBe(1);
+  expect(upgradeStyleGuide(up)).toBe(up);
+  // One the user gave a sentence-final line of their own gets none.
+  const own = `## 의성어, 의태어, 신음\n\n2. **길이**\n${SOKUON}\n   - 내 말끝 규칙\n   - 장음 ー\n`;
+  expect(upgradeStyleGuide(own)).not.toContain(NEW_FINAL);
 });
 
 test('괄호 규칙을 켜면 （ ） 도 반각이 되고, 물결표 〜 는 늘 ~ 가 된다', () => {
