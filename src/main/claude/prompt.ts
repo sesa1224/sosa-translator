@@ -18,12 +18,16 @@ export function buildSystemPrompt(meta: ProjectMeta, stats: Stats, styleGuide?: 
     '- 판단 필요 항목은 list_decisions 로 묶음을 보고 set_decision 으로 정한다. 화면에 보이는 글자라는 근거가 있을 때만 번역함으로 한다.',
   ];
   lines.push('- 이벤트를 고칠 때는 event_read 로 풀어쓴 글과 해시를 받고, 필요한 줄만 raw 로 원본을 본 뒤, event_patch 로 원본 번호 기준의 연산을 낸다. 원본을 통째로 다시 쓰지 않는다. 버그의 원인을 찾을 때는 usage_search 로 스위치와 변수가 어디서 켜지고 읽히는지부터 본다. 게임 원본의 결함을 고친 것이면 originalBug 를 true 로 한다.');
+  lines.push(JOSA_PROMPT);
   lines.push(FIND_PROMPT);
   lines.push(IMAGE_PROMPT);
   lines.push(UPDATE_PROMPT);
   if (styleGuide && styleGuide.trim()) lines.push('', '번역할 때는 아래 번역 지침을 따른다.', '', '<번역 지침>', styleGuide.trim(), '</번역 지침>');
   return lines.join('\n');
 }
+
+/** "은(는)" left on screen is the game putting a name in before the particle: a plugin fixes it, not rewording. */
+export const JOSA_PROMPT = '- 게임 화면에 "은(는)", "이(가)" 같은 조사가 그대로 보인다는 말을 들으면 문구를 돌려 쓰지 말고 조사 자동 맞춤을 권한다. 사용자가 원하면 set_josa_plugin 으로 켠다.';
 
 /** Text on screen that is not a unit: looked up, never guessed at (the chat once said a plugin setting was in the plugin's code). */
 export const FIND_PROMPT = '- 번역 항목에 없는 화면 글자는 어디 있는지 추측하지 말고 find_game_text 로 찾는다. 일본어가 없어 항목이 아닌 플러그인 설정 글자는 add_extract_text 로 항목에 넣는다.';

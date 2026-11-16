@@ -37,6 +37,7 @@ export function patchWhere(p: Patch): string {
     case 'json': return `${baseName(b.file)} · ${b.path.map((s) => String(seg(s))).join('.')}`;
     case 'plugin': return `새 플러그인 ${b.name}.js`;
     case 'font': return `게임 폰트: ${baseName(b.fontPath)}`;
+    case 'josa': return '새 플러그인 MVMZ_KoreanJosa.js';
   }
 }
 
@@ -148,12 +149,44 @@ export function PatchView() {
         <button type="button" className="btn" onClick={() => void openReport()}>제작자 전달용 목록</button>
       </div>
       {error && <span className="err-text small" role="alert">{error}</span>}
+      <JosaSection />
       <div className="card">
         {list && patches.length === 0 && <div className="ev-empty sub">아직 수정이 없어요. 이벤트 화면에서 줄을 끼워 넣거나, 채팅에서 버그를 설명해 보세요.</div>}
         {patches.map((p) => <PatchRow key={p.id} p={p} status={list?.statuses.find((s) => s.id === p.id)} />)}
       </div>
       {report !== null && <ReportDialog text={report} onClose={() => setReport(null)} />}
     </div>
+  );
+}
+
+/** The particle plugin switch, with the game plugins that may get in its way. */
+function JosaSection() {
+  const app = useApp();
+  const josa = app.patchList?.patches.find((p) => p.body.kind === 'josa') ?? null;
+  const on = josa !== null && josa.enabled;
+  const [conflicts, setConflicts] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    eventActions.josaConflicts().then((names) => { if (live) setConflicts(names); }, () => undefined);
+    return () => { live = false; };
+  }, [app.snapshot?.meta.current]);
+  const toggle = async () => {
+    setError(null);
+    try {
+      await eventActions.setJosa(!on);
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <section className="card settings-card" aria-labelledby="patch-josa">
+      <span id="patch-josa" className="card-title">조사 자동 맞춤</span>
+      <label className="check"><input type="checkbox" role="switch" checked={on} onChange={() => void toggle()} />조사 자동 맞춤 켜기</label>
+      <span className="hint">%1은(는) 같은 조사를 게임이 이름을 넣은 뒤에 맞춰요</span>
+      {conflicts.length > 0 && <span className="warn-text small" role="note">{`이 플러그인 때문에 조사가 안 맞을 수 있어요: ${conflicts.join(', ')}`}</span>}
+      {error && <span className="err-text small" role="alert">{error}</span>}
+    </section>
   );
 }
 

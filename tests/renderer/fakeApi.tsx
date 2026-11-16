@@ -205,6 +205,11 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       }),
       creatorReport: rec('patches.creatorReport', () => ev().report),
       lastFontEmbed: rec('patches.lastFontEmbed', () => upState.fontEmbed),
+      setJosa: rec('patches.setJosa', (enabled: boolean) => {
+        const rest = ev().patches.filter((x) => x.body.kind !== 'josa');
+        ev().patches = enabled ? [...rest, { id: 'josa', title: '조사 자동 맞춤', note: '', enabled: true, originalBug: false, createdBy: 'user', createdAt: '', body: { kind: 'josa' } }] : rest;
+      }),
+      josaConflicts: rec('patches.josaConflicts', () => ev().josaConflicts),
     },
     game: {
       run: rec('game.run', () => { if (ev().runError) throw new Error(ev().runError!); }),
@@ -328,13 +333,15 @@ export interface EventsFake {
   statuses: PatchStatus[];
   report: string;
   runError: string | null;
+  /** What patches.josaConflicts gives back. */
+  josaConflicts: string[];
 }
 function defaultEventsFake(): EventsFake {
   return {
     files: [], lists: {},
     read: () => ({ label: '', condition: null, hash: '', lines: [], raw: [] }),
     usage: () => [],
-    patches: [], statuses: [], report: '', runError: null,
+    patches: [], statuses: [], report: '', runError: null, josaConflicts: [],
   };
 }
 const eventsFakes = new WeakMap<FakeApi, EventsFake>();

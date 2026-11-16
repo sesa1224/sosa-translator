@@ -371,6 +371,20 @@ HANDLERS.event_patch = async (svc, input: { title: string; file: string; listPat
   return { id: p.id, title: p.title, updated: !!existing, state: status?.state ?? 'applied', reason: status?.reason };
 };
 
+TOOL_DEFS.push({
+  name: 'set_josa_plugin',
+  description: '조사 자동 맞춤을 켜고 끈다. 게임이 이름·숫자를 넣은 뒤 은(는)·이(가) 같은 꼴을 받침에 맞춰 고르는 작은 플러그인이 패치에 들어간다.',
+  inputSchema: z.object({ enabled: z.boolean() }),
+});
+HANDLERS.set_josa_plugin = async (svc, input: { enabled: boolean }) => {
+  await svc.setJosaPatch(input.enabled, 'claude');
+  const conflictingPlugins = await svc.josaConflicts();
+  if (!input.enabled) return { enabled: false, conflictingPlugins };
+  const p = svc.patches().find((x) => x.body.kind === 'josa');
+  const status = p ? (await svc.patchStatuses()).find((s) => s.id === p.id) : undefined;
+  return { enabled: true, state: status?.state ?? 'applied', ...(status?.reason ? { reason: status.reason } : {}), conflictingPlugins };
+};
+
 function needImages(svc: ProjectService) {
   const images = imageServiceOf(svc);
   if (!images) throw new Error('그림 기능을 쓸 수 없습니다(게임 폴더를 찾을 수 없음)');

@@ -3,3 +3,7 @@ declare module '*.md?raw' {
   const text: string;
   export default text;
 }
+declare module '*.js?raw' {
+  const text: string;
+  export default text;
+}

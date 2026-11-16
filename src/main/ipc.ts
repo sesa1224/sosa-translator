@@ -687,6 +687,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('patches:update', (id: string, p: shared.PatchChange) => svc().updatePatch(String(id), p ?? {}));
   handle('patches:remove', (id: string) => svc().removePatch(String(id)));
   handle('patches:setGameFont', (fontPath: string | null, subset: boolean) => svc().setGameFontPatch(typeof fontPath === 'string' && fontPath ? fontPath : null, subset !== false));
+  handle('patches:setJosa', (enabled: boolean) => svc().setJosaPatch(enabled === true, 'user'));
+  handle('patches:josaConflicts', () => svc().josaConflicts());
   handle('patches:creatorReport', () => svc().creatorReport());
   handle('game:run', async () => {
     const s = svc();

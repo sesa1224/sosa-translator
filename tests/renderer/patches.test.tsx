@@ -139,3 +139,24 @@ test('게임 실행 버튼과 상태', async () => {
   void eventActions;
   await waitFor(() => expect(useApp.get().gameError).toBe('먼저 패치를 빌드하세요'));
 });
+
+test('조사 자동 맞춤 스위치를 켜면 목록에 들어가고, 부딪히는 플러그인이 있으면 경고한다', async () => {
+  eventsFake(api).josaConflicts = ['A_Message', 'B_Text'];
+  const user = await openPatches();
+  expect(screen.getByText('%1은(는) 같은 조사를 게임이 이름을 넣은 뒤에 맞춰요')).toBeInTheDocument();
+  expect(await screen.findByText('이 플러그인 때문에 조사가 안 맞을 수 있어요: A_Message, B_Text')).toBeInTheDocument();
+  const sw = screen.getByRole('switch', { name: '조사 자동 맞춤 켜기' });
+  expect(sw).not.toBeChecked();
+  await user.click(sw);
+  expect(api.calls).toContainEqual(['patches.setJosa', true]);
+  await waitFor(() => expect(screen.getByRole('switch', { name: '조사 자동 맞춤 켜기' })).toBeChecked());
+  expect(within(rowOf('조사 자동 맞춤')).getByText('새 플러그인 MVMZ_KoreanJosa.js')).toBeInTheDocument();
+  await user.click(screen.getByRole('switch', { name: '조사 자동 맞춤 켜기' }));
+  expect(api.calls).toContainEqual(['patches.setJosa', false]);
+});
+
+test('부딪히는 플러그인이 없으면 경고가 없다', async () => {
+  await openPatches();
+  await screen.findByRole('switch', { name: '조사 자동 맞춤 켜기' });
+  expect(screen.queryByText(/조사가 안 맞을 수 있어요/)).toBeNull();
+});

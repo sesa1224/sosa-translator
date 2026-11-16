@@ -125,6 +125,8 @@ const api: Api = {
     setGameFont: (fontPath, subset) => call('patches:setGameFont', fontPath, subset),
     creatorReport: () => call('patches:creatorReport'),
     lastFontEmbed: () => call('patches:lastFontEmbed'),
+    setJosa: (enabled) => call('patches:setJosa', enabled),
+    josaConflicts: () => call('patches:josaConflicts'),
   },
   game: {
     run: () => call('game:run'),

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { afterAll, afterEach, beforeEach, expect, test } from 'vitest';
 import { listHash } from '../../src/core/patches/hash.js';
+import { JOSA_PLUGIN_NAME } from '../../src/core/patches/josa.js';
 import type { EventCommand, Patch, PatchBody } from '../../src/core/patches/types.js';
 import { ProjectService } from '../../src/main/projectService.js';
 import { callTool, TOOL_DEFS } from '../../src/main/toolHandlers.js';
@@ -81,6 +82,39 @@ test('setGameFontPatch 는 font 수정을 하나만 유지한다', async () => {
   expect(fonts).toHaveLength(1);
   expect(fonts[0].body).toEqual({ kind: 'font', fontPath: b, subset: false });
   await svc.setGameFontPatch(null, true);
+  expect(svc.patches()).toEqual([]);
+});
+
+test('setJosaPatch 는 조사 수정을 하나만 두고, 빌드에 플러그인이 들어간다', async () => {
+  await svc.setJosaPatch(true, 'user');
+  await svc.setJosaPatch(true, 'user');
+  const josa = svc.patches().filter((p) => p.body.kind === 'josa');
+  expect(josa).toHaveLength(1);
+  expect(josa[0]).toMatchObject({ title: '조사 자동 맞춤', enabled: true, body: { kind: 'josa' } });
+  await expect(svc.addPatch({ title: 'x', body: { kind: 'josa' } }, 'claude')).rejects.toThrow('이미');
+  const r = await svc.build();
+  const zip = unzipSync(await readFile(r.zipPath));
+  expect(Object.keys(zip)).toContain(`js/plugins/${JOSA_PLUGIN_NAME}.js`);
+  expect(strFromU8(zip['js/plugins.js'])).toContain(`"name":"${JOSA_PLUGIN_NAME}"`);
+  expect(await svc.josaConflicts()).toEqual([]);
+  await svc.setJosaPatch(false, 'user');
+  expect(svc.patches()).toEqual([]);
+});
+
+test('조사 수정이 꺼져 있으면 켜면서 다시 켠다', async () => {
+  await svc.setJosaPatch(true, 'user');
+  const id = svc.patches()[0].id;
+  await svc.updatePatch(id, { enabled: false });
+  await svc.setJosaPatch(true, 'claude');
+  expect(svc.patches()).toMatchObject([{ id, enabled: true }]);
+});
+
+test('채팅 도구: set_josa_plugin 은 켜고 끄고 부딪히는 플러그인을 알려 준다', async () => {
+  const on = (await callTool(svc, 'set_josa_plugin', { enabled: true })) as any;
+  expect(on).toEqual({ ok: true, data: { enabled: true, state: 'applied', conflictingPlugins: [] } });
+  expect(svc.patches()[0].createdBy).toBe('claude');
+  const off = (await callTool(svc, 'set_josa_plugin', { enabled: false })) as any;
+  expect(off).toEqual({ ok: true, data: { enabled: false, conflictingPlugins: [] } });
   expect(svc.patches()).toEqual([]);
 });
 

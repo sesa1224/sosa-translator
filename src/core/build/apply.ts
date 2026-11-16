@@ -17,6 +17,7 @@ import type { PathSeg } from '../types.js';
 import type { EventCommand, Patch } from '../patches/types.js';
 import { appliedPatches, eventListPaths } from '../patches/apply.js';
 import { applyOps as applyListOps, indexOfOrigin, tagList, untagList, type TaggedCommand } from '../patches/listOps.js';
+import { JOSA_PLUGIN_DESCRIPTION, JOSA_PLUGIN_JS, JOSA_PLUGIN_NAME } from '../patches/josa.js';
 import { loadPatches } from '../patches/store.js';
 
 const PLUGINS_FILE = 'js/plugins.js';
@@ -294,7 +295,7 @@ export async function applyTranslationsDetailed(
   // Files only patches touch are built too.
   const patchFiles = new Map<string, Patch[]>();
   for (const p of patches) {
-    const file = p.body.kind === 'event' || p.body.kind === 'json' ? p.body.file : p.body.kind === 'plugin' ? PLUGINS_FILE : null;
+    const file = p.body.kind === 'event' || p.body.kind === 'json' ? p.body.file : p.body.kind === 'plugin' || p.body.kind === 'josa' ? PLUGINS_FILE : null;
     if (file === null) continue;
     patchFiles.set(file, [...(patchFiles.get(file) ?? []), p]);
     if (!byFile.has(file)) byFile.set(file, []);
@@ -314,6 +315,11 @@ export async function applyTranslationsDetailed(
         applyKeyOps(p.plugins, ops, warnings);
         for (const fp of filePatches) {
           if (fp.body.kind === 'plugin') p.plugins.push({ name: fp.body.name, status: true, description: fp.body.description, parameters: { ...fp.body.parameters } });
+        }
+        // Last of all, so it wraps the text functions after every other plugin has changed them.
+        if (filePatches.some((fp) => fp.body.kind === 'josa')) {
+          p.plugins.push({ name: JOSA_PLUGIN_NAME, status: true, description: JOSA_PLUGIN_DESCRIPTION, parameters: {} });
+          out.set(`js/plugins/${JOSA_PLUGIN_NAME}.js`, JOSA_PLUGIN_JS);
         }
         out.set(file, serializePluginsFile(p));
       } else {

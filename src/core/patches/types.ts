@@ -15,7 +15,9 @@ export type PatchBody =
   | { kind: 'json'; file: string; path: PathSeg[]; baseValue: unknown; value: unknown }
   // A new plugin file, registered at the end of js/plugins.js.
   | { kind: 'plugin'; name: string; js: string; parameters: Record<string, string>; description: string }
-  | { kind: 'font'; fontPath: string; subset: boolean };
+  | { kind: 'font'; fontPath: string; subset: boolean }
+  // The bundled Korean particle plugin (core/patches/josa.ts); its JS is not stored so app updates reach it.
+  | { kind: 'josa' };
 
 export interface Patch {
   id: string; title: string; note: string; enabled: boolean; originalBug: boolean;

@@ -15,7 +15,7 @@ test('인자', () => {
   const a = buildClaudeArgs({ model: 'claude-opus-5-5', mcpConfigPath: 'C:/x/mcp.json', systemPrompt: 'S' });
   expect(a).toEqual(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--model', 'claude-opus-5-5', '--mcp-config', 'C:/x/mcp.json', '--strict-mcp-config', '--tools', '',
-    '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last,mcp__mvmz__glossary_search,mcp__mvmz__glossary_set_term,mcp__mvmz__list_decisions,mcp__mvmz__set_decision,mcp__mvmz__image_sheet,mcp__mvmz__image_view,mcp__mvmz__image_set_recipe,mcp__mvmz__image_set_status,mcp__mvmz__image_list,mcp__mvmz__event_files,mcp__mvmz__event_list,mcp__mvmz__event_read,mcp__mvmz__usage_search,mcp__mvmz__event_patch,mcp__mvmz__update_summary,mcp__mvmz__find_game_text,mcp__mvmz__add_extract_text',
+    '--allowedTools', 'mcp__mvmz__project_status,mcp__mvmz__search_units,mcp__mvmz__get_unit,mcp__mvmz__set_translation,mcp__mvmz__set_status,mcp__mvmz__undo_last,mcp__mvmz__glossary_search,mcp__mvmz__glossary_set_term,mcp__mvmz__list_decisions,mcp__mvmz__set_decision,mcp__mvmz__image_sheet,mcp__mvmz__image_view,mcp__mvmz__image_set_recipe,mcp__mvmz__image_set_status,mcp__mvmz__image_list,mcp__mvmz__event_files,mcp__mvmz__event_list,mcp__mvmz__event_read,mcp__mvmz__usage_search,mcp__mvmz__event_patch,mcp__mvmz__set_josa_plugin,mcp__mvmz__update_summary,mcp__mvmz__find_game_text,mcp__mvmz__add_extract_text',
     '--permission-mode', 'dontAsk', '--setting-sources', 'project', '--disable-slash-commands', '--system-prompt', 'S']);
   expect(buildClaudeArgs({ model: 'm', mcpConfigPath: 'p', systemPrompt: 'S', resumeSessionId: 'abc' }).slice(-2)).toEqual(['--resume', 'abc']);
 });
@@ -36,6 +36,11 @@ test('쓰레기 줄과 모르는 type 은 무시', () => { expect(new StreamPars
 test('입력 줄에 이미지가 들어간다', () => {
   const m = JSON.parse(userMessageLine('이거 봐', [{ mediaType: 'image/png', base64: 'AAAA' }]));
   expect(m.message.content).toEqual([{ type: 'text', text: '이거 봐' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }]);
+});
+test('시스템 프롬프트는 조사가 그대로 보일 때 조사 자동 맞춤을 권한다', () => {
+  const s = buildSystemPrompt(meta, stats);
+  expect(s).toContain('set_josa_plugin');
+  expect(s).toContain('은(는)');
 });
 test('시스템 프롬프트', () => { const s = buildSystemPrompt(meta, stats); expect(s).toContain('약초원'); expect(s).toContain('search_units'); expect(s).toContain('MZ'); });
 

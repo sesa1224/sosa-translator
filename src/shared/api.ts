@@ -353,6 +353,9 @@ export interface InvokeChannels {
   'patches:update': (id: string, p: PatchChange) => Patch;
   'patches:remove': (id: string) => void;
   'patches:setGameFont': (fontPath: string | null, subset: boolean) => void;
+  'patches:setJosa': (enabled: boolean) => void;
+  /** Enabled game plugins that may keep the particle plugin from working. */
+  'patches:josaConflicts': () => string[];
   'patches:creatorReport': () => string;
   'patches:lastFontEmbed': () => FontEmbedInfo | null;
   'game:run': () => void;
@@ -469,6 +472,7 @@ export interface Api {
     update: Call<'patches:update'>; remove: Call<'patches:remove'>;
     setGameFont: Call<'patches:setGameFont'>; creatorReport: Call<'patches:creatorReport'>;
     lastFontEmbed: Call<'patches:lastFontEmbed'>;
+    setJosa: Call<'patches:setJosa'>; josaConflicts: Call<'patches:josaConflicts'>;
   };
   game: { run: Call<'game:run'>; stop: Call<'game:stop'> };
   images: {

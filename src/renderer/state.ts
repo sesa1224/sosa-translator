@@ -577,6 +577,11 @@ export const eventActions = {
     await need().patches.setGameFont(fontPath, subset);
     await eventActions.loadPatches();
   },
+  async setJosa(enabled: boolean): Promise<void> {
+    await need().patches.setJosa(enabled);
+    await eventActions.loadPatches();
+  },
+  josaConflicts: (): Promise<string[]> => need().patches.josaConflicts(),
   creatorReport: (): Promise<string> => need().patches.creatorReport(),
   /** Puts the event on the chat and shows the chat tab. */
   talkAboutEvent(ev: AttachedEvent): void {

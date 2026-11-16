@@ -50,6 +50,7 @@ import type { EventCommand, Patch, PatchBody, PatchStatus } from '../core/patche
 import { listHash, sameContent } from '../core/patches/hash.js';
 import { validateOps } from '../core/patches/listOps.js';
 import { newPatchId, PATCHES_FILE, savePatches } from '../core/patches/store.js';
+import { findJosaConflicts, JOSA_PATCH_TITLE, JOSA_PLUGIN_DESCRIPTION, JOSA_PLUGIN_NAME } from '../core/patches/josa.js';
 import {
   patchStatuses as corePatchStatuses, REASON_BAD_PLUGIN_NAME, REASON_CHANGED, REASON_NO_EVENT, REASON_NO_FILE, REASON_VALUE_CHANGED, validPluginName,
 } from '../core/patches/apply.js';
@@ -963,6 +964,7 @@ export class ProjectService extends EventEmitter {
   addPatch(p: { title: string; note?: string; originalBug?: boolean; body: PatchBody }, by: 'user' | 'claude'): Promise<Patch> {
     return this.enqueue(async () => {
       const body = await this.checkedBody(p.body);
+      if (body.kind === 'josa' && this.patchList().some((x) => x.body.kind === 'josa')) throw new Error('조사 자동 맞춤은 이미 있습니다');
       if (this.sameListPatch(body)) throw new Error('이 이벤트에는 이미 수정이 있습니다. 그 수정을 고치세요');
       const title = String(p.title ?? '').trim() || '이름 없는 수정';
       const patch: Patch = {
@@ -1017,6 +1019,32 @@ export class ProjectService extends EventEmitter {
     });
   }
 
+  /** Keeps at most one particle plugin patch: on adds it (or turns it back on), off removes it. */
+  setJosaPatch(enabled: boolean, by: 'user' | 'claude'): Promise<void> {
+    return this.enqueue(async () => {
+      const list = this.patchList();
+      const old = list.find((p) => p.body.kind === 'josa');
+      if (!enabled) {
+        if (old) await this.savePatchList(list.filter((p) => p.body.kind !== 'josa'));
+        return;
+      }
+      if (old) {
+        if (!old.enabled) await this.savePatchList(list.map((p) => (p === old ? { ...structuredClone(p), enabled: true } : p)));
+        return;
+      }
+      const patch: Patch = {
+        id: newPatchId(), title: JOSA_PATCH_TITLE, note: '', enabled: true, originalBug: false,
+        createdBy: by, createdAt: new Date().toISOString(), body: { kind: 'josa' },
+      };
+      await this.savePatchList([...list, patch]);
+    });
+  }
+
+  /** Enabled plugins of the game that may keep the particle plugin from working (a guess from their JS). */
+  josaConflicts(): Promise<string[]> {
+    return findJosaConflicts(this.projectDir);
+  }
+
   /** The patches marked as bugs of the original game, as Markdown for the game's creator. */
   async creatorReport(): Promise<string> {
     const names = await loadNames(this.projectDir);
@@ -1047,6 +1075,8 @@ export class ProjectService extends EventEmitter {
         lines.push(`- 위치: ${b.file} · ${where}`, `- 무엇을 왜: ${p.note.trim() || '(설명 없음)'}`, `- 바꾼 내용: ${JSON.stringify(b.baseValue)} → ${JSON.stringify(b.value)}`);
       } else if (b.kind === 'plugin') {
         lines.push(`- 위치: js/plugins/${b.name}.js (새 플러그인)`, `- 무엇을 왜: ${p.note.trim() || b.description || '(설명 없음)'}`);
+      } else if (b.kind === 'josa') {
+        lines.push(`- 위치: js/plugins/${JOSA_PLUGIN_NAME}.js (새 플러그인)`, `- 무엇을 왜: ${p.note.trim() || JOSA_PLUGIN_DESCRIPTION}`);
       } else {
         lines.push(`- 게임 폰트: ${nodePath.basename(b.fontPath)}`, `- 무엇을 왜: ${p.note.trim() || '(설명 없음)'}`);
       }

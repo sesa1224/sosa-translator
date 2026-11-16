@@ -1,5 +1,5 @@
 // Patches are fixes and additions recorded as changes against the original copy (patches.json): event list
-// edits, JSON value changes, new plugins and the game font. Event and JSON patches record what they expected
+// edits, JSON value changes, new plugins, the game font and the Korean particle plugin. Event and JSON patches record what they expected
 // to find (a list hash or the old value); when the original no longer matches, the patch is a conflict and is
 // never applied, because it would land in the wrong place.
 import { existsSync } from 'node:fs';
@@ -9,6 +9,7 @@ import { openProject, originalDir } from '../project/project.js';
 import type { PathSeg } from '../types.js';
 import { readJsonFile } from '../util/json.js';
 import { listHash, sameContent } from './hash.js';
+import { JOSA_PLUGIN_NAME } from './josa.js';
 import { validateOps } from './listOps.js';
 import type { EventCommand, Patch, PatchStatus } from './types.js';
 
@@ -98,6 +99,10 @@ export async function patchStatuses(projectDir: string, patches: Patch[]): Promi
     } else if (b.kind === 'plugin') {
       if (!validPluginName(b.name)) conflict(REASON_BAD_PLUGIN_NAME);
       else if (existsSync(path.join(root, 'js', 'plugins', `${b.name}.js`))) conflict(REASON_PLUGIN_EXISTS);
+      else if (!existsSync(path.join(root, 'js', 'plugins.js'))) conflict(REASON_NO_FILE);
+      else out.push({ id: p.id, state: 'applied' });
+    } else if (b.kind === 'josa') {
+      if (existsSync(path.join(root, 'js', 'plugins', `${JOSA_PLUGIN_NAME}.js`))) conflict(REASON_PLUGIN_EXISTS);
       else if (!existsSync(path.join(root, 'js', 'plugins.js'))) conflict(REASON_NO_FILE);
       else out.push({ id: p.id, state: 'applied' });
     } else if (b.kind === 'font') {

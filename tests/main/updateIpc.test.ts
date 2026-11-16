@@ -96,6 +96,21 @@ test('가져오면 새 스냅숏이 오고, 되돌리면 전과 같다', async (
   expect(await invoke('project:snapshot')).toEqual(before);
 });
 
+test('조사 자동 맞춤: IPC 로 켜고, 업데이트를 가져와도 켜져 있고, 끈다', async () => {
+  expect(await invoke('patches:josaConflicts')).toEqual([]);
+  await invoke('patches:setJosa', true);
+  const on = await invoke('patches:list');
+  const josa = on.patches.find((p: any) => p.body.kind === 'josa');
+  expect(josa).toMatchObject({ title: '조사 자동 맞춤', enabled: true, createdBy: 'user' });
+  expect(on.statuses.find((s: any) => s.id === josa.id)).toMatchObject({ state: 'applied' });
+  const summary = await invoke('update:import', v2, '1.2');
+  expect(summary.patches.find((m: any) => m.id === josa.id)).toMatchObject({ result: 'unchanged' });
+  expect((await invoke('patches:list')).patches.find((p: any) => p.id === josa.id)).toMatchObject({ enabled: true, body: { kind: 'josa' } });
+  await invoke('update:rollback');
+  await invoke('patches:setJosa', false);
+  expect((await invoke('patches:list')).patches.some((p: any) => p.body.kind === 'josa')).toBe(false);
+});
+
 test('채팅 도구 목록과 시스템 프롬프트', () => {
   expect(CHAT_TOOLS).toContain('update_summary');
   expect(TOOL_DEFS.map((t) => t.name)).toContain('update_summary');

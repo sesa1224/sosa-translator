@@ -51,6 +51,7 @@ export * from './patches/store.js';
 export * from './events/names.js';
 export * from './events/describe.js';
 export * from './patches/apply.js';
+export * from './patches/josa.js';
 export * from './events/browse.js';
 export * from './events/usage.js';
 export * from './images/types.js';
