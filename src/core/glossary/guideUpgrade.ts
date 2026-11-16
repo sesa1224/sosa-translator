@@ -2,7 +2,20 @@
 // default guide that made the reviewer flag correct translations are brought up to the current wording here,
 // but only where the project still has the old line word for word: anything the user rewrote, and everything
 // they added, stays as it is.
-const HONORIFICS = 'ご主人様 는 "주인님".';
+import { DEFAULT_STYLE_GUIDE } from './defaultGuide.js';
+
+const TERMS_HEADING = '## 성 관련 용어\n';
+const FORMAT_HEADING = '## 형식\n';
+
+/** A whole section of the current default guide, from its heading up to the next one (the table is too long to keep twice). */
+function defaultSection(heading: string): string | null {
+  const at = DEFAULT_STYLE_GUIDE.indexOf(heading);
+  if (at < 0) return null;
+  const next = DEFAULT_STYLE_GUIDE.indexOf('\n## ', at);
+  return next < 0 ? DEFAULT_STYLE_GUIDE.slice(at) : DEFAULT_STYLE_GUIDE.slice(at, next + 1);
+}
+
+const HONORIFICS ='ご主人様 는 "주인님".';
 const PRIORITY = '- 호칭과 말투는 인물 카드가 용어집보다 우선한다. 용어집에 先生 → 선생 이 있어도, 인물 카드에 호칭이 "선생님"으로 적힌 인물의 대사에서는 "선생님"으로 쓴다.';
 const AVOID_HEAD = '## 번역투 피하기\n\n';
 const AVOID_INTRO = '읽기 불편한 번역투만 고친다. 이 장르의 독자가 캐릭터 말버릇으로 읽는 말은 아래 "남기는 말투"에 따라 남긴다.';
@@ -64,6 +77,13 @@ export function upgradeStyleGuide(guide: string): string {
   if (addKeep) {
     const at = s.indexOf(MOAN_HEADING);
     s = at < 0 ? `${s.trimEnd()}\n\n${KEEP_SECTION.trimEnd()}\n` : s.slice(0, at) + KEEP_SECTION + s.slice(at);
+  }
+  // The table of sexual terms came later. A guide that still has the default's sound-word section is taken
+  // to be the default with the user's edits, and gets the table; a guide written from scratch does not.
+  if (s.includes(MOAN_HEADING) && !s.includes(TERMS_HEADING)) {
+    const section = defaultSection(TERMS_HEADING);
+    const at = s.indexOf(FORMAT_HEADING);
+    if (section) s = at < 0 ? `${s.trimEnd()}\n\n${section.trimEnd()}\n` : s.slice(0, at) + section + s.slice(at);
   }
   return s === guide.replace(/\r\n/g, '\n') ? guide : s;
 }

@@ -132,3 +132,20 @@ test('1.3.0 기본 지침에는 말끝 끊김과 말더듬 규칙이 더해진�
   expect(up).toContain('## 이 게임의 말투\n- 말끝 끊김을 "읏"으로 붙인다.');
   expect(upgradeStyleGuide(up)).toBe(up);
 });
+
+test('1.4.0 기본 지침에는 성 관련 용어 대응표가 더해진다', () => {
+  const text = readFileSync(path.join(__dirname, '..', 'fixtures', 'style-guide-1.4.0.md'), 'utf8').replace(/\r\n/g, '\n');
+  const old = text.slice(text.search(/^## /m)).trim() + '\n';
+  expect(old).not.toContain('## 성 관련 용어');
+  expect(upgradeStyleGuide(old)).toBe(DEFAULT_STYLE_GUIDE);
+  expect(DEFAULT_STYLE_GUIDE).toContain('| チンポ, ちんぽ, おちんぽ | 자지 | 대사 기본값 |');
+  expect(DEFAULT_STYLE_GUIDE.indexOf('## 성 관련 용어')).toBeLessThan(DEFAULT_STYLE_GUIDE.indexOf('## 형식'));
+  // The table's own words are not translationese, even where they follow the original's sound.
+  expect(DEFAULT_STYLE_GUIDE).toContain('번역투로 보지 않는다');
+  // Per-game additions stay, and a guide without the "형식" section gets the table at the end.
+  const mine = old.replace(/## 형식[\s\S]*$/, '') + '## 이 게임의 말투\n어둡고 건조하다.\n';
+  const up = upgradeStyleGuide(mine);
+  expect(up).toContain('## 이 게임의 말투\n어둡고 건조하다.'); expect(up).toContain('## 성 관련 용어'); expect(upgradeStyleGuide(up)).toBe(up);
+  // A guide written from scratch is left alone.
+  expect(upgradeStyleGuide('## 내 지침\n- 자연스럽게\n')).toBe('## 내 지침\n- 자연스럽게\n');
+});
