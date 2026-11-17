@@ -343,6 +343,28 @@ select.input { padding: 0 12px; }
 .gp-bar { flex: 1 1 auto; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .gp-bar-fill { height: 100%; background: var(--accent); }
 .gp-bar-fill.over { background: var(--warn); }
+.game-preview .gp-big-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.gp-big-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-text); }
+
+/* ---- large preview over the text table ---- */
+/* Game colours, not the theme's: it stands for the game screen. No scene picture is drawn, so nothing
+   suggests the game looks like this behind the window. */
+.stage-slot { display: contents; }
+.stage { flex: 0 0 46%; min-height: 230px; box-sizing: border-box; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 12px 12px; border-radius: var(--r); border: 1px solid #2A3150; background: #0B1022; color: #fff; }
+.stage-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fit { font: 11px var(--mono); background: rgba(8, 14, 34, .75); padding: 3px 9px; border-radius: 99px; color: #8ADBCC; white-space: nowrap; }
+.fit.over { color: #FFB3A6; }
+.stage-where { font: 11px var(--mono); color: #A9B3CF; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbtn2 { height: 26px; padding: 0 10px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .35); background: rgba(8, 14, 34, .6); color: #fff; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.sbtn2:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+.stage-window { width: min(100%, 860px); align-self: center; }
+.stage-window .gp-empty .sub, .stage-window .gp-empty .warn-text { color: #C9D0E4; }
+.stage-input { width: min(100%, 860px); align-self: center; box-sizing: border-box; flex: none; padding: 8px 12px; border-radius: 8px;
+  border: 2px solid #E9EDF5; background: rgba(8, 14, 34, .88); color: #fff; font-size: 16px; line-height: 1.6; resize: vertical; min-height: 72px; }
+.stage-input::placeholder { color: #8B93AD; }
+.stage-input:focus { outline: 1px dashed rgba(255, 255, 255, .5); outline-offset: 3px; }
+.stage-foot { width: min(100%, 860px); align-self: center; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 11px; color: #8B93AD; }
 
 /* ---- game font picker ---- */
 .fp-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }

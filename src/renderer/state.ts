@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { filterRows } from '../shared/rows';
 import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
@@ -50,6 +51,8 @@ export interface AppState {
   /** The user closed the job bar; it comes back with the next progress event. */
   jobDismissed: boolean;
   rightTab: 'item' | 'chat';
+  /** The selected line's game preview is drawn large over the text table ("크게 보며 고치기"). */
+  bigPreview: boolean;
   attachedId: string | null;
   chat: ChatState;
   claudePath: string | null;
@@ -105,7 +108,7 @@ const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
 function initial(): AppState {
   return {
     ready: false, settings: null, projects: [], snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, windowMaximized: false, lastSaved: null, build: { kind: 'idle' },
     fontPickerRequest: 0,
@@ -122,6 +125,9 @@ const listeners = new Set<() => void>();
 function set(patch: Partial<AppState> | ((s: AppState) => Partial<AppState>)): void {
   const p = typeof patch === 'function' ? patch(state) : patch;
   state = { ...state, ...p };
+  // The stage edits the item tab's draft, so it cannot stay open once the chat takes that place. Checked here
+  // because many actions switch to the chat (talkAbout, attaching a picture or an event, chat drafts).
+  if (state.rightTab === 'chat' && state.bigPreview) state = { ...state, bigPreview: false };
   for (const l of listeners) l();
 }
 
@@ -148,7 +154,7 @@ function adoptSnapshot(snap: Snapshot | null): void {
   set({
     snapshot: { meta: snap.meta, gameTitle: snap.gameTitle, stats: snap.stats, scopes: snap.scopes },
     rowOrder: snap.rows.map((r) => r.id), rowsById, selectedId: null, detail: null, attachedId: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', build: { kind: 'idle' }, idFilter: null, glossaryDirty: false,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, build: { kind: 'idle' }, idFilter: null, glossaryDirty: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
   });
 }
@@ -352,6 +358,10 @@ const actions = {
   setRightTab(rightTab: AppState['rightTab']): void {
     set({ rightTab });
   },
+  /** Opens or closes the large preview; opening brings the item tab back, whose draft the stage edits. */
+  setBigPreview(on: boolean): void {
+    set(on ? { bigPreview: true, rightTab: 'item' } : { bigPreview: false });
+  },
   async selectRow(id: string | null): Promise<void> {
     set({ selectedId: id, detail: null, ...(id ? { rightTab: 'item' as const, view: 'text' as const } : {}) });
     if (id) await refreshDetail(id);
@@ -533,6 +543,12 @@ export function jobActive(s: AppState): boolean {
 /** Rows in project order. */
 export function orderedRows(s: AppState): Row[] {
   return s.rowOrder.map((id) => s.rowsById[id]);
+}
+
+/** The rows the text table lists: project order, narrowed by the picked-lines filter and the query. */
+export function shownRows(all: Row[], query: RowQuery, idFilter: string[] | null): Row[] {
+  const only = idFilter ? new Set(idFilter) : null;
+  return filterRows(only ? all.filter((r) => only.has(r.id)) : all, query);
 }
 
 // ---- events, patches, test play ----

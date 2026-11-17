@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
 import { filterRows, scrollMarks } from '../../shared/rows';
 import { num, STATUS_LABEL } from '../format';
-import { jobActive, orderedRows, useApp } from '../state';
+import { jobActive, orderedRows, shownRows, useApp } from '../state';
+import { StageSlot, useRevealRow } from './BigPreview';
 import { CodeText } from './CodeText';
 import { ReviewDialog } from './ReviewDialog';
 import { StoryView } from './StoryView';
@@ -206,10 +207,7 @@ export function TextTable() {
   const app = useApp();
   const { query, selectedId, snapshot, idFilter } = app;
   const all = useMemo(() => orderedRows(app), [app.rowOrder, app.rowsById]);
-  const rows = useMemo(() => {
-    const only = idFilter ? new Set(idFilter) : null;
-    return filterRows(only ? all.filter((r) => only.has(r.id)) : all, query);
-  }, [all, query, idFilter]);
+  const rows = useMemo(() => shownRows(all, query, idFilter), [all, query, idFilter]);
   const marks = useMemo(() => scrollMarks(rows), [rows]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const v = useVirtualizer({
@@ -227,6 +225,10 @@ export function TextTable() {
     v.scrollToIndex(next, { align: 'auto' });
     void useApp.selectRow(rows[next].id);
   };
+  useRevealRow((id) => {
+    const i = rows.findIndex((r) => r.id === id);
+    if (i >= 0) v.scrollToIndex(i, { align: 'auto' });
+  }, [rows, v]);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
@@ -236,6 +238,7 @@ export function TextTable() {
 
   return (
     <div className="text-view">
+      <StageSlot />
       <div className="text-head">
         <h1 className="page-title">텍스트</h1>
         <TextModeSwitch />

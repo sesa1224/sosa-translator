@@ -4,9 +4,9 @@ import { keyLabel } from '../../core/decisions/keys';
 import { changedWords } from '../../core/update/carry';
 import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row, type SimilarTranslation } from '../../shared/api';
 import { jobActive, useApp } from '../state';
+import { hasGamePreview, ItemPreview } from './BigPreview';
 import { CodeText } from './CodeText';
 import { DiffPieces as Pieces } from './DiffPieces';
-import { GamePreview } from './GamePreview';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
   'control-codes': '제어 코드',
@@ -145,7 +145,7 @@ export function ItemPanel() {
           </div>
         ))}
       </div>
-      {row.kind === 'dialogue' && <GamePreview unitId={row.id} text={draft} />}
+      {hasGamePreview(row) && <ItemPreview row={row} draft={draft} onDraft={setDraft} onKey={onKey} saving={saving} />}
       {error && <span className="err-text small" role="alert">{error}</span>}
       <div className="grow" />
       {approveBlock && <span className="sub small">{approveBlock}</span>}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { availableWidth, textLeft } from '../../core/preview/windows';
-import type { Layout, LaidLine, WindowMetrics } from '../../shared/api';
+import type { Layout, LaidLine, PreviewState, WindowMetrics } from '../../shared/api';
 import { ensureFontFace } from '../preview/fontFace';
 import { usePalette, usePreviewState } from '../preview/usePreview';
 import { useApp } from '../state';
@@ -115,8 +115,19 @@ export function LayoutStats({ layout, metrics }: { layout: Layout; metrics: Wind
   );
 }
 
-/** "Game screen preview" on the item tab: the edited text laid out in the game's message window. */
-export function GamePreview({ unitId, text }: { unitId: string; text: string }) {
+/** What the game preview needs to draw one line: the window, its layout, colours and font. */
+export interface PreviewLayout {
+  state: PreviewState | null;
+  layout: Layout | null;
+  palette: string[];
+  family: string | null;
+}
+
+/**
+ * Lays out the text in the game's message window, again 150ms after it stops changing. One call serves both
+ * the item tab's preview and the large stage, so the two never disagree and typing asks main once.
+ */
+export function usePreviewLayout(unitId: string, text: string): PreviewLayout {
   const state = usePreviewState();
   const gameKey = useApp().snapshot?.meta.gameDir ?? '';
   const palette = usePalette(gameKey);
@@ -142,34 +153,47 @@ export function GamePreview({ unitId, text }: { unitId: string; text: string }) 
     return () => { alive = false; };
   }, [fontPath]);
 
-  let body: React.ReactNode = null;
+  return { state, layout, palette, family };
+}
+
+/** No font picked, the font file gone, or nothing to show yet; null when the window can be drawn. */
+export function previewProblem(preview: PreviewLayout): React.ReactNode {
+  const { state } = preview;
   if (state && !state.settings.fontPath) {
-    body = (
+    return (
       <div className="gp-empty">
         <span className="sub small">게임 폰트를 고르면 실제 폭으로 볼 수 있어요</span>
         <button type="button" className="btn small-btn" onClick={() => useApp.openFontPicker()}>폰트 고르기</button>
       </div>
     );
-  } else if (state?.fontMissing) {
-    body = (
+  }
+  if (state?.fontMissing) {
+    return (
       <div className="gp-empty">
         <span className="warn-text small">고른 폰트 파일을 찾을 수 없어요</span>
         <button type="button" className="btn small-btn" onClick={() => useApp.openFontPicker()}>폰트 고르기</button>
       </div>
     );
-  } else if (state && layout) {
-    body = (
-      <>
-        <MessageWindow layout={layout} metrics={state.metrics} palette={palette} family={family} />
-        <LayoutStats layout={layout} metrics={state.metrics} />
-      </>
-    );
   }
+  return null;
+}
 
+/** "Game screen preview" on the item tab: the edited text laid out in the game's message window. */
+export function GamePreview({ preview, big, onBig }: { preview: PreviewLayout; big?: boolean; onBig?: () => void }) {
+  const { state, layout, palette, family } = preview;
+  const problem = previewProblem(preview);
   return (
     <section className="field game-preview" aria-label="게임 화면 미리보기">
-      <span className="label">게임 화면 미리보기</span>
-      {body}
+      <div className="row-between">
+        <span className="label">게임 화면 미리보기</span>
+        {onBig && <button type="button" className="btn ghost small-btn gp-big-btn" aria-pressed={big ?? false} onClick={onBig}>크게 보며 고치기</button>}
+      </div>
+      {problem ?? (state && layout && (
+        <>
+          <MessageWindow layout={layout} metrics={state.metrics} palette={palette} family={family} />
+          <LayoutStats layout={layout} metrics={state.metrics} />
+        </>
+      ))}
       <span className="hint">{MIMIC_NOTE}</span>
     </section>
   );
