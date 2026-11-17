@@ -5,7 +5,7 @@ import { ICON } from '../icons';
 import { usePreviewState } from '../preview/usePreview';
 import { eventActions, useApp, type AttachedEvent } from '../state';
 import { Inkdrop } from './Inkdrop';
-import { EmptyState, NavCount, ScreenHead, Switch, Tile } from './ui';
+import { EmptyState, NavCount, ScreenHead, SetRow, Switch, Tile } from './ui';
 
 /** The tile at the start of a patch row says what kind of change it is. */
 const PATCH_ICON: Record<Patch['body']['kind'], LucideIcon> = { event: GitBranchIcon, json: BracesIcon, plugin: PuzzleIcon, font: TypeIcon, josa: SpellCheckIcon };
@@ -255,16 +255,24 @@ export function FontEmbedSection() {
     <section className="card settings-card" aria-labelledby="set-embed">
       <span id="set-embed" className="card-title">폰트를 게임에 넣기</span>
       {!chosen ? (
-        <span className="hint">위에서 게임 폰트를 먼저 고르세요</span>
-      ) : (
         <>
-          <span>{`고른 폰트: ${name}`}</span>
-          <Switch label="이 폰트를 패치에 넣기" checked={on} onChange={toggle} />
-          <Switch label="쓰는 글자만 남겨 용량 줄이기" checked={subset} onChange={(e) => changeSubset(e.target.checked)} />
-          <span className="hint">폰트 파일이 패치에 들어가요. 배포해도 되는 폰트인지 확인하세요(본명조, 본고딕, 나눔 계열, Pretendard 등은 괜찮아요. 윈도우 기본 폰트나 유료 폰트는 안 돼요).</span>
+          <span className="hint">위에서 게임 폰트를 먼저 고르세요</span>
+          <LastFontEmbed />
         </>
+      ) : (
+        <div className="set-list">
+          <SetRow id="embed-on" name="이 폰트를 패치에 넣기" desc={<>
+            <span className="set-value">{`고른 폰트: ${name}`}</span>
+            <span>폰트 파일이 패치에 들어가요. 배포해도 되는 폰트인지 확인하세요(본명조, 본고딕, 나눔 계열, Pretendard 등은 괜찮아요. 윈도우 기본 폰트나 유료 폰트는 안 돼요).</span>
+            <LastFontEmbed />
+          </>}>
+            <input id="embed-on" type="checkbox" role="switch" className="sw" checked={on} onChange={toggle} />
+          </SetRow>
+          <SetRow id="embed-subset" name="쓰는 글자만 남겨 용량 줄이기">
+            <input id="embed-subset" type="checkbox" role="switch" className="sw" checked={subset} onChange={(e) => changeSubset(e.target.checked)} />
+          </SetRow>
+        </div>
       )}
-      <LastFontEmbed />
 
       {error && <span className="err-text small" role="alert">{error}</span>}
     </section>

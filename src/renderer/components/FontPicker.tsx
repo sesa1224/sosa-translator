@@ -6,6 +6,7 @@ import { ensureFontFace } from '../preview/fontFace';
 import { usePreviewState } from '../preview/usePreview';
 import { orderedRows, useApp } from '../state';
 import { MIMIC_NOTE } from './GamePreview';
+import { SetRow } from './ui';
 
 const HOVER_DELAY = 200;
 const SEARCH_DELAY = 150;
@@ -96,7 +97,6 @@ function MetricsEditor({ metrics, detected, overrides }: { metrics: WindowMetric
         <button type="button" className="btn ghost small-btn" disabled={Object.keys(overrides).length === 0}
           onClick={() => void window.api.preview.setOverrides({})}>자동 값으로 되돌리기</button>
       </div>
-      <span className="hint">대사창을 바꾸는 플러그인을 쓰는 게임이면 여기서 맞춰 주세요.</span>
     </details>
   );
 }
@@ -201,8 +201,16 @@ export function FontPicker() {
   return (
     <section ref={sectionRef} className="card settings-card font-picker" aria-labelledby="set-game-font">
       <span id="set-game-font" className="card-title">게임 폰트</span>
-      <span className="hint">여기서 고른 폰트는 미리보기와 폭 검사에 쓰여요. 게임에 넣는 기능은 아직 없어요.</span>
-      {state?.fontMissing && <span className="warn-text small" role="status">고른 폰트 파일을 찾을 수 없어요</span>}
+      {/* The settings rows first; the list and the sample are a browser, so they stay a block under them. */}
+      <div className="set-list">
+        <SetRow name="폰트 고르기" desc={<>
+          여기서 고른 폰트는 미리보기와 폭 검사에 쓰여요. 게임에 넣는 기능은 아직 없어요.
+          {state?.fontMissing && <span className="warn-text small" role="status">고른 폰트 파일을 찾을 수 없어요</span>}
+        </>}>
+          <button type="button" className="btn small-btn" onClick={() => void pickFile()}>폰트 파일 직접 고르기</button>
+          <button type="button" className="btn ghost small-btn" disabled={!chosen} onClick={() => void pick(null)}>폰트 정하지 않기</button>
+        </SetRow>
+      </div>
       <div className="fp-cols">
         <div className="fp-left">
           <input className="input" type="search" aria-label="폰트 검색" placeholder="폰트 이름" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -231,10 +239,6 @@ export function FontPicker() {
               })}
             </div>
           </div>
-          <div className="fp-actions">
-            <button type="button" className="btn small-btn" onClick={() => void pickFile()}>폰트 파일 직접 고르기</button>
-            <button type="button" className="btn ghost small-btn" disabled={!chosen} onClick={() => void pick(null)}>폰트 정하지 않기</button>
-          </div>
           {list && list.skippedCollections > 0 && <span className="hint">{`모음 파일(.ttc) ${num(list.skippedCollections)}개는 아직 쓸 수 없어요`}</span>}
         </div>
         <div className="fp-right">
@@ -255,7 +259,13 @@ export function FontPicker() {
           <span className="hint">{MIMIC_NOTE}</span>
         </div>
       </div>
-      {state && <MetricsEditor metrics={state.metrics} detected={state.detected} overrides={state.settings.overrides} />}
+      {state && (
+        <div className="set-list">
+          <SetRow name="대사창 치수" desc="대사창을 바꾸는 플러그인을 쓰는 게임이면 여기서 맞춰 주세요." wide>
+            <MetricsEditor metrics={state.metrics} detected={state.detected} overrides={state.settings.overrides} />
+          </SetRow>
+        </div>
+      )}
       {error && <span className="err-text small" role="alert">{error}</span>}
     </section>
   );

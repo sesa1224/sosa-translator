@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TEXT_WINDOW_LABEL, TEXT_WINDOWS, type RewrapReport, type RewrapScope, type TextWindow, type TextWindowInfo } from '../../shared/api';
 import { num } from '../format';
 import { usePreviewState } from '../preview/usePreview';
+import { SetRow } from './ui';
 
 /** "한글 약 n자" for a line width, or null without a font. */
 export function hangulChars(width: number, hangulWidth: number | null): number | null {
@@ -59,18 +60,19 @@ function WindowRow({ w, info, onError }: { w: TextWindow; info: TextWindowInfo; 
   };
   const chars = hangulChars(info.limit.width, info.hangulWidth);
   const hasOverride = info.override.width !== undefined || info.override.maxLines !== undefined;
+  // A settings row: the window and how many characters fit on the left, its two numbers and the reset on the right.
   return (
-    <div className="tw-row" role="group" aria-label={label}>
-      <span className="tw-name">{label}</span>
-      <NumberField id={`tw-${w}-width`} label="한 줄 너비(px)" value={info.override.width} placeholder={info.detected.width} onSave={(v) => save({ width: v })} />
-      <NumberField id={`tw-${w}-lines`} label="줄 수" value={info.override.maxLines} placeholder={info.detected.maxLines} onSave={(v) => save({ maxLines: v })} />
+    <SetRow name={label} className="tw-row" role="group" aria-label={label} desc={
       <span className="small tw-chars" data-testid={`tw-${w}-chars`}>
         {chars === null ? '폰트를 고르면 글자 수가 보여요' : `한글 약 ${num(chars)}자`}
         {w === 'message' && <span className="sub">{` · 얼굴 그림이 있으면 ${num(Math.max(0, info.limit.width - info.faceIndent))}px`}</span>}
       </span>
+    }>
+      <NumberField id={`tw-${w}-width`} label="한 줄 너비(px)" value={info.override.width} placeholder={info.detected.width} onSave={(v) => save({ width: v })} />
+      <NumberField id={`tw-${w}-lines`} label="줄 수" value={info.override.maxLines} placeholder={info.detected.maxLines} onSave={(v) => save({ maxLines: v })} />
       <button type="button" className="btn ghost small-btn" disabled={!hasOverride} aria-label={`${label} 기준 지우기`}
         onClick={() => save({ width: null, maxLines: null })}>감지한 값으로</button>
-    </div>
+    </SetRow>
   );
 }
 
@@ -100,11 +102,14 @@ export function TextWindowSettings() {
     <section className="card settings-card" aria-labelledby="set-text-windows">
       <span id="set-text-windows" className="card-title">창 크기와 줄바꿈</span>
       <span className="hint">대사창과 아이템·스킬 설명창은 너비와 줄 수가 달라요. 비워 두면 게임에서 읽은 값(흐린 글자)을 써요.</span>
-      {TEXT_WINDOWS.map((w) => <WindowRow key={w} w={w} info={windows[w]} onError={setError} />)}
-      <div className="row-gap">
-        <button type="button" className="btn" disabled={!fontReady || busy} onClick={() => void rewrap()}>줄바꿈 다시 맞추기</button>
-        {!fontReady && <span className="sub small">게임 폰트를 고르면 쓸 수 있어요</span>}
-        {note && <span className="mute small" role="status">{note}</span>}
+      <div className="set-list">
+        {TEXT_WINDOWS.map((w) => <WindowRow key={w} w={w} info={windows[w]} onError={setError} />)}
+        <SetRow name="창을 넘는 줄" desc={<>
+          {fontReady ? '글자는 그대로 두고 줄을 나누는 자리만 옮겨요.' : <span className="sub small">게임 폰트를 고르면 쓸 수 있어요</span>}
+          {note && <span className="mute small" role="status">{note}</span>}
+        </>}>
+          <button type="button" className="btn" disabled={!fontReady || busy} onClick={() => void rewrap()}>줄바꿈 다시 맞추기</button>
+        </SetRow>
       </div>
       {error && <span className="err-text small" role="alert">{error}</span>}
     </section>

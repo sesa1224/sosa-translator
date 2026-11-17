@@ -5,7 +5,7 @@ import type { FontInfo, ImageEntry, Rect, Region, RegionOverflow } from '../../s
 import { num } from '../format';
 import { ICON } from '../icons';
 import { useApp } from '../state';
-import { EmptyState, ScreenHead, Seg, Tile } from './ui';
+import { EmptyState, ScreenHead, Seg, SetRow, Tile } from './ui';
 
 type Filter = 'all' | 'none' | 'todo' | 'done' | 'manual' | 'skip' | 'problem';
 const FILTERS: [Filter, string][] = [['all', '전체'], ['none', '안 본 것'], ['todo', '할 것'], ['done', '끝남'], ['manual', '직접 고침'], ['skip', '건너뜀'], ['problem', '문제 있음']];
@@ -626,14 +626,15 @@ export function ImageFolderSettings() {
   return (
     <section className="card settings-card" aria-labelledby="set-images">
       <span id="set-images" className="card-title">이미지</span>
-      <div className="field"><label htmlFor="image-folders">글자가 있을 만한 그림을 찾을 폴더 (한 줄에 하나)</label>
-        <textarea id="image-folders" className="input mono iv-folders" rows={5} value={text} onChange={(e) => setText(e.target.value)} />
-      </div>
-      <div className="row-gap">
-        <button type="button" className="btn small-btn" disabled={text === saved}
-          onClick={() => void apply(text.split('\n').map((l) => l.trim()).filter(Boolean))}>적용</button>
-        <button type="button" className="btn ghost small-btn" onClick={() => void apply(null)}>기본값으로</button>
-        <span className="hint">{`기본값: ${defaults.join(', ')}`}</span>
+      <div className="set-list">
+        <SetRow id="image-folders" name="글자가 있을 만한 그림을 찾을 폴더 (한 줄에 하나)" desc={`기본값: ${defaults.join(', ')}`} wide className="set-stack">
+          <textarea id="image-folders" className="input mono iv-folders" rows={5} value={text} onChange={(e) => setText(e.target.value)} />
+          <div className="row-gap">
+            <button type="button" className="btn small-btn" disabled={text === saved}
+              onClick={() => void apply(text.split('\n').map((l) => l.trim()).filter(Boolean))}>적용</button>
+            <button type="button" className="btn ghost small-btn" onClick={() => void apply(null)}>기본값으로</button>
+          </div>
+        </SetRow>
       </div>
       {error && <span className="err-text small" role="alert">{error}</span>}
     </section>

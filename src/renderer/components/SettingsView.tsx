@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { DEFAULT_DECIDE_MODEL, type AppSettings, type StageModels, type ThemeName } from '../../shared/api';
+import { usePreviewState } from '../preview/usePreview';
 import { useApp } from '../state';
 import { FontPicker } from './FontPicker';
 import { ImageFolderSettings } from './ImageView';
 import { FontEmbedSection } from './PatchView';
 import { TextWindowSettings } from './TextWindowSettings';
-import { ScreenHead } from './ui';
+import { ScreenHead, SetRow } from './ui';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 
@@ -14,6 +15,7 @@ const TOC: [string, string][] = [
   ['set-theme', '테마'], ['set-motion', '움직임'], ['set-stages', '단계별 모델'], ['set-models', '모델'], ['set-cli', 'Claude CLI'], ['set-dir', '프로젝트 폴더 위치'],
   ['set-game-font', '게임 폰트'], ['set-text-windows', '창 크기와 줄바꿈'], ['set-embed', '폰트를 게임에 넣기'], ['set-images', '이미지'],
 ];
+const TOC_IDS = TOC.map(([id]) => id);
 
 /** Names shown for each theme; the first two keep the words the settings used before there were more. */
 const THEME_CARDS: { id: ThemeName; name: string; note?: string }[] = [
@@ -29,6 +31,8 @@ export function SettingsView() {
   const [cli, setCli] = useState(settings?.claudePath ?? '');
   const [dir, setDir] = useState(settings?.projectsDir ?? '');
   const [error, setError] = useState<string | null>(null);
+  const preview = usePreviewState();
+  const [current, setCurrent] = useCurrentGroup(TOC_IDS, `${settings ? 1 : 0}${preview?.windows ? 1 : 0}`);
 
   useEffect(() => { setCli(settings?.claudePath ?? ''); }, [settings?.claudePath]);
   useEffect(() => { setDir(settings?.projectsDir ?? ''); }, [settings?.projectsDir]);
@@ -72,7 +76,8 @@ export function SettingsView() {
         {/* People come here for one value: the groups are listed so the way to it is one click. */}
         <nav className="set-toc" aria-label="설정 차례">
           {TOC.map(([id, name]) => (
-            <button key={id} type="button" className="toc-item" onClick={() => document.getElementById(id)?.closest('section')?.scrollIntoView({ block: 'start' })}>{name}</button>
+            <button key={id} type="button" className={`toc-item${current === id ? ' on' : ''}`} aria-current={current === id ? 'location' : undefined}
+              onClick={() => { setCurrent(id); document.getElementById(id)?.closest('section')?.scrollIntoView({ block: 'start' }); }}>{name}</button>
           ))}
         </nav>
         <div className="set-main">
@@ -160,25 +165,24 @@ export function SettingsView() {
 
           <section className="card settings-card" aria-labelledby="set-cli">
             <span id="set-cli" className="card-title">Claude CLI</span>
-            <div className="inline-field">
-              <div className="field grow"><label htmlFor="cli-path">Claude CLI 경로</label>
-                <input id="cli-path" className="input mono" value={cli} placeholder="비우면 자동으로 찾아요" onChange={(e) => setCli(e.target.value)} /></div>
-              <button type="button" className="btn" aria-label="CLI 경로 적용" onClick={() => void save({ claudePath: cli.trim() || null })}>적용</button>
+            <div className="set-list">
+              <SetRow id="cli-path" name="Claude CLI 경로" wide
+                desc={claudePath ? <>지금 쓰는 경로 <span className="mono ok-text path-text">{claudePath}</span></> : <span className="warn-text">Claude CLI를 찾지 못했어요</span>}>
+                <input id="cli-path" className="input mono" value={cli} placeholder="비우면 자동으로 찾아요" onChange={(e) => setCli(e.target.value)} />
+                <button type="button" className="btn" aria-label="CLI 경로 적용" onClick={() => void save({ claudePath: cli.trim() || null })}>적용</button>
+              </SetRow>
             </div>
-            <span className="small">
-              {claudePath ? <>지금 쓰는 경로 <span className="mono ok-text path-text">{claudePath}</span></> : <span className="warn-text">Claude CLI를 찾지 못했어요</span>}
-            </span>
           </section>
 
           <section className="card settings-card" aria-labelledby="set-dir">
             <span id="set-dir" className="card-title">프로젝트 폴더 위치</span>
-            <div className="inline-field">
-              <div className="field grow"><label htmlFor="projects-dir">프로젝트 폴더</label>
-                <input id="projects-dir" className="input mono" value={dir} onChange={(e) => setDir(e.target.value)} /></div>
-              <button type="button" className="btn" aria-label="프로젝트 폴더 적용" disabled={!dir.trim()}
-                onClick={() => void save({ projectsDir: dir.trim() })}>적용</button>
+            <div className="set-list">
+              <SetRow id="projects-dir" name="프로젝트 폴더" wide desc="새 프로젝트가 이 폴더 아래에 만들어져요. 이미 있는 프로젝트는 옮기지 않아요.">
+                <input id="projects-dir" className="input mono" value={dir} onChange={(e) => setDir(e.target.value)} />
+                <button type="button" className="btn" aria-label="프로젝트 폴더 적용" disabled={!dir.trim()}
+                  onClick={() => void save({ projectsDir: dir.trim() })}>적용</button>
+              </SetRow>
             </div>
-            <span className="hint">새 프로젝트가 이 폴더 아래에 만들어져요. 이미 있는 프로젝트는 옮기지 않아요.</span>
           </section>
 
           <FontPicker />
@@ -192,15 +196,41 @@ export function SettingsView() {
   );
 }
 
-/** One setting: its name (and what it does) on the left, the control on the right. */
-function SetRow({ id, name, desc, children }: { id: string; name: string; desc?: string; children: ReactNode }) {
-  return (
-    <div className="set-row">
-      <div className="set-l">
-        <label htmlFor={id}>{name}</label>
-        {desc && <span className="hint">{desc}</span>}
-      </div>
-      <div className="set-c">{children}</div>
-    </div>
-  );
+/**
+ * The group the reader is looking at, for the contents list: the first group, in list order, that shows in the
+ * upper part of the scrolling area. Without IntersectionObserver (the test DOM) it stays on the last one picked.
+ */
+function useCurrentGroup(ids: string[], shownKey: string): [string, (id: string) => void] {
+  const [current, setCurrent] = useState(ids[0]);
+  useEffect(() => {
+    if (typeof IntersectionObserver !== 'function') return;
+    const sections = new Map<Element, string>();
+    for (const id of ids) {
+      const s = document.getElementById(id)?.closest('section');
+      if (s) sections.set(s, id);
+    }
+    const shown = new Set<string>();
+    // The last short groups never reach the top part; scrolled to the end, the reader is looking at the last one.
+    const scroller = [...sections.keys()][0]?.closest('.settings');
+    const atEnd = () => !!scroller && scroller.scrollTop > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+    const pick = () => {
+      const id = atEnd() ? ids[ids.length - 1] : ids.find((x) => shown.has(x));
+      if (id) setCurrent(id);
+    };
+    // Only the top 40% counts, so the group being read is the one near the top, not one barely peeking in below.
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const id = sections.get(e.target);
+        if (!id) continue;
+        if (e.isIntersecting) shown.add(id); else shown.delete(id);
+      }
+      pick();
+    }, { rootMargin: '0px 0px -60% 0px' });
+    for (const s of sections.keys()) io.observe(s);
+    const onScroll = () => { if (atEnd()) pick(); };
+    scroller?.addEventListener('scroll', onScroll, { passive: true });
+    return () => { io.disconnect(); scroller?.removeEventListener('scroll', onScroll); };
+    // shownKey changes when groups that render late (they wait for their data) come in, so they are watched too.
+  }, [ids.join('|'), shownKey]);
+  return [current, setCurrent];
 }

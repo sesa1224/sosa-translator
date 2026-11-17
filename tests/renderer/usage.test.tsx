@@ -5,7 +5,7 @@ import { App } from '../../src/renderer/App';
 import { expect, test, vi } from 'vitest';
 import { useApp } from '../../src/renderer/state';
 import type { Glossary, Row } from '../../src/shared/api';
-import { baseRows, errorRowId, eventsFake, fakeApi, installApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
+import { baseRows, errorRowId, eventsFake, fakeApi, installApi, itemId, openFakeWith, previewFake, type FakeApi } from './fakeApi';
 
 let api: FakeApi;
 let user: UserEvent;
@@ -246,6 +246,91 @@ test('설정: 왼쪽 차례로 그 묶음에 가고, 묶음 안은 이름·설�
   expect(row.querySelector('.set-l')).toHaveTextContent('대본 읽기');
   expect(row.querySelector('.set-c select')).toBe(screen.getByLabelText('대본 읽기'));
   expect(screen.getByRole('switch', { name: '움직임 켜기' }).closest('.set-row')).not.toBeNull();
+});
+
+test('설정: 게임 폰트, 창 크기, 폰트 넣기, 이미지, CLI, 폴더도 이름은 왼쪽 조절 칸은 오른쪽', async () => {
+  cleanup();
+  api = fakeApi();
+  const pv = previewFake(api);
+  const win = { limit: { width: 768, maxLines: 4, fontSize: 26 }, detected: { width: 768, maxLines: 4, fontSize: 26 }, override: {}, hangulWidth: 26, faceIndent: 164 };
+  pv.state = { ...pv.state, settings: { ...pv.state.settings, fontPath: 'C:/fonts/NanumGothic.ttf', fontName: '나눔고딕' }, windows: { message: win, help: win } };
+  user = await openFakeWith(api);
+  act(() => { useApp.setView('settings'); });
+  await screen.findByRole('heading', { name: '설정' });
+  const rowOf = (el: HTMLElement) => {
+    const row = el.closest('.set-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    return row;
+  };
+  const inRight = (el: HTMLElement) => expect(rowOf(el).querySelector('.set-c')).toContainElement(el);
+  // Game font: the chosen font and its buttons on a row; the list and the sample stay a block under it.
+  inRight(screen.getByRole('button', { name: '폰트 정하지 않기' }));
+  inRight(screen.getByRole('button', { name: '폰트 파일 직접 고르기' }));
+  expect(rowOf(screen.getByRole('button', { name: '폰트 정하지 않기' })).querySelector('.set-l')).toHaveTextContent('여기서 고른 폰트는 미리보기와 폭 검사에 쓰여요');
+  expect(screen.getByRole('listbox', { name: '폰트 목록' }).closest('.set-row')).toBeNull();
+  // Window sizes: the window's name on the left, its two numbers and the reset on the right.
+  const message = await screen.findByRole('group', { name: '대사창' });
+  expect(message).toHaveClass('set-row');
+  expect(message.querySelector('.set-l')).toHaveTextContent('대사창');
+  expect(message.querySelector('.set-l')).toContainElement(screen.getByTestId('tw-message-chars'));
+  inRight(within(message).getByLabelText('한 줄 너비(px)'));
+  inRight(within(message).getByRole('button', { name: '대사창 기준 지우기' }));
+  inRight(screen.getByRole('button', { name: '줄바꿈 다시 맞추기' }));
+  // Font into the game: each switch is a row.
+  const embed = await screen.findByRole('region', { name: '폰트를 게임에 넣기' });
+  inRight(within(embed).getByRole('switch', { name: '이 폰트를 패치에 넣기' }));
+  inRight(within(embed).getByRole('switch', { name: '쓰는 글자만 남겨 용량 줄이기' }));
+  // Pictures, CLI and the projects folder.
+  inRight(screen.getByLabelText('글자가 있을 만한 그림을 찾을 폴더 (한 줄에 하나)'));
+  inRight(screen.getByRole('button', { name: '기본값으로' }));
+  inRight(screen.getByLabelText('Claude CLI 경로'));
+  inRight(screen.getByRole('button', { name: 'CLI 경로 적용' }));
+  inRight(screen.getByLabelText('프로젝트 폴더'));
+});
+
+test('설정 차례는 스크롤을 따라 지금 보고 있는 묶음을 표시한다', async () => {
+  let fire: ((entries: { target: Element; isIntersecting: boolean }[]) => void) | null = null;
+  const observed: Element[] = [];
+  class FakeObserver {
+    constructor(cb: (entries: { target: Element; isIntersecting: boolean }[]) => void) { fire = cb; }
+    observe(el: Element) { observed.push(el); }
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal('IntersectionObserver', FakeObserver);
+  try {
+    await open();
+    act(() => { useApp.setView('settings'); });
+    await screen.findByRole('heading', { name: '설정' });
+    const toc = screen.getByRole('navigation', { name: '설정 차례' });
+    const current = () => within(toc).getAllByRole('button').filter((b) => b.getAttribute('aria-current') === 'location').map((b) => b.textContent);
+    expect(current()).toEqual(['테마']);
+    const section = (id: string) => document.getElementById(id)!.closest('section')!;
+    expect(observed).toContain(section('set-models'));
+    act(() => fire!([{ target: section('set-theme'), isIntersecting: false }, { target: section('set-models'), isIntersecting: true }, { target: section('set-cli'), isIntersecting: true }]));
+    expect(current()).toEqual(['모델']);
+    act(() => fire!([{ target: section('set-models'), isIntersecting: false }]));
+    expect(current()).toEqual(['Claude CLI']);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test('IntersectionObserver 가 없어도 설정 차례는 그대로 쓸 수 있다', async () => {
+  vi.stubGlobal('IntersectionObserver', undefined);
+  try {
+    await open();
+    act(() => { useApp.setView('settings'); });
+    await screen.findByRole('heading', { name: '설정' });
+    const toc = screen.getByRole('navigation', { name: '설정 차례' });
+    const target = document.getElementById('set-dir')!.closest('section') as HTMLElement;
+    target.scrollIntoView = vi.fn();
+    await user.click(within(toc).getByRole('button', { name: '프로젝트 폴더 위치' }));
+    expect(target.scrollIntoView).toHaveBeenCalled();
+    expect(within(toc).getByRole('button', { name: '프로젝트 폴더 위치' })).toHaveAttribute('aria-current', 'location');
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
 
 // ---- project picker ----

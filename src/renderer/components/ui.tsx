@@ -2,7 +2,7 @@
 // slides to the picked button, a switch, a tinted callout and an empty state. Screens use these instead of
 // dressing themselves up one by one, so a change here reaches all of them.
 import { TriangleAlertIcon, type LucideIcon } from 'lucide-react';
-import { useLayoutEffect, useRef, type InputHTMLAttributes, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
 import { num } from '../format';
 import { ICON } from '../icons';
 
@@ -93,6 +93,25 @@ export function EmptyState({ art, title, children, actions }: { art: ReactNode; 
       <h3>{title}</h3>
       {children && <p>{children}</p>}
       {actions && <div className="es-actions">{actions}</div>}
+    </div>
+  );
+}
+
+/**
+ * One setting: its name (and what it does) on the left, the control on the right. With `id` the name labels that
+ * control; a row of several controls leaves it out and labels each of them itself. `wide` lets the right side take
+ * the room left over, for a box or a set of fields rather than one small control.
+ */
+export function SetRow({ id, name, desc, wide, className, children, ...rest }: {
+  id?: string; name: ReactNode; desc?: ReactNode; wide?: boolean; children: ReactNode;
+} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>) {
+  return (
+    <div className={`set-row${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`} {...rest}>
+      <div className="set-l">
+        {id ? <label htmlFor={id}>{name}</label> : <span className="set-name">{name}</span>}
+        {desc && <span className="hint">{desc}</span>}
+      </div>
+      <div className="set-c">{children}</div>
     </div>
   );
 }
