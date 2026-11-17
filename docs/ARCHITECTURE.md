@@ -45,7 +45,7 @@ Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tool
 
 ## 3. 기능별로 거치는 모듈
 
-모든 기능은 같은 모양으로 돈다: 화면의 버튼 → `src/renderer/state.ts` 의 액션 → `window.api` → `src/main/ipc.ts` 의 처리기 → `ProjectService` 나 작업 클래스 → 파일 저장 → 이벤트 → 메인이 `PushEvents` 로 알림 → `state.ts` 가 상태를 고침 → 화면이 다시 그려짐. 작업(번역, 검수, 판단, 초안, 패치노트 다듬기, 그림 다시 찍기)은 한 번에 하나만 돌고, 진행은 `job:progress` 로 알린다.
+모든 기능은 같은 모양으로 돈다: 화면의 버튼 → `src/renderer/state.ts` 의 액션 → `window.api` → `src/main/ipc.ts` 의 처리기 → `ProjectService` 나 작업 클래스 → 파일 저장 → 이벤트 → 메인이 `PushEvents` 로 알림 → `state.ts` 가 상태를 고침 → 화면이 다시 그려짐. 작업(번역, 검수, 판단, 초안, 패치노트 다듬기, 그림 다시 찍기)은 한 번에 하나만 돌고, 진행은 `job:progress` 로 알린다. 항목 탭의 한 줄 Claude 초안(`unit:claudeDraft`)도 답이 올 때까지 그 하나로 친다(`ipc.ts` 의 `busy()`).
 
 | 기능 | 화면 | 메인 | core |
 |---|---|---|---|
@@ -53,6 +53,8 @@ Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tool
 | 전체 번역 | `TextTable.tsx`, `ItemPanel.tsx`, `StoryView.tsx` | `translate/job.ts`(`BatchJob`, `TranslateJob`), `translate/batches.ts`(묶기와 프롬프트), `claude/json.ts` | `check/format.ts`, `glossary/match.ts`, `decisions/keys.ts`(그대로 둘 조각) |
 | 검수 | `ReviewDialog.tsx`, `ItemPanel.tsx` | `translate/review.ts`(`ReviewJob`) | `glossary/match.ts` |
 | 비슷한 번역 | `ItemPanel.tsx` 의 `SimilarBox`(줄을 고를 때마다 `similar:find`, 다른 부분은 `update/carry.ts` 의 `changedWords` 로 표시, 가져오기는 초안만 바꿈) | `ProjectService.similar`(번역된 줄의 색인을 들고 `changed`·다시 추출·다시 열기 때 버림), `ipc.ts` 가 위치 이름을 붙임 | `similar/find.ts`(제어문자와 공백을 뺀 글의 두 글자 묶음 Dice 계수, 60% 이상 높은 순 3개, 4자 미만은 찾지 않음) |
+| Claude 초안 | `ItemPanel.tsx` 의 `SimilarBox`("Claude 초안 받기"를 누를 때만 `unit:claudeDraft`, 받은 초안은 그 줄을 고른 동안만 컴포넌트가 듦, 가져오기는 초안만 바꿈, 쓴 토큰은 `state.ts` 의 `claudeDraft` 가 `chat.usage` 에 더함) | `translate/lineDraft.ts`(`draftLine`: 그 한 줄로 `planBatches`·`buildTranslatePrompt` 를 그대로 써서 번역 작업이 한 줄에 싣는 것만 보내고, 답은 `job.ts` 의 `finishTranslation` 으로 다듬어 돌려줄 뿐 쓰지 않음), `claude/json.ts`, `ipc.ts`(작업 중이면 거절, 도는 동안은 다른 작업을 막음) | `glossary/match.ts` |
+| 명령 검색과 알림 | `CommandPalette.tsx`(Ctrl+K, 타이틀바의 검색 단추는 `TopBar.tsx`), 명령 표는 `src/renderer/commands.ts` 의 `COMMANDS`(화면·동작·표 거르기 한 줄씩, `state.ts` 의 기존 액션만 부름, 할 수 없을 때의 이유는 `blocked`, 한글·초성 거르기는 `matchesQuery`), `Toasts.tsx`(알림은 `state.ts` 의 `notify`: 작업 끝, 되돌리기, 외부 번역 가져오기·내보내기) | — | — |
 | 판단 필요 | `DecisionView.tsx` | `translate/decide.ts`(`DecideJob`, 열쇠 묶음·일본어 없는 항목 묶음에 붙이는 플러그인 코드 조각 `pluginCodeSnippet`), `ProjectService` 의 결정 메서드 | `decisions/`(`keys.ts` 판단 키, `auto.ts` 확실한 것 자동 결정, `skeleton.ts` 뼈대 검사, `store.ts`), `extract/pluginMeta.ts` |
 | 채팅 | `ChatPanel.tsx` | `claude/chat.ts`, `claude/prompt.ts`, `bridge.ts`, `toolHandlers.ts` | (도구가 부르는 것 모두). 게임에서 글자 찾기(`find_game_text`)는 `extract/find.ts`(글자 전체가 같은 곳 다음에, 세 글자 이상이면 일부로 품은 data 문자열·플러그인 설정 값을 앞뒤 조각과 함께. 번역 항목인지는 `toolHandlers.ts` 의 `unitAt` 이 ref 로 가린다), 항목 더하기(`add_extract_text`)는 `ProjectService.addExtraString` → 다시 추출 → `units-changed` → `ipc.ts` 가 프로젝트를 닫지 않고 `project:reloaded` 로 새 스냅숏을 보냄 |
 | 이미지 | `ImageView.tsx` | `images.ts`(`ImageService`, 기여자, 그림 도구의 바탕), `render/` | `images/`(`catalog.ts` 찾기와 풀기, `store.ts` 지시서, `layoutText.ts` 줄 바꿈, `sheet.ts` 크기) |
@@ -83,7 +85,7 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 
 1. `src/renderer/components/` 에 컴포넌트를 만든다.
 2. `src/renderer/state.ts` 의 `AppState.view` 유니온에 화면 이름을 더하고, `src/renderer/App.tsx` 의 `SCREENS` 표에 이름 → 컴포넌트를 더한다(빠뜨리면 타입 검사가 잡는다).
-3. `src/renderer/components/Sidebar.tsx` 에 메뉴 버튼을 둔다.
+3. `src/renderer/components/Sidebar.tsx` 에 메뉴 버튼을 둔다. 명령 검색창(Ctrl+K)에서도 가게 하려면 `src/renderer/commands.ts` 의 `COMMANDS` 에 "…로 가기" 한 줄을 더한다(시험이 왼쪽 메뉴의 화면이 모두 있는지 본다).
 4. 화면이 쓸 상태와 액션을 `state.ts` 에 더한다. 메인의 새 데이터가 필요하면 아래 "IPC 채널 더하기"를 한다.
 5. 모양은 `src/renderer/theme.css` 에 더한다. 색은 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 테마는 `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음, `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 배치와 문구의 기준은 `docs/mockup/Main.dc.html` 과 `docs/mockup/2026-11-17-새단장-시안.html`. 움직임은 `theme.css` 끝의 "motion" 묶음에 CSS 로만 두고, 코드는 클래스를 붙이는 순간만 정한다(`src/renderer/motion.ts` 의 `replay`, 표의 줄은 `state.ts` 의 `rowMotion`). keyframes 는 시작 모습에서 원래 모습으로 가게 써서 `data-motion="off"`(설정의 움직임 끄기)나 `prefers-reduced-motion` 으로 애니메이션을 통째로 끄면 그냥 원래 모습이 보이게 한다. 아이콘은 `lucide-react` 에서 이름으로 하나씩 가져오고 `src/renderer/icons.ts` 의 `ICON`(16px, `aria-hidden`)을 붙인다.
 6. 시험은 `tests/renderer/` 에 두고, 가짜 `window.api` 인 `tests/renderer/fakeApi.tsx` 를 쓴다.
