@@ -325,6 +325,25 @@ select.input { padding: 0 12px; }
 .right { width: 380px; flex: none; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; background: var(--art-right); }
 .right-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .right-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* The right panel folds to a strip of two buttons. Folded, its pane stays in the page (moved off to the right and
+   hidden) so what it holds survives; in a narrow window it slides back in as a drawer over the middle instead of
+   taking a column, so opening it never squeezes the table. */
+.body { position: relative; overflow: hidden; }
+.right { position: relative; }
+.right-pane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.right-head .fold-btn { width: 32px; height: 32px; border: 0; color: var(--sub); }
+.right-head .fold-btn:hover { background: var(--card); color: var(--text); }
+.right.collapsed, .right.drawer { width: 44px; border-left: 1px solid var(--frame-line); }
+.right-strip { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 10px; }
+.strip-btn { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--sub); display: grid; place-items: center; }
+.strip-btn:hover { background: var(--card); color: var(--text); }
+.right.collapsed .right-pane, .right.drawer .right-pane {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 380px; z-index: 20; box-sizing: border-box;
+  background: var(--art-right), var(--bg); border-left: 1px solid var(--line);
+  transition: transform .26s cubic-bezier(.2, .8, .2, 1), visibility 0s;
+}
+.right.collapsed .right-pane { transform: translateX(100%); visibility: hidden; transition: transform .2s ease-in, visibility 0s .2s; }
+.right.drawer .right-pane { box-shadow: -16px 0 36px -12px rgba(0, 0, 0, .55); }
 .statusbar { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 8px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--sub); }
 
 /* ---- text table ---- */

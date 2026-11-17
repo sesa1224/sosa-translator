@@ -55,3 +55,13 @@ test('움직임은 기본으로 켜져 있고, 끈 것을 다시 읽는다', asy
   await saveSettings(dir, { ...(await loadSettings(dir)), motion: false });
   expect((await loadSettings(dir)).motion).toBe(false);
 });
+
+test('오른쪽 패널을 접은 것은 창 폭 구간마다 다시 읽고, 깨진 값은 버린다', async () => {
+  expect((await loadSettings(dir)).rightPanelCollapsed).toBeUndefined();
+  await saveSettings(dir, { ...(await loadSettings(dir)), rightPanelCollapsed: { narrow: false, wide: true } });
+  expect((await loadSettings(dir)).rightPanelCollapsed).toEqual({ narrow: false, wide: true });
+  await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ rightPanelCollapsed: { narrow: 'yes', wide: true, other: false } }));
+  expect((await loadSettings(dir)).rightPanelCollapsed).toEqual({ wide: true });
+  await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ rightPanelCollapsed: 3 }));
+  expect((await loadSettings(dir)).rightPanelCollapsed).toBeUndefined();
+});

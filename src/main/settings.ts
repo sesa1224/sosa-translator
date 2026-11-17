@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readJsonFile, writeJsonFile } from '../core/util/json.js';
-import { DEFAULT_MODELS, DEFAULT_STAGE_MODELS, THEME_NAMES, type AppSettings, type StageModels, type ThemeName } from '../shared/api.js';
+import { DEFAULT_MODELS, DEFAULT_STAGE_MODELS, THEME_NAMES, type AppSettings, type PanelBand, type StageModels, type ThemeName } from '../shared/api.js';
 
 const SETTINGS_FILE = 'settings.json';
 export const PROJECTS_FOLDER_NAME = 'MVMZ 번역 작업실';
@@ -33,6 +33,13 @@ function readStageModels(v: any, d: StageModels): StageModels {
   return out;
 }
 
+function readPanelCollapsed(v: any): AppSettings['rightPanelCollapsed'] {
+  if (!v || typeof v !== 'object') return undefined;
+  const out: Partial<Record<PanelBand, boolean>> = {};
+  for (const band of ['narrow', 'wide'] as const) if (typeof v[band] === 'boolean') out[band] = v[band];
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /** Reads <dir>/settings.json. A missing or broken file (or broken field) gives the default for it. */
 export async function loadSettings(dir: string, documentsDir?: string): Promise<AppSettings> {
   const d = defaultSettings(documentsDir);
@@ -45,7 +52,9 @@ export async function loadSettings(dir: string, documentsDir?: string): Promise<
     return d;
   }
   if (!raw || typeof raw !== 'object') return d;
+  const panel = readPanelCollapsed(raw.rightPanelCollapsed);
   return {
+    ...(panel ? { rightPanelCollapsed: panel } : {}),
     theme: (THEME_NAMES as readonly unknown[]).includes(raw.theme) ? raw.theme as ThemeName : d.theme,
     models: isModelList(raw.models) ? raw.models.map((m: { id: string; label: string }) => ({ id: m.id, label: m.label })) : d.models,
     chatModel: typeof raw.chatModel === 'string' && raw.chatModel ? raw.chatModel : d.chatModel,

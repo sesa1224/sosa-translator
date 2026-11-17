@@ -3,7 +3,7 @@ import { filterRows } from '../shared/rows';
 import { num } from './format';
 import { motionClock, ROW_FLASH_MS, type RowMotion } from './motion';
 import type {
-  Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
+  Api, AppSettings, BuildResult, PanelBand, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, LineDraft, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type {
@@ -53,6 +53,10 @@ export interface AppState {
   /** The user closed the job bar; it comes back with the next progress event. */
   jobDismissed: boolean;
   rightTab: 'item' | 'chat';
+  /** The window is narrower than NARROW_WINDOW: the right panel starts folded and opens as a drawer over the middle. */
+  narrowWindow: boolean;
+  /** The right panel is folded to a strip at the window's right edge. */
+  rightCollapsed: boolean;
   /** The selected line's game preview is drawn large over the text table ("크게 보며 고치기"). */
   bigPreview: boolean;
   /** When the stage was last opened (motionClock time): only a stage opened just now unfolds. */
@@ -131,7 +135,7 @@ function addUsage(a: ChatUsage, b: ChatUsage): ChatUsage {
 function initial(): AppState {
   return {
     ready: false, settings: null, projects: [], snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, rowMotion: {}, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', narrowWindow: false, rightCollapsed: false, bigPreview: false, rowMotion: {}, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, windowMaximized: false, lastSaved: null, build: { kind: 'idle' },
     fontPickerRequest: 0,
@@ -154,6 +158,8 @@ function set(patch: Partial<AppState> | ((s: AppState) => Partial<AppState>)): v
   // The stage edits the item tab's draft, so it cannot stay open once the chat takes that place. Checked here
   // because many actions switch to the chat (talkAbout, attaching a picture or an event, chat drafts).
   if (state.rightTab === 'chat' && state.bigPreview) state = { ...state, bigPreview: false };
+  // Whatever sends the user to the chat (a talk-about button on another screen, the command search) has to show it.
+  if (p.rightTab === 'chat' && !('rightCollapsed' in p) && state.rightCollapsed) state = { ...state, rightCollapsed: false };
   for (const l of listeners) l();
 }
 
@@ -164,6 +170,32 @@ function need(): Api {
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Windows narrower than this (CSS px) start with the right panel folded. Measured in the app: with the menu (220) and
+ * the panel (380) beside it, a 1366 window leaves the middle 766 px and the source column 158 px, less than a
+ * 1100 window with the panel folded (836 and 193). From 1440 up the open panel leaves the middle at least that much.
+ */
+export const NARROW_WINDOW = 1440;
+
+function windowIsNarrow(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth < NARROW_WINDOW;
+}
+
+function bandOf(narrow: boolean): PanelBand {
+  return narrow ? 'narrow' : 'wide';
+}
+
+/** What the user last chose in this width band, else folded when narrow and open when wide. */
+function collapsedByDefault(s: AppSettings | null, narrow: boolean): boolean {
+  return s?.rightPanelCollapsed?.[bandOf(narrow)] ?? narrow;
+}
+
+/** A resize that crosses NARROW_WINDOW gives the panel the new band's own state; within a band it stays as it is. */
+function onResize(): void {
+  const narrow = windowIsNarrow();
+  if (narrow !== state.narrowWindow) set({ narrowWindow: narrow, rightCollapsed: collapsedByDefault(state.settings, narrow) });
 }
 
 function applyTheme(s: AppSettings | null): void {
@@ -342,12 +374,17 @@ async function start(a: Api): Promise<void> {
     a.on('history:changed', (list) => set({ history: list })),
     a.on('window:maximized', (m) => set({ windowMaximized: m })),
   ];
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', onResize);
+    unsubscribe.push(() => window.removeEventListener('resize', onResize));
+  }
   const [settings, projects, snap, claudePath, windowMaximized] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
     a.windowControls.isMaximized().catch(() => false),
   ]);
   applyTheme(settings);
-  set({ settings, projects, claudePath, windowMaximized });
+  const narrowWindow = windowIsNarrow();
+  set({ settings, projects, claudePath, windowMaximized, narrowWindow, rightCollapsed: collapsedByDefault(settings, narrowWindow) });
   adoptSnapshot(snap);
   if (snap) await loadGlossary();
   const job = snap ? await a.job.current().catch(() => null) : null;
@@ -445,9 +482,31 @@ const actions = {
   setRightTab(rightTab: AppState['rightTab']): void {
     set({ rightTab });
   },
-  /** Opens or closes the large preview; opening brings the item tab back, whose draft the stage edits. */
+  /**
+   * Opens or closes the large preview; opening brings the item tab back, whose draft the stage edits. In a narrow
+   * window the drawer it was opened from closes, since it would cover the stage it opened.
+   */
   setBigPreview(on: boolean): void {
-    set(on ? { bigPreview: true, rightTab: 'item', bigPreviewOpenedAt: motionClock.now() } : { bigPreview: false });
+    set(on ? { bigPreview: true, rightTab: 'item', bigPreviewOpenedAt: motionClock.now(), ...(state.narrowWindow ? { rightCollapsed: true } : {}) } : { bigPreview: false });
+  },
+  /** Folds or opens the right panel by the user's hand; that choice becomes this width band's default. */
+  setRightCollapsed(collapsed: boolean): void {
+    set({ rightCollapsed: collapsed });
+    const band = bandOf(state.narrowWindow);
+    void actions.updateSettings({ rightPanelCollapsed: { ...state.settings?.rightPanelCollapsed, [band]: collapsed } }).catch(() => undefined);
+  },
+  /** The folded strip's buttons: open the panel at that tab. */
+  openRightPanel(tab: AppState['rightTab']): void {
+    set({ rightTab: tab });
+    actions.setRightCollapsed(false);
+  },
+  /**
+   * A line picked in the table by a click or Enter means it is to be edited: a narrow window's folded panel opens
+   * as a drawer for it. Not while the big preview is open, which is where that line is edited then; and not in a
+   * wide window, where folded means the user put the panel away.
+   */
+  revealRightPanel(): void {
+    if (state.narrowWindow && state.rightCollapsed && !state.bigPreview) set({ rightCollapsed: false });
   },
   async selectRow(id: string | null): Promise<void> {
     set({ selectedId: id, detail: null, ...(id ? { rightTab: 'item' as const, view: 'text' as const } : {}) });

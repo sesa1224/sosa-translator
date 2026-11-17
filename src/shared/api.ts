@@ -137,7 +137,16 @@ export type ThemeName = typeof THEME_NAMES[number];
  * reviewSkipPassed: a review leaves out lines whose remark the user passed over and that are unchanged since.
  * motion: the screen's short animations (off sets data-motion="off" on the page and stops them all).
  */
-export interface AppSettings { theme: ThemeName; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean; motion: boolean }
+/** The window's width band: in a narrow window the right panel starts folded and opens over the middle as a drawer. */
+export type PanelBand = 'narrow' | 'wide';
+/**
+ * rightPanelCollapsed: whether the user folded (true) or opened (false) the right panel, per width band; a band
+ * missing here takes its default (folded when narrow).
+ */
+export interface AppSettings {
+  theme: ThemeName; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean; motion: boolean;
+  rightPanelCollapsed?: Partial<Record<PanelBand, boolean>>;
+}
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 export const DEFAULT_DECIDE_MODEL = 'claude-fable-5-2';
 export const DEFAULT_MODELS: ModelOption[] = [

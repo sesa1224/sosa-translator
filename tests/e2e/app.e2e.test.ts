@@ -498,3 +498,34 @@ test('움직임: 승인한 줄이 한 번 밝아지고, 설정에서 끄면 애�
     await app.close();
   }
 });
+
+test('좁은 창: 오른쪽 패널이 접혀 가운데가 넓고, 줄을 누르면 서랍이 열려 번역을 저장한다', async () => {
+  const app = await launch({ MVMZ_PICK_DIR: game });
+  try {
+    const w = await app.firstWindow();
+    await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('좁은 창'); await w.getByRole('button', { name: '만들기' }).click();
+    await expect(w.getByRole('heading', { name: '텍스트' })).toBeVisible();
+    await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows().find((x) => x.isVisible())!;
+      if (win.isMaximized()) win.unmaximize();
+      win.setBounds({ x: 0, y: 0, width: 1100, height: 900 });
+    });
+    await w.waitForFunction(() => innerWidth === 1100 && document.querySelector('.right.collapsed') !== null);
+    const size = await w.evaluate(() => {
+      const tv = document.querySelector('.text-view')!.getBoundingClientRect();
+      return { main: document.querySelector('.main')!.getBoundingClientRect().width, above: document.querySelector('.table')!.getBoundingClientRect().top - tv.top };
+    });
+    expect(size.main).toBeGreaterThanOrEqual(800);
+    expect(size.above).toBeLessThanOrEqual(200);
+
+    await w.getByText('月光草', { exact: true }).click();
+    const drawer = w.getByRole('region', { name: '항목과 채팅 서랍' });
+    await expect(drawer).toBeVisible();
+    await drawer.getByLabel('번역').fill('월광초'); await drawer.getByLabel('번역').press('Control+Enter');
+    await expect(w.getByRole('row', { name: /月光草.*월광초.*번역 완료/ })).toBeVisible();
+    await w.keyboard.press('Escape');
+    await w.waitForFunction(() => document.querySelector('.right.collapsed') !== null);
+  } finally {
+    await app.close();
+  }
+});

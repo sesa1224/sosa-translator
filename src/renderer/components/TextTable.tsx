@@ -275,13 +275,19 @@ export function TextTable() {
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+    // Arrows only move; Enter says "edit this one" and so opens a narrow window's folded panel, like a click.
+    else if (e.key === 'Enter' && selectedId) { e.preventDefault(); useApp.revealRightPanel(); }
   };
 
   const scopeLabel = query.file ? snapshot?.scopes.find((s) => s.file === query.file)?.label : null;
   // Lines a translate job has sent and waits on.
   const job = app.job;
   const pending = useMemo(() => new Set(job?.state === 'running' && job.kind === 'translate' ? job.pending ?? [] : []), [job]);
-  const pick = (id: string) => { void useApp.selectRow(id); scrollRef.current?.focus({ preventScroll: true }); };
+  const pick = (id: string) => {
+    void useApp.selectRow(id);
+    useApp.revealRightPanel();
+    scrollRef.current?.focus({ preventScroll: true });
+  };
 
   return (
     <div className="text-view">

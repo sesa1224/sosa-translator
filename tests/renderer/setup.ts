@@ -2,7 +2,10 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
-afterEach(() => { cleanup(); });
+// A wide window unless a test narrows it: below the narrow width the right panel starts folded.
+const WIDE = 1500;
+Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: WIDE });
+afterEach(() => { cleanup(); window.innerWidth = WIDE; });
 
 // jsdom has no layout. Give elements a fixed size so the virtual table behaves like a
 // 600 px tall viewport with 40 px rows instead of rendering nothing (0 px) or everything.
