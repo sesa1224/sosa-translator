@@ -1,7 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
-import { filterRows } from '../../shared/rows';
+import { filterRows, scrollMarks } from '../../shared/rows';
 import { num, STATUS_LABEL } from '../format';
 import { jobActive, orderedRows, useApp } from '../state';
 import { CodeText } from './CodeText';
@@ -210,6 +210,7 @@ export function TextTable() {
     const only = idFilter ? new Set(idFilter) : null;
     return filterRows(only ? all.filter((r) => only.has(r.id)) : all, query);
   }, [all, query, idFilter]);
+  const marks = useMemo(() => scrollMarks(rows), [rows]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const v = useVirtualizer({
     count: rows.length,
@@ -266,30 +267,36 @@ export function TextTable() {
           <span role="columnheader">위치</span><span role="columnheader">화자</span><span role="columnheader">원문</span>
           <span role="columnheader">번역</span><span role="columnheader">상태</span>
         </div>
-        <div className="tbody" ref={scrollRef} tabIndex={0} onKeyDown={onKey} role="rowgroup">
-          {rows.length === 0 && <div className="empty sub">맞는 줄이 없어요</div>}
-          <div style={{ height: v.getTotalSize(), position: 'relative' }}>
-            {v.getVirtualItems().map((item) => {
-              const r = rows[item.index];
-              const chip = statusChip(r);
-              const sel = r.id === selectedId;
-              return (
-                <div key={item.key} data-index={item.index} ref={v.measureElement} role="row" aria-rowindex={item.index + 2}
-                  aria-selected={sel} className={`tr${sel ? ' sel' : ''}`}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start}px)` }}
-                  onClick={() => { void useApp.selectRow(r.id); scrollRef.current?.focus({ preventScroll: true }); }}>
-                  <span role="cell" className="mono sub small">{r.location}</span>
-                  <span role="cell" className="small">{r.speaker ?? ''}</span>
-                  <span role="cell" className="src"><CodeText text={r.source} /></span>
-                  <span role="cell" className={r.target === null ? 'mute' : ''}>
-                    {decisionCell(r) !== null ? decisionCell(r) : <>
-                    {r.target === null ? (r.needsDecision ? '판단 대기' : '번역 전') : <CodeText text={r.target} />}
-                    </>}
-                  </span>
-                  <span role="cell"><span className={`st ${chip.cls}`}>{chip.label}</span></span>
-                </div>
-              );
-            })}
+        <div className="tbody-wrap">
+          <div className="tbody" ref={scrollRef} tabIndex={0} onKeyDown={onKey} role="rowgroup">
+            {rows.length === 0 && <div className="empty sub">맞는 줄이 없어요</div>}
+            <div style={{ height: v.getTotalSize(), position: 'relative' }}>
+              {v.getVirtualItems().map((item) => {
+                const r = rows[item.index];
+                const chip = statusChip(r);
+                const sel = r.id === selectedId;
+                return (
+                  <div key={item.key} data-index={item.index} ref={v.measureElement} role="row" aria-rowindex={item.index + 2}
+                    aria-selected={sel} className={`tr${sel ? ' sel' : ''}`}
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start}px)` }}
+                    onClick={() => { void useApp.selectRow(r.id); scrollRef.current?.focus({ preventScroll: true }); }}>
+                    <span role="cell" className="mono sub small">{r.location}</span>
+                    <span role="cell" className="small">{r.speaker ?? ''}</span>
+                    <span role="cell" className="src"><CodeText text={r.source} /></span>
+                    <span role="cell" className={r.target === null ? 'mute' : ''}>
+                      {decisionCell(r) !== null ? decisionCell(r) : <>
+                      {r.target === null ? (r.needsDecision ? '판단 대기' : '번역 전') : <CodeText text={r.target} />}
+                      </>}
+                    </span>
+                    <span role="cell"><span className={`st ${chip.cls}`}>{chip.label}</span></span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* Over the scrollbar: where the errors and lines waiting for review are. Shows only, no clicking. */}
+          <div className="scroll-marks" aria-hidden="true">
+            {marks.map((m) => <i key={m.pos} className={m.kind} style={{ top: `${+(m.pos * 100).toFixed(3)}%` }} />)}
           </div>
         </div>
       </div>

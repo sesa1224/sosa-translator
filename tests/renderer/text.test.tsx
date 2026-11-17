@@ -72,3 +72,11 @@ test('표기 경고 칩은 경고가 있을 때만 나오고 그 줄만 거른�
   await user.click(screen.getByRole('button', { name: '표기 경고 1' }));
   expect(useApp.get().query.status).toBe('notation');
 });
+test('표 오른쪽 띠에 오류와 검수 필요 줄의 위치', async () => {
+  const rows = manyRows(400).map((r, i) => (i === 0 ? { ...r, status: 'error' as const, target: 'x' } : i === 399 ? { ...r, status: 'needs-review' as const, target: 'y' } : r));
+  await openFake({ rows });
+  const marks = [...document.querySelectorAll('.scroll-marks > i')] as HTMLElement[];
+  expect(marks.map((m) => [m.className, m.style.top])).toEqual([['err', '0.25%'], ['warn', '99.75%']]);
+  await user.click(screen.getByRole('button', { name: /^오류 / }));
+  expect([...document.querySelectorAll('.scroll-marks > i')].map((m) => [m.className, (m as HTMLElement).style.top])).toEqual([['err', '50%']]);
+});

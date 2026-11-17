@@ -144,6 +144,28 @@ export function filterRows(rows: Row[], q: RowQuery): Row[] {
   });
 }
 
+/** One mark on the strip beside the text table: pos is the middle of its cell, 0 (top) to 1 (bottom). */
+export interface ScrollMark { pos: number; kind: 'err' | 'warn' }
+
+/**
+ * Marks for error and needs-review rows of the list as filtered. The table is virtual, so positions come from
+ * the row's index, not from drawn rows. The strip is cut into at most `cells` cells with one mark each (an
+ * error wins over a review), so tens of thousands of rows still draw a few hundred elements at most.
+ */
+export function scrollMarks(rows: Pick<Row, 'status'>[], cells = 200): ScrollMark[] {
+  const n = Math.min(cells, rows.length);
+  const kinds = new Array<ScrollMark['kind'] | undefined>(n);
+  rows.forEach((r, i) => {
+    const kind = r.status === 'error' ? 'err' : r.status === 'needs-review' ? 'warn' : null;
+    if (!kind) return;
+    const cell = Math.floor((i * n) / rows.length);
+    if (kinds[cell] !== 'err') kinds[cell] = kind;
+  });
+  const out: ScrollMark[] = [];
+  kinds.forEach((kind, cell) => { if (kind) out.push({ pos: (cell + 0.5) / n, kind }); });
+  return out;
+}
+
 export function computeStats(rows: Row[]): Stats {
   const s: Stats = { total: rows.length, untranslated: 0, needsReview: 0, approved: 0, error: 0, needsDecision: 0, declined: 0, provisional: 0, external: 0, undecided: 0, changed: 0, carried: 0, translated: 0, reviewTaken: 0, reviewPassed: 0, notation: 0, overflow: 0 };
   for (const r of rows) {

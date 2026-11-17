@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import type { TextUnit, UnitRef } from '../../src/core/types.js';
 import type { Row } from '../../src/shared/api.js';
-import { computeScopes, computeStats, filterRows, locationLabel, scopeLabel, toRow } from '../../src/shared/rows.js';
+import { computeScopes, computeStats, filterRows, locationLabel, scopeLabel, scrollMarks, toRow } from '../../src/shared/rows.js';
 
 function unitAt(ref: UnitRef): TextUnit {
   return { id: 'u', kind: 'dialogue', source: 'x', needsDecision: false, refs: [ref] };
@@ -65,4 +65,20 @@ test('창 넘침 필터와 개수', () => {
   const marked = rows.map((r) => (r.id === 'map-1' || r.id === 'item-desc' ? { ...r, overflow: true } : r));
   expect(filterRows(marked, { status: 'overflow' }).map((r) => r.id)).toEqual(['item-desc', 'map-1']);
   expect(computeStats(marked).overflow).toBe(2);
+});
+
+test('스크롤 표시 띠: 순번으로 위치를 잡고, 칸마다 하나, 오류가 앞선다', () => {
+  const at = (statuses: Row['status'][]) => statuses.map((status, i) => row({ id: `s${i}`, source: 'x', file: 'f', status }));
+  // Few rows: one cell per row, positioned at the row's middle.
+  expect(scrollMarks(at(['untranslated', 'error', 'needs-review', 'approved']))).toEqual([
+    { pos: 0.375, kind: 'err' }, { pos: 0.625, kind: 'warn' },
+  ]);
+  expect(scrollMarks([])).toEqual([]);
+  // Many rows share a cell; the cell keeps one mark and an error wins over a review.
+  const many = at(Array.from({ length: 1000 }, (_, i) => (i === 10 ? 'needs-review' : i === 12 ? 'error' : i === 500 ? 'needs-review' : 'translated')));
+  const marks = scrollMarks(many);
+  expect(marks).toEqual([{ pos: 2.5 / 200, kind: 'err' }, { pos: 100.5 / 200, kind: 'warn' }]);
+  expect(scrollMarks(many, 50)).toHaveLength(2);
+  // Never more marks than cells.
+  expect(scrollMarks(at(Array.from({ length: 5000 }, () => 'error')))).toHaveLength(200);
 });
