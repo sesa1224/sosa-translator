@@ -85,7 +85,7 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 2. `src/renderer/state.ts` 의 `AppState.view` 유니온에 화면 이름을 더하고, `src/renderer/App.tsx` 의 `SCREENS` 표에 이름 → 컴포넌트를 더한다(빠뜨리면 타입 검사가 잡는다).
 3. `src/renderer/components/Sidebar.tsx` 에 메뉴 버튼을 둔다.
 4. 화면이 쓸 상태와 액션을 `state.ts` 에 더한다. 메인의 새 데이터가 필요하면 아래 "IPC 채널 더하기"를 한다.
-5. 모양은 `src/renderer/theme.css` 에 더한다. 색은 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 테마는 `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음, `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 배치와 문구의 기준은 `docs/mockup/Main.dc.html` 과 `docs/mockup/2026-11-17-새단장-시안.html`.
+5. 모양은 `src/renderer/theme.css` 에 더한다. 색은 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 테마는 `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음, `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 배치와 문구의 기준은 `docs/mockup/Main.dc.html` 과 `docs/mockup/2026-11-17-새단장-시안.html`. 움직임은 `theme.css` 끝의 "motion" 묶음에 CSS 로만 두고, 코드는 클래스를 붙이는 순간만 정한다(`src/renderer/motion.ts` 의 `replay`, 표의 줄은 `state.ts` 의 `rowMotion`). keyframes 는 시작 모습에서 원래 모습으로 가게 써서 `data-motion="off"`(설정의 움직임 끄기)나 `prefers-reduced-motion` 으로 애니메이션을 통째로 끄면 그냥 원래 모습이 보이게 한다. 아이콘은 `lucide-react` 에서 이름으로 하나씩 가져오고 `src/renderer/icons.ts` 의 `ICON`(16px, `aria-hidden`)을 붙인다.
 6. 시험은 `tests/renderer/` 에 두고, 가짜 `window.api` 인 `tests/renderer/fakeApi.tsx` 를 쓴다.
 
 ### IPC 채널 더하기
