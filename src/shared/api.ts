@@ -124,11 +124,14 @@ export interface ClaudeStatus { found: boolean; path: string | null; loggedIn: b
 export interface ModelOption { id: string; label: string }
 /** Model per job. glossaryRead: model for reading the script in a draft (missing = the glossary model); decide: missing = DEFAULT_DECIDE_MODEL. */
 export interface StageModels { glossary: string; translate: string; review: string; patchNotes: string; glossaryRead?: string; decide?: string }
-/** reviewSkipPassed: a review leaves out lines whose remark the user passed over and that are unchanged since. */
 /** Screen themes, in the order the settings show them. An unknown value in settings.json reads as 'dark'. */
 export const THEME_NAMES = ['dark', 'light', 'moon', 'ember', 'murim', 'deep', 'rpg', 'hanji'] as const;
 export type ThemeName = typeof THEME_NAMES[number];
-export interface AppSettings { theme: ThemeName; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean }
+/**
+ * reviewSkipPassed: a review leaves out lines whose remark the user passed over and that are unchanged since.
+ * motion: the screen's short animations (off sets data-motion="off" on the page and stops them all).
+ */
+export interface AppSettings { theme: ThemeName; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean; motion: boolean }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 export const DEFAULT_DECIDE_MODEL = 'claude-fable-5-2';
 export const DEFAULT_MODELS: ModelOption[] = [

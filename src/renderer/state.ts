@@ -141,7 +141,11 @@ function errorText(e: unknown): string {
 }
 
 function applyTheme(s: AppSettings | null): void {
-  if (s && typeof document !== 'undefined') document.documentElement.dataset.theme = s.theme;
+  if (!s || typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.dataset.theme = s.theme;
+  // theme.css stops every animation and transition under data-motion="off" (and under the system's reduced motion).
+  root.dataset.motion = s.motion === false ? 'off' : 'on';
 }
 
 function adoptSnapshot(snap: Snapshot | null): void {

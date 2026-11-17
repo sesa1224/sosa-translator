@@ -607,3 +607,15 @@ select.input { padding: 0 12px; }
 :root[data-theme="murim"] .nav-head.work-head::after { content: ''; position: absolute; right: 10px; top: calc(50% - 3px); width: 17px; height: 17px; margin-top: -8.5px; border-radius: 50%; background: rgba(192, 57, 43, .9); }
 :root[data-theme="hanji"] .topbar, :root[data-theme="hanji"] .picker-titlebar { border-top: 4px solid #1F1B16; }
 :root[data-theme="rpg"] .main { border-width: 3px 3px 0; box-shadow: 0 0 0 3px #000; }
+
+/* ---- motion ---- */
+/* Only where it reports progress, confirms an action, or helps follow a change. Table rows never move on scroll
+   or selection, and nothing moves while typing. Lengths and curves come from the mockup. Every keyframe animates
+   from a start state to the element's own look, so with motion off (or reduced by the system) things simply
+   appear in their final state. */
+:root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {
+  animation: none !important; transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

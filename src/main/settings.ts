@@ -16,6 +16,7 @@ export function defaultSettings(documentsDir = path.join(os.homedir(), 'Document
     projectsDir: path.join(documentsDir, PROJECTS_FOLDER_NAME),
     stageModels: { ...DEFAULT_STAGE_MODELS },
     reviewSkipPassed: true,
+    motion: true,
   };
 }
 
@@ -52,6 +53,7 @@ export async function loadSettings(dir: string, documentsDir?: string): Promise<
     projectsDir: typeof raw.projectsDir === 'string' && raw.projectsDir ? raw.projectsDir : d.projectsDir,
     stageModels: readStageModels(raw.stageModels, d.stageModels),
     reviewSkipPassed: typeof raw.reviewSkipPassed === 'boolean' ? raw.reviewSkipPassed : d.reviewSkipPassed,
+    motion: typeof raw.motion === 'boolean' ? raw.motion : d.motion,
   };
 }
 

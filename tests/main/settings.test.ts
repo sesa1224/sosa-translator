@@ -46,3 +46,12 @@ test('테마는 여덟 가지, 모르는 값은 어두운으로 읽는다', asyn
     expect((await loadSettings(dir)).theme).toBe('dark');
   }
 });
+
+test('움직임은 기본으로 켜져 있고, 끈 것을 다시 읽는다', async () => {
+  expect((await loadSettings(dir)).motion).toBe(true);
+  // An older settings file has no such field; a broken value falls back too.
+  await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ theme: 'light', motion: 'no' }));
+  expect((await loadSettings(dir)).motion).toBe(true);
+  await saveSettings(dir, { ...(await loadSettings(dir)), motion: false });
+  expect((await loadSettings(dir)).motion).toBe(false);
+});

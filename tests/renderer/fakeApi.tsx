@@ -14,7 +14,7 @@ import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Pat
 import type { SimilarTranslation } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
 
-export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS }, reviewSkipPassed: true };
+export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS }, reviewSkipPassed: true, motion: true };
 
 const meta: ProjectMeta = {
   name: '약초원', engine: 'MZ', gameDir: 'C:/game', contentPrefix: '', sourceLang: 'ja', targetLang: 'ko',

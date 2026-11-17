@@ -66,3 +66,21 @@ test('긴 CLI 경로는 줄을 바꿔 설정 화면이 옆으로 밀리지 않�
   // A path has no spaces to break at; without this the settings page grew a horizontal scrollbar.
   expect(screen.getByText('C:/claude.exe')).toHaveClass('path-text');
 });
+
+test('움직임을 끄면 data-motion 이 off 가 되고, 다시 켤 수 있다', async () => {
+  await openSettings();
+  expect(document.documentElement.dataset.motion).toBe('on');
+  const box = screen.getByRole('checkbox', { name: '움직임 켜기' });
+  expect(box).toBeChecked();
+  await user.click(box);
+  expect(api.calls).toContainEqual(['settings.set', { motion: false }]);
+  expect(document.documentElement.dataset.motion).toBe('off');
+  expect(screen.getByRole('checkbox', { name: '움직임 켜기' })).not.toBeChecked();
+  await user.click(screen.getByRole('checkbox', { name: '움직임 켜기' }));
+  expect(document.documentElement.dataset.motion).toBe('on');
+});
+
+test('저장된 설정이 꺼져 있으면 처음부터 data-motion 이 off 다', async () => {
+  await openSettings({ motion: false });
+  expect(document.documentElement.dataset.motion).toBe('off');
+});

@@ -70,6 +70,15 @@ export function SettingsView() {
         </div>
       </section>
 
+      <section className="card settings-card" aria-labelledby="set-motion">
+        <span id="set-motion" className="card-title">움직임</span>
+        <label className="check">
+          <input type="checkbox" checked={settings.motion} onChange={(e) => void save({ motion: e.target.checked })} />
+          움직임 켜기
+        </label>
+        <span className="hint">작업 진행, 승인, 가져오기 같은 순간을 짧게 움직여 알려 줘요. 끄면 화면의 움직임이 모두 멈춰요. 윈도우에서 애니메이션 효과를 꺼 두었으면 여기와 상관없이 멈춰요.</span>
+      </section>
+
       <section className="card settings-card" aria-labelledby="set-stages">
         <span id="set-stages" className="card-title">단계별 모델</span>
         <div className="stage-grid">
