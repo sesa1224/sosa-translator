@@ -176,7 +176,7 @@ function applyTheme(s: AppSettings | null): void {
 
 function adoptSnapshot(snap: Snapshot | null): void {
   if (!snap) {
-    set({ snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null });
+    set({ snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, paletteOpen: false, reviewOpen: false });
     return;
   }
   const rowsById: Record<string, Row> = {};
@@ -184,7 +184,7 @@ function adoptSnapshot(snap: Snapshot | null): void {
   set({
     snapshot: { meta: snap.meta, gameTitle: snap.gameTitle, stats: snap.stats, scopes: snap.scopes },
     rowOrder: snap.rows.map((r) => r.id), rowsById, selectedId: null, detail: null, attachedId: null, rowMotion: {},
-    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, build: { kind: 'idle' }, idFilter: null, glossaryDirty: false,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, build: { kind: 'idle' }, idFilter: null, glossaryDirty: false, reviewOpen: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
   });
 }
@@ -480,6 +480,18 @@ const actions = {
     return ids;
   },
   notify,
+  openPalette(): void {
+    set({ paletteOpen: true });
+  },
+  closePalette(): void {
+    set({ paletteOpen: false });
+  },
+  openReview(): void {
+    set({ reviewOpen: true });
+  },
+  closeReview(): void {
+    set({ reviewOpen: false });
+  },
 
   async build(): Promise<void> {
     set({ build: { kind: 'running' } });

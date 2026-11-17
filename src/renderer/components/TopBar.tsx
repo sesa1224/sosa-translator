@@ -1,4 +1,4 @@
-import { CheckIcon, PackageIcon } from 'lucide-react';
+import { CheckIcon, PackageIcon, SearchIcon } from 'lucide-react';
 import { num, pct } from '../format';
 import { ICON } from '../icons';
 import { updateActions, useApp, type BuildState } from '../state';
@@ -22,8 +22,12 @@ export function TopBar() {
         <TitleField />
         <span className="mono mute small nowrap" title={`${meta.engine} · ${meta.current} · 일본어 → 한국어 · ${meta.name}`}>{`${meta.engine} · ${meta.current}`}</span>
       </div>
-      {/* Room for the command search in the middle of the bar. */}
-      <div className="grow" />
+      {/* The command search takes the room left in the middle; when little is left only the magnifier stays (theme.css). */}
+      <div className="top-search-slot">
+        <button type="button" className="top-search" aria-label="명령 검색 (Ctrl+K)" title="명령 검색 (Ctrl+K)" onClick={() => useApp.openPalette()}>
+          <SearchIcon {...ICON} /><span className="top-search-text">화면, 동작, 문장 찾기</span><span className="kbd">Ctrl K</span>
+        </button>
+      </div>
       <span className="mono sub small nowrap">{`${num(done)} / ${num(stats.total)}줄 · ${p}%`}</span>
       <div className="top-actions">
         <button type="button" className="btn" onClick={() => void useApp.closeProject()}>프로젝트 닫기</button>

@@ -2,6 +2,7 @@ import { useEffect, type ComponentType } from 'react';
 import type { Api } from '../shared/api';
 import { BuildsView } from './components/BuildsView';
 import { ChatPanel } from './components/ChatPanel';
+import { CommandPalette } from './components/CommandPalette';
 import { DecisionView } from './components/DecisionView';
 import { EventView } from './components/EventView';
 import { GlossaryView } from './components/GlossaryView';
@@ -80,6 +81,7 @@ function Workspace() {
       <StatusBar />
       {updateOpen && <UpdateDialog />}
       <Toasts />
+      <CommandPalette />
     </div>
   );
 }

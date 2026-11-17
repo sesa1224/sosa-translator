@@ -33,7 +33,6 @@ function statusChip(r: Row): { label: string; cls: string } {
 /** "Translate new lines" and "review everything" buttons above the table. */
 function JobActions() {
   const app = useApp();
-  const [reviewing, setReviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fresh = useMemo(() => app.rowOrder.filter((id) => {
     const r = app.rowsById[id];
@@ -58,9 +57,9 @@ function JobActions() {
         <span className="warn-text small">용어집을 먼저 확정하세요</span>
         <button type="button" className="btn ghost small-btn" onClick={() => useApp.setView('glossary')}>용어집으로</button>
       </>}
-      <button type="button" className="btn" disabled={busy} onClick={() => setReviewing(true)}>번역 전체 검수</button>
+      <button type="button" className="btn" disabled={busy} onClick={() => useApp.openReview()}>번역 전체 검수</button>
       {error && <span className="err-text small" role="alert">{error}</span>}
-      {reviewing && <ReviewDialog onClose={() => setReviewing(false)} />}
+      {app.reviewOpen && <ReviewDialog onClose={() => useApp.closeReview()} />}
     </div>
   );
 }
@@ -136,12 +135,23 @@ function RewrapVisible({ ids }: { ids: string[] }) {
 function FilterBar() {
   const { snapshot, query } = useApp();
   const [text, setText] = useState(query.text ?? '');
+  /** The search this box last sent; any other value arriving in the query was put there from elsewhere (Ctrl+K). */
+  const sent = useRef(query.text ?? '');
   const { rowsById } = useApp();
   const skipped = useMemo(() => Object.values(rowsById).filter((r) => r.decision === 'skip').length, [rowsById]);
   useEffect(() => {
-    const t = setTimeout(() => useApp.setQuery({ text: text || undefined }), SEARCH_DELAY);
+    const t = setTimeout(() => {
+      sent.current = text;
+      useApp.setQuery({ text: text || undefined });
+    }, SEARCH_DELAY);
     return () => clearTimeout(t);
   }, [text]);
+  useEffect(() => {
+    const q = query.text ?? '';
+    if (q === sent.current) return;
+    sent.current = q;
+    setText(q);
+  }, [query.text]);
   if (!snapshot) return null;
   const s = snapshot.stats;
   const chips: [StatusFilter, string, number][] = [
