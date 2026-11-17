@@ -1,6 +1,8 @@
+import { Maximize2Icon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { availableWidth, textLeft } from '../../core/preview/windows';
 import type { Layout, LaidLine, PreviewState, WindowMetrics } from '../../shared/api';
+import { ICON } from '../icons';
 import { ensureFontFace } from '../preview/fontFace';
 import { usePalette, usePreviewState } from '../preview/usePreview';
 import { useApp } from '../state';
@@ -197,7 +199,7 @@ export function GamePreview({ preview, big, onBig }: { preview: PreviewLayout; b
     <section className="field game-preview" aria-label="게임 화면 미리보기">
       <div className="row-between">
         <span className="label">게임 화면 미리보기</span>
-        {onBig && <button type="button" className="btn ghost small-btn gp-big-btn" aria-pressed={big ?? false} onClick={onBig}>크게 보며 고치기</button>}
+        {onBig && <button type="button" className="btn ghost small-btn gp-big-btn" aria-pressed={big ?? false} onClick={onBig}><Maximize2Icon {...ICON} />크게 보며 고치기</button>}
       </div>
       {problem ?? (state && layout && (
         <>

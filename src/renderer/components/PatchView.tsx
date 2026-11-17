@@ -1,5 +1,7 @@
+import { DiffIcon, PlayIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ListOp, Patch, PatchStatus, PathSeg } from '../../shared/api';
+import { ICON } from '../icons';
 import { usePreviewState } from '../preview/usePreview';
 import { eventActions, useApp, type AttachedEvent } from '../state';
 
@@ -198,7 +200,7 @@ export function PatchNavButton() {
   useEffect(() => { void eventActions.loadPatches(); }, [app.snapshot?.meta.name]);
   return (
     <button type="button" className={`nav-btn${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => eventActions.openPatches()}>
-      <span>수정 내역</span>{count > 0 && <span className="mono sub small">{count}</span>}
+      <DiffIcon {...ICON} /><span>수정 내역</span>{count > 0 && <span className="mono sub small">{count}</span>}
     </button>
   );
 }
@@ -256,7 +258,7 @@ export function GameRunButton() {
   const g = app.game ?? { state: 'idle' as const };
   return (
     <div className="game-run">
-      {g.state === 'idle' && <button type="button" className="btn" onClick={() => void eventActions.runGame()}>게임 실행</button>}
+      {g.state === 'idle' && <button type="button" className="btn" onClick={() => void eventActions.runGame()}><PlayIcon {...ICON} />게임 실행</button>}
       {g.state === 'preparing' && (
         <span className="game-state" role="status">
           <span className="mono small">{`게임 준비 중 ${g.done ?? 0} / ${g.total ?? 0}`}</span>

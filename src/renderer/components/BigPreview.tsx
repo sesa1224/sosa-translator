@@ -1,6 +1,8 @@
+import { ChevronLeftIcon, ChevronRightIcon, Minimize2Icon } from 'lucide-react';
 import { useEffect, useMemo, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Layout, Row, WindowMetrics } from '../../shared/api';
+import { ICON } from '../icons';
 import { orderedRows, shownRows, useApp } from '../state';
 import { GamePreview, MessageWindow, MIMIC_NOTE, previewProblem, usePreviewLayout, windowDrawWidth, type PreviewLayout } from './GamePreview';
 
@@ -101,9 +103,9 @@ function BigStage({ row, preview, draft, onDraft, onKey, saving }: {
         {fit && <span className={`fit${fit.over ? ' over' : ''}`}>{fit.text}</span>}
         <span className="stage-where">{row.location}{row.speaker ? ` · ${row.speaker}` : ''}</span>
         <span className="grow" />
-        <button type="button" className="sbtn2" disabled={!prev} onClick={() => go(prev)}><span aria-hidden="true">‹</span>이전 줄</button>
-        <button type="button" className="sbtn2" disabled={!next} onClick={() => go(next)}>다음 줄<span aria-hidden="true">›</span></button>
-        <button type="button" className="sbtn2" onClick={() => useApp.setBigPreview(false)}>작게</button>
+        <button type="button" className="sbtn2" disabled={!prev} onClick={() => go(prev)}><ChevronLeftIcon {...ICON} />이전 줄</button>
+        <button type="button" className="sbtn2" disabled={!next} onClick={() => go(next)}>다음 줄<ChevronRightIcon {...ICON} /></button>
+        <button type="button" className="sbtn2" onClick={() => useApp.setBigPreview(false)}><Minimize2Icon {...ICON} />작게</button>
       </div>
       {/* One column as wide as the window at full size, so the input lines up under the window it fills. */}
       <div className="stage-col" style={state && layout ? { maxWidth: windowDrawWidth(layout, state.metrics) } : undefined}>

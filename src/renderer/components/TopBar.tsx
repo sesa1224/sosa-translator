@@ -1,4 +1,6 @@
+import { PackageIcon } from 'lucide-react';
 import { num, pct } from '../format';
+import { ICON } from '../icons';
 import { updateActions, useApp } from '../state';
 import { GameRunButton } from './PatchView';
 import { TitleField } from './TitleField';
@@ -27,7 +29,7 @@ export function TopBar() {
         <button type="button" className="btn" onClick={() => void useApp.closeProject()}>프로젝트 닫기</button>
         <button type="button" className="btn" onClick={() => updateActions.open()}>새 버전 가져오기</button>
         <GameRunButton />
-        <button type="button" className="btn primary" disabled={build.kind === 'running'} onClick={() => void useApp.build()}>패치 빌드</button>
+        <button type="button" className="btn primary" disabled={build.kind === 'running'} onClick={() => void useApp.build()}><PackageIcon {...ICON} />패치 빌드</button>
       </div>
       <WindowControls />
       <div className="tb-progress" aria-hidden="true">

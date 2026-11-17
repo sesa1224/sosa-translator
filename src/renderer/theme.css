@@ -143,7 +143,7 @@ select.input { padding: 0 12px; }
 .topbar .title-field .icon-btn { width: 24px; height: 24px; }
 .topbar .title-input { height: 26px; min-width: 160px; }
 .top-actions { flex: none; display: flex; align-items: center; gap: 4px; }
-.topbar .btn { height: 28px; padding: 0 10px; border-radius: 6px; border-color: transparent; background: transparent; color: var(--sub); font-size: 13px; white-space: nowrap; }
+.topbar .btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; border-color: transparent; background: transparent; color: var(--sub); font-size: 13px; white-space: nowrap; }
 .topbar .btn:hover:not(:disabled) { background: var(--card); color: var(--text); }
 .topbar .btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .topbar .game-run { flex-direction: row; align-items: center; gap: 6px; }
@@ -165,7 +165,9 @@ select.input { padding: 0 12px; }
 .sidebar { width: 220px; flex: none; box-sizing: border-box; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
 .nav-head { font-size: 12px; color: var(--mute); padding: 0 10px 6px; }
 .nav-head.spaced { padding-top: 18px; }
-.nav-btn { height: 44px; padding: 0 12px; border: 0; border-radius: 8px; text-align: left; font-size: 14px; display: flex; align-items: center; justify-content: space-between; background: transparent; color: var(--sub); }
+.nav-btn { height: 44px; padding: 0 12px; border: 0; border-radius: 8px; text-align: left; font-size: 14px; display: flex; align-items: center; gap: 10px; background: transparent; color: var(--sub); }
+.nav-btn > span:first-of-type { flex: 1 1 auto; min-width: 0; }
+.nav-btn > svg { flex: none; }
 .nav-btn.on { background: var(--card); color: var(--text); }
 .scope { padding: 6px 10px; display: flex; flex-direction: column; gap: 5px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; font-size: 13px; }
 .scope.on { background: var(--card); outline: 1px solid var(--accent); }
@@ -347,7 +349,7 @@ select.input { padding: 0 12px; }
 .gp-bar { flex: 1 1 auto; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .gp-bar-fill { height: 100%; background: var(--accent); }
 .gp-bar-fill.over { background: var(--warn); }
-.game-preview .gp-big-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.game-preview .gp-big-btn { height: 28px; padding: 0 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
 .gp-big-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-text); }
 
 /* ---- large preview over the text table ---- */

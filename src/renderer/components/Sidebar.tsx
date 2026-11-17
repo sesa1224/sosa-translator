@@ -1,5 +1,7 @@
+import { BookOpenIcon, CircleHelpIcon, GitBranchIcon, HistoryIcon, ImageIcon, PackageIcon, PenLineIcon, RefreshCwIcon, SlidersHorizontalIcon, TextIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { num, pct } from '../format';
+import { ICON } from '../icons';
 import { eventActions, updateActions, useApp } from '../state';
 import { PatchNavButton } from './PatchView';
 
@@ -15,34 +17,34 @@ export function Sidebar() {
       <span className="nav-head work-head">작업</span>
       <button type="button" className={`nav-btn${view === 'text' ? ' on' : ''}`} aria-current={view === 'text' ? 'page' : undefined}
         onClick={() => useApp.setView('text')}>
-        <span>텍스트</span><span className="mono sub small">{num(snapshot.stats.untranslated)}</span>
+        <TextIcon {...ICON} /><span>텍스트</span><span className="mono sub small">{num(snapshot.stats.untranslated)}</span>
       </button>
       <button type="button" className={`nav-btn${view === 'glossary' ? ' on' : ''}`} aria-current={view === 'glossary' ? 'page' : undefined}
         onClick={() => useApp.setView('glossary')}>
-        <span>용어집</span>{undecided > 0 && <span className="mono warn-text small" title="결정 필요">{num(undecided)}</span>}
+        <BookOpenIcon {...ICON} /><span>용어집</span>{undecided > 0 && <span className="mono warn-text small" title="결정 필요">{num(undecided)}</span>}
       </button>
       <button type="button" className={`nav-btn${view === 'guide' ? ' on' : ''}`} aria-current={view === 'guide' ? 'page' : undefined}
         onClick={() => useApp.setView('guide')}>
-        <span>번역 지침</span>
+        <PenLineIcon {...ICON} /><span>번역 지침</span>
       </button>
       <button type="button" className={`nav-btn${view === 'settings' ? ' on' : ''}`} aria-current={view === 'settings' ? 'page' : undefined}
         onClick={() => useApp.setView('settings')}>
-        <span>설정</span>
+        <SlidersHorizontalIcon {...ICON} /><span>설정</span>
       </button>
       <button type="button" className={`nav-btn${view === 'decisions' ? ' on' : ''}`} aria-current={view === 'decisions' ? 'page' : undefined}
         onClick={() => useApp.openDecisions()}>
-        <span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
+        <CircleHelpIcon {...ICON} /><span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
       </button>
       <button type="button" className={`nav-btn${view === 'events' ? ' on' : ''}`} aria-current={view === 'events' ? 'page' : undefined}
         onClick={() => eventActions.openEvents()}>
-        <span>이벤트</span>
+        <GitBranchIcon {...ICON} /><span>이벤트</span>
       </button>
       <PatchNavButton />
       <ImagesNavButton />
       <BuildsNavButton />
       <button type="button" className={`nav-btn${view === 'history' ? ' on' : ''}`} aria-current={view === 'history' ? 'page' : undefined}
         onClick={() => useApp.setView('history')}>
-        <span>작업 기록</span>
+        <HistoryIcon {...ICON} /><span>작업 기록</span>
       </button>
       <UpdateNavButton />
 
@@ -74,7 +76,7 @@ function ImagesNavButton() {
   return (
     <button type="button" className={`nav-btn${view === 'images' ? ' on' : ''}`} aria-current={view === 'images' ? 'page' : undefined}
       onClick={() => useApp.setView('images')}>
-      <span>이미지</span>{todo > 0 && <span className="mono sub small" title="할 것">{num(todo)}</span>}
+      <ImageIcon {...ICON} /><span>이미지</span>{todo > 0 && <span className="mono sub small" title="할 것">{num(todo)}</span>}
     </button>
   );
 }
@@ -84,7 +86,7 @@ function BuildsNavButton() {
   return (
     <button type="button" className={`nav-btn${view === 'builds' ? ' on' : ''}`} aria-current={view === 'builds' ? 'page' : undefined}
       onClick={() => useApp.setView('builds')}>
-      <span>빌드 기록</span>
+      <PackageIcon {...ICON} /><span>빌드 기록</span>
     </button>
   );
 }
@@ -99,7 +101,7 @@ function UpdateNavButton() {
   return (
     <button type="button" className={`nav-btn${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined}
       onClick={() => updateActions.openResult()}>
-      <span>업데이트 결과</span>
+      <RefreshCwIcon {...ICON} /><span>업데이트 결과</span>
     </button>
   );
 }
