@@ -4,6 +4,12 @@
 :root {
   --sans: 'IBM Plex Sans KR', system-ui, sans-serif; --mono: 'IBM Plex Mono', monospace;
   --r: 10px; --tfont: var(--sans); --art: none; --art-right: none; --frame-line: var(--line);
+  /* Game titles are mostly Japanese and kanji, which the themes' title fonts (and the Korean subsets of the body
+     fonts) only partly cover: each glyph then fell to a different font. A Japanese system face first keeps kana and
+     kanji in one face; Hangul falls through it to the body font. */
+  --gfont: 'Yu Gothic UI', 'Yu Gothic', 'Meiryo UI', 'Meiryo', 'IBM Plex Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+  /* Screen titles are 28px; --tscale evens out title fonts that look smaller at the same size (the brush script). */
+  --tscale: 1; --tweight: 700;
 }
 :root[data-theme="dark"], [data-theme="dark"] {
   --bg: #121418; --panel: #181B20; --card: #1F232A; --line: #2A2F38; --hair: #21252C; --thumb: #353B46;
@@ -33,7 +39,7 @@
   --bg: #0C0A08; --panel: #13100C; --card: #1D1812; --line: #3A2C18; --hair: #261E12; --text: #E9DFC9;
   --sub: #B5A88C; --mute: #8F836B; --accent: #D8A24A; --accent-bg: #3A2A12; --accent-text: #F3D9A4; --on-accent: #1A1206;
   --warn: #E3AD55; --warn-bg: #3A2D14; --err: #F2A093; --err-bg: #3D1F1C; --thumb: #4A3A20;
-  --r: 3px; --tfont: 'Cinzel', 'Noto Serif KR', serif; --frame-line: #5C4320;
+  --r: 3px; --tfont: 'Cinzel', 'Noto Serif KR', serif; --tweight: 600; --frame-line: #5C4320;
   --art: radial-gradient(ellipse at 50% -12%, rgba(216, 120, 40, .3), transparent 45%);
   color-scheme: dark;
 }
@@ -41,7 +47,7 @@
   --bg: #0E0F10; --panel: #151718; --card: #1E2122; --line: #2E3133; --hair: #232627; --text: #ECE7DC;
   --sub: #B8B2A5; --mute: #8E8A80; --accent: #C0392B; --accent-bg: #3A1A16; --accent-text: #F0A397; --on-accent: #FFFFFF;
   --warn: #D9B45A; --warn-bg: #3A3018; --err: #F2A093; --err-bg: #3D1F1C; --thumb: #3A3D40;
-  --r: 2px; --tfont: 'Nanum Brush Script', var(--sans);
+  --r: 2px; --tfont: 'Nanum Brush Script', var(--sans); --tscale: 1.45; --tweight: 400;
   --art: radial-gradient(ellipse 14% 20% at 4% 104%, #26292B 0 60%, transparent 61%), radial-gradient(ellipse 12% 26% at 13% 108%, #1D2022 0 60%, transparent 61%);
   color-scheme: dark;
 }
@@ -64,7 +70,7 @@
   --bg: #F3EEE2; --panel: #FBF8F0; --card: #EDE6D6; --line: #D9D0BD; --hair: #E6DECD; --text: #1F1B16;
   --sub: #5C5548; --mute: #7B7366; --accent: #B5332A; --accent-bg: #F3DAD5; --accent-text: #8C241D; --on-accent: #FBF8F0;
   --warn: #8A5A00; --warn-bg: #F3E3BD; --err: #A8322A; --err-bg: #F6D8D3; --thumb: #C9BFA8;
-  --r: 0px; --tfont: 'Song Myung', 'Noto Serif KR', serif;
+  --r: 0px; --tfont: 'Song Myung', 'Noto Serif KR', serif; --tscale: 1.04; --tweight: 400;
   --art: radial-gradient(circle at 3% 104%, rgba(31, 27, 22, .2), transparent 22%);
   color-scheme: light;
 }
@@ -106,7 +112,7 @@ select.input { padding: 0 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > label { font-size: 12px; color: var(--sub); }
 .hint { font-size: 12px; color: var(--mute); }
-.page-title { margin: 0; font-family: var(--tfont); font-size: 22px; font-weight: 600; }
+.page-title { margin: 0; font-family: var(--tfont); font-size: calc(28px * var(--tscale)); font-weight: var(--tweight); letter-spacing: -.01em; line-height: 1.15; }
 .seg { display: flex; padding: 3px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
 .seg > button { height: 38px; padding: 0 16px; border: 0; border-radius: 6px; font-size: 13px; background: transparent; color: var(--sub); }
 .seg > button.on { background: var(--card); color: var(--text); }
@@ -115,7 +121,7 @@ select.input { padding: 0 12px; }
 /* ---- project picker ---- */
 .picker { max-width: 720px; margin: 0 auto; padding: 48px 24px; display: flex; flex-direction: column; gap: 18px; }
 .picker-head { display: flex; align-items: center; gap: 12px; }
-.picker-head h1 { margin: 0; font-family: var(--tfont); font-size: 22px; font-weight: 600; }
+.picker-head h1 { margin: 0; font-family: var(--tfont); font-size: calc(28px * var(--tscale)); font-weight: var(--tweight); letter-spacing: -.01em; line-height: 1.15; }
 .picker-section { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .picker-path { overflow-wrap: anywhere; font-size: 12px; }
@@ -124,6 +130,7 @@ select.input { padding: 0 12px; }
 .picker-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .picker-item { display: flex; flex-direction: column; min-width: 0; }
 .picker-item .mono { font-size: 12px; overflow-wrap: anywhere; }
+.picker-name { font-family: var(--gfont); font-weight: 500; }
 
 /* ---- shell ---- */
 /* The frame (title bar, left menu, right panel, status bar) shows the theme's --art over --bg; the middle
@@ -137,7 +144,7 @@ select.input { padding: 0 12px; }
 .topbar button, .topbar input, .topbar select, .topbar textarea, .topbar a, .topbar [role="alert"] { -webkit-app-region: no-drag; }
 .topbar .logo { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; }
 .brand { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; }
-.brand-title { font-family: var(--tfont); font-weight: 600; font-size: 14px; letter-spacing: .02em; }
+.brand-title { font-family: var(--gfont); font-weight: 600; font-size: 14px; }
 .topbar .title-field { flex-wrap: nowrap; min-width: 0; }
 .topbar .title-field .tiny { overflow: hidden; text-overflow: ellipsis; }
 .topbar .title-field .icon-btn { width: 24px; height: 24px; }
@@ -475,7 +482,7 @@ select.input { padding: 0 12px; }
 .js-string .grow { flex: 1; }
 
 /* ---- game title field, exchange, item decision box ---- */
-.title-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.title-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; font-family: var(--gfont); }
 .title-field .icon-btn { width: 28px; height: 28px; font-size: 13px; }
 .title-input { height: 30px; min-width: 200px; }
 .title-target { color: var(--accent-text); }
@@ -665,8 +672,7 @@ select.input { padding: 0 12px; }
 .pal-error { padding: 8px 16px; border-top: 1px solid var(--hair); }
 
 /* ---- theme touches beyond the tokens (still only on the frame and titles) ---- */
-:root[data-theme="murim"] .brand-title { font-size: 21px; font-weight: 400; }
-:root[data-theme="murim"] .page-title, :root[data-theme="murim"] .picker-head h1 { font-weight: 400; line-height: 1; }
+:root[data-theme="murim"] .page-title, :root[data-theme="murim"] .picker-head h1 { line-height: 1.05; }
 :root[data-theme="murim"] .nav-head.work-head { position: relative; }
 /* The red sun, small, in the empty end of the "작업" heading row: over the menu it covered the scope names. */
 :root[data-theme="murim"] .nav-head.work-head::after { content: ''; position: absolute; right: 10px; top: calc(50% - 3px); width: 17px; height: 17px; margin-top: -8.5px; border-radius: 50%; background: rgba(192, 57, 43, .9); }

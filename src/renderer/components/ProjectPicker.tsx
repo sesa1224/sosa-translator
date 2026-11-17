@@ -143,7 +143,7 @@ export function ProjectPicker() {
             {projects.map((p) => (
               <li key={p.dir}>
                 <div className="picker-item">
-                  <span>{p.name}</span>
+                  <span className="picker-name">{p.name}</span>
                   <span className="mono sub">{p.engine} · {p.dir}</span>
                 </div>
                 <button type="button" className="btn" disabled={busy} onClick={() => run(() => useApp.openProject(p.dir))}
