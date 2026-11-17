@@ -481,9 +481,9 @@ test('움직임: 승인한 줄이 한 번 밝아지고, 설정에서 끄면 애�
 
   await w.getByRole('button', { name: '설정', exact: true }).click();
   // A controlled box: it shows the new state once the saved settings come back.
-  await w.getByRole('checkbox', { name: '움직임 켜기' }).click();
+  await w.getByRole('switch', { name: '움직임 켜기' }).click();
   await w.waitForFunction(() => document.documentElement.dataset.motion === 'off');
-  expect(await w.getByRole('checkbox', { name: '움직임 켜기' }).isChecked()).toBe(false);
+  expect(await w.getByRole('switch', { name: '움직임 켜기' }).isChecked()).toBe(false);
   await w.getByRole('button', { name: /텍스트/ }).first().click();
   await approve('薬草園の見習い', '약초원의 견습생');
   expect(await motionOf('薬草園の見習い')).toMatchObject({ flash: true, rowAnim: 'none', pop: true, pillAnim: 'none' });

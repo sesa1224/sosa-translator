@@ -1,8 +1,10 @@
+import { MousePointerClickIcon } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { describeCommand } from '../../core/events/describe';
 import { emptyNames } from '../../core/events/nameFormat';
 import type { EventCommand, EventDetail, EventFileInfo, EventLine, EventListInfo, EventRef, ListOp, Patch, PathSeg, UsageTarget } from '../../shared/api';
 import { eventActions, useApp } from '../state';
+import { EmptyState, ScreenHead, Tile } from './ui';
 
 const NO_NAMES = emptyNames();
 const samePath = (a: PathSeg[] | null | undefined, b: PathSeg[] | null | undefined) => !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
@@ -235,12 +237,7 @@ export function EventView() {
 
   return (
     <div className="ev-page">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">이벤트</h1>
-          <span className="sub">게임 데이터를 읽기 쉬운 글로 풀어서 보여줘요. Claude도 이 형태로 읽어요.</span>
-        </div>
-      </div>
+      <ScreenHead title="이벤트" count={files.length > 0 ? `파일 ${files.length}개` : undefined} desc="게임 데이터를 읽기 쉬운 글로 풀어서 보여줘요. Claude도 이 형태로 읽어요." />
       {error && <span className="err-text small" role="alert">{error}</span>}
       <div className="ev-cols">
         <div className="card ev-left">
@@ -273,7 +270,9 @@ export function EventView() {
 
         <div className="card ev-main">
           {!detail ? (
-            <div className="ev-empty sub">{file ? '왼쪽에서 이벤트를 고르세요' : '왼쪽에서 파일을 고르세요'}</div>
+            <EmptyState art={<Tile icon={MousePointerClickIcon} />} title={file ? '왼쪽에서 이벤트를 고르세요' : '왼쪽에서 파일을 고르세요'}>
+              줄 아래에 끼워 넣거나 지우면 원본은 그대로 두고 수정 내역에 쌓여요.
+            </EmptyState>
           ) : (
             <>
               <div className="card-head ev-head">

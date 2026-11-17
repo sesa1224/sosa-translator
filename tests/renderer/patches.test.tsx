@@ -109,7 +109,7 @@ test('폰트를 게임에 넣기: 스위치와 줄이기', async () => {
   expect(api.calls).toContainEqual(['patches.setGameFont', 'C:/fonts/NanumGothic.ttf', true]);
   await user.click(within(section).getByRole('switch', { name: '이 폰트를 패치에 넣기' }));
   expect(api.calls).toContainEqual(['patches.setGameFont', null, true]);
-  await user.click(within(section).getByRole('checkbox', { name: '쓰는 글자만 남겨 용량 줄이기' }));
+  await user.click(within(section).getByRole('switch', { name: '쓰는 글자만 남겨 용량 줄이기' }));
   await user.click(within(section).getByRole('switch', { name: '이 폰트를 패치에 넣기' }));
   expect(api.calls).toContainEqual(['patches.setGameFont', 'C:/fonts/NanumGothic.ttf', false]);
 });

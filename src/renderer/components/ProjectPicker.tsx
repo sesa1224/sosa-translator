@@ -1,6 +1,9 @@
+import { FolderOpenIcon, FolderSearchIcon } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 import type { GameDirCheck, PackedGameInfo } from '../../shared/api';
+import { ICON } from '../icons';
 import { useApp } from '../state';
+import { Tile } from './ui';
 import { WindowControls } from './WindowControls';
 
 function hasFiles(e: DragEvent): boolean {
@@ -97,14 +100,17 @@ export function ProjectPicker() {
       <div className="picker">
       <div className="picker-head">
         <div className="logo" aria-hidden="true">譯</div>
-        <h1>프로젝트</h1>
+        <div className="ph-text">
+          <h1>프로젝트</h1>
+          <p className="page-desc">RPG Maker MV/MZ 게임을 일본어에서 한국어로 옮기는 작업실이에요.</p>
+        </div>
       </div>
 
       <section className="card picker-section" aria-label="새 프로젝트">
         <span className="card-title">새 프로젝트</span>
         <span className="sub">게임 폴더를 고르거나 이 창에 끌어다 놓으면 원본을 복사해 오고 텍스트를 뽑아요. 원본 게임은 수정되지 않아요.</span>
         <div className="picker-row">
-          <button type="button" className="btn" onClick={pick} disabled={busy}>게임 폴더 고르기</button>
+          <button type="button" className={`btn${game ? '' : ' primary'}`} onClick={pick} disabled={busy}><FolderSearchIcon {...ICON} />게임 폴더 고르기</button>
           <span className="mono sub picker-path">{game?.dir ?? '아직 고르지 않았어요'}</span>
         </div>
         {game && (
@@ -139,9 +145,10 @@ export function ProjectPicker() {
       {projects.length > 0 && (
         <section className="card picker-section" aria-label="기존 프로젝트">
           <span className="card-title">기존 프로젝트</span>
-          <ul className="picker-list">
+          <ul className="list picker-list">
             {projects.map((p) => (
-              <li key={p.dir}>
+              <li key={p.dir} className="li">
+                <Tile icon={FolderOpenIcon} />
                 <div className="picker-item">
                   <span className="picker-name">{p.name}</span>
                   <span className="mono sub">{p.engine} · {p.dir}</span>

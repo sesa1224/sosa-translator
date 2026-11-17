@@ -1,4 +1,4 @@
-import { SparklesIcon } from 'lucide-react';
+import { MousePointerClickIcon, SparklesIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
@@ -10,6 +10,7 @@ import { jobActive, useApp } from '../state';
 import { hasGamePreview, ItemPreview } from './BigPreview';
 import { CodeText } from './CodeText';
 import { DiffPieces as Pieces } from './DiffPieces';
+import { EmptyState, Tile } from './ui';
 
 const RULE_LABEL: Record<Issue['rule'], string> = {
   'control-codes': '제어 코드',
@@ -66,7 +67,15 @@ export function ItemPanel() {
     } else setConflict(saved);
   }, [row?.target]);
 
-  if (!row) return <div className="item-empty sub">줄을 고르면 여기에 자세한 내용이 나와요</div>;
+  if (!row) {
+    return (
+      <div className="item-empty">
+        <EmptyState art={<Tile icon={MousePointerClickIcon} />} title="줄을 고르면 여기에 자세한 내용이 나와요">
+          원문과 번역, 검사 결과, 게임 화면 미리보기, 비슷한 번역을 함께 보여 줘요.
+        </EmptyState>
+      </div>
+    );
+  }
 
   const run = async (job: () => Promise<unknown>) => {
     setSaving(true);

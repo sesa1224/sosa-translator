@@ -1,7 +1,11 @@
+import { PackageIcon, SparklesIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { BuildRecord } from '../../shared/api';
 import { num } from '../format';
+import { ICON } from '../icons';
 import { jobActive, useApp } from '../state';
+import { Inkdrop } from './Inkdrop';
+import { EmptyState, ScreenHead, Tile } from './ui';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -60,14 +64,17 @@ function BuildCard({ b, model, busy }: { b: BuildRecord; model: string; busy: bo
     }
   };
   return (
-    <article className="card bv-card" aria-label={`빌드 ${b.number}`}>
-      <span className="card-title">{`빌드 ${b.number} · ${when(b.createdAt)} · 파일 ${num(b.files)}개`}</span>
+    <article className="li bv-card" aria-label={`빌드 ${b.number}`}>
+      <div className="bv-head">
+        <Tile icon={PackageIcon} />
+        <span className="card-title">{`빌드 ${b.number} · ${when(b.createdAt)} · 파일 ${num(b.files)}개`}</span>
+      </div>
       <textarea className="input bv-notes" aria-label={`빌드 ${b.number} 패치노트`} rows={Math.min(14, Math.max(4, text.split('\n').length + 1))}
         value={text} onChange={(e) => { setText(e.target.value); setSaved(false); }} />
       <div className="row-gap">
         <button type="button" className="btn small-btn" disabled={text === b.notes} onClick={() => void run(() => useApp.setBuildNotes(b.number, text), () => setSaved(true))}>저장</button>
         {saved && <span className="accent-text small">zip 안의 패치노트도 바꿨어요</span>}
-        <button type="button" className="btn soft small-btn" disabled={busy} onClick={() => void run(() => useApp.polishNotes(b.number))}>Claude에게 다듬기 맡기기</button>
+        <button type="button" className="btn soft small-btn" disabled={busy} onClick={() => void run(() => useApp.polishNotes(b.number))}><SparklesIcon {...ICON} />Claude에게 다듬기 맡기기</button>
         <span className="sub small">{model}</span>
         <div className="grow" />
         <button type="button" className="btn ghost small-btn" onClick={() => void run(() => useApp.openBuildFolder(b.number))}>폴더 열기</button>
@@ -90,13 +97,17 @@ export function BuildsView() {
   const model = settings?.models.find((m) => m.id === modelId)?.label ?? modelId;
   return (
     <div className="builds-view">
-      <div className="page-head">
-        <h1 className="page-title">빌드 기록</h1>
-      </div>
-      <span className="hint">빌드할 때마다 지난 빌드와 비교한 패치노트가 자동으로 쓰여 zip 에 들어가요. 고쳐서 저장하면 zip 안의 글도 바뀌어요.</span>
+      <ScreenHead title="빌드 기록" count={builds && builds.length > 0 ? `${num(builds.length)}개` : undefined}
+        desc="빌드할 때마다 지난 빌드와 비교한 패치노트가 자동으로 쓰여 zip 에 들어가요. 고쳐서 저장하면 zip 안의 글도 바뀌어요." />
       {builds === null && <span className="sub small">기록을 읽는 중이에요</span>}
-      {builds !== null && builds.length === 0 && <div className="empty">아직 빌드가 없어요. 위의 패치 빌드를 누르면 여기에 기록이 쌓여요.</div>}
-      {builds?.map((b) => <BuildCard key={b.number} b={b} model={model} busy={jobActive(app)} />)}
+      {builds !== null && builds.length === 0 && (
+        <EmptyState art={<Inkdrop size={56} />} title="아직 만든 패치가 없어요">아직 빌드가 없어요. 위의 패치 빌드를 누르면 여기에 기록이 쌓여요.</EmptyState>
+      )}
+      {builds !== null && builds.length > 0 && (
+        <div className="list">
+          {builds.map((b) => <BuildCard key={b.number} b={b} model={model} busy={jobActive(app)} />)}
+        </div>
+      )}
     </div>
   );
 }

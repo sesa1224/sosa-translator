@@ -1,8 +1,11 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { ImageOffIcon, MousePointerClickIcon, RefreshCwIcon, SlidersHorizontalIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { FontInfo, ImageEntry, Rect, Region, RegionOverflow } from '../../shared/api';
 import { num } from '../format';
+import { ICON } from '../icons';
 import { useApp } from '../state';
+import { EmptyState, ScreenHead, Seg, Tile } from './ui';
 
 type Filter = 'all' | 'none' | 'todo' | 'done' | 'manual' | 'skip' | 'problem';
 const FILTERS: [Filter, string][] = [['all', '전체'], ['none', '안 본 것'], ['todo', '할 것'], ['done', '끝남'], ['manual', '직접 고침'], ['skip', '건너뜀'], ['problem', '문제 있음']];
@@ -301,18 +304,18 @@ function RegionEditor({ region, index, count, overflow, onChange, onRemove, onPi
           </span>
         </label>
         <div className="field"><span className="label">가로 정렬</span>
-          <span className="seg">
+          <Seg label="가로 정렬">
             {([['left', '왼쪽'], ['center', '가운데'], ['right', '오른쪽']] as const).map(([v, l]) => (
               <button key={v} type="button" className={region.align === v ? 'on' : ''} aria-pressed={region.align === v} onClick={() => onChange({ align: v })}>{l}</button>
             ))}
-          </span>
+          </Seg>
         </div>
         <div className="field"><span className="label">세로 정렬</span>
-          <span className="seg">
+          <Seg label="세로 정렬">
             {([['top', '위', '위'], ['middle', '가운데', '세로 가운데'], ['bottom', '아래', '아래']] as const).map(([v, l, aria]) => (
               <button key={v} type="button" aria-label={aria} className={region.valign === v ? 'on' : ''} aria-pressed={region.valign === v} onClick={() => onChange({ valign: v })}>{l}</button>
             ))}
-          </span>
+          </Seg>
         </div>
       </div>
       <div className="iv-fields">
@@ -462,9 +465,9 @@ function ImageEditor({ entry, onExport }: { entry: ImageEntry; onExport: (files:
         <button type="button" className="btn small-btn" onClick={() => void run(() => onExport([file]))}>원본 내보내기</button>
         <button type="button" className="btn ghost small-btn" onClick={() => useApp.talkAboutImage(file)}>채팅으로 말하기</button>
         <div className="grow" />
-        <span className="seg" aria-label="확대">
+        <Seg label="확대">
           {ZOOMS.map(([z, l]) => <button key={l} type="button" className={zoom === z ? 'on' : ''} aria-pressed={zoom === z} onClick={() => setZoom(z)}>{l}</button>)}
-        </span>
+        </Seg>
       </div>
       {entry.problem === 'base-changed' && (
         <div className="banner warn" role="status">
@@ -537,19 +540,21 @@ export function ImageView() {
 
   return (
     <div className="image-view">
-      <div className="page-head iv-head">
-        <div>
-          <h1 className="page-title">이미지</h1>
-          {current && <span className="mono sub small">{`${current.file}${regionCount !== null ? ` · 글자 영역 ${num(regionCount)}개` : ''}`}</span>}
-        </div>
-        <div className="grow" />
+      <ScreenHead title="이미지" count={images && images.length > 0 ? `${num(images.length)}장` : undefined}
+        desc={current
+          ? <span className="mono small">{`${current.file}${regionCount !== null ? ` · 글자 영역 ${num(regionCount)}개` : ''}`}</span>
+          : '완성된 그림이 아니라 설정을 저장해요. 값을 바꾸면 바로 다시 찍혀요.'}>
         <DefaultFontControl />
-        <button type="button" className="btn small-btn" onClick={() => void useApp.rerenderImages().catch(() => undefined)}>전체 이미지 다시 찍기</button>
-      </div>
-      <span className="hint">완성된 그림이 아니라 설정을 저장해요. 값을 바꾸면 바로 다시 찍혀요.</span>
+        <button type="button" className="btn small-btn" onClick={() => void useApp.rerenderImages().catch(() => undefined)}><RefreshCwIcon {...ICON} />전체 이미지 다시 찍기</button>
+      </ScreenHead>
       {exported && <span className="sub small iv-export-status" role="status">{exported}</span>}
       {images === null && <span className="sub small">그림을 찾는 중이에요</span>}
-      {images !== null && images.length === 0 && <div className="empty">이 게임에는 글자가 있을 만한 그림 폴더가 없어요</div>}
+      {images !== null && images.length === 0 && (
+        <EmptyState art={<Tile icon={ImageOffIcon} />} title="찾은 그림이 없어요"
+          actions={<button type="button" className="btn" onClick={() => useApp.setView('settings')}><SlidersHorizontalIcon {...ICON} />설정에서 그림 폴더 고치기</button>}>
+          이 게임에는 글자가 있을 만한 그림 폴더가 없어요
+        </EmptyState>
+      )}
       {images !== null && images.length > 0 && (
         <div className="iv-cols">
           <div className="iv-side">
@@ -569,7 +574,13 @@ export function ImageView() {
             {exportError && <span className="err-text small" role="alert">{exportError}</span>}
             <ImageGrid entries={shown} current={imageFile} />
           </div>
-          {current ? <ImageEditor key={current.file} entry={current} onExport={exportOriginals} /> : <div className="empty">왼쪽에서 그림을 고르세요</div>}
+          {current ? <ImageEditor key={current.file} entry={current} onExport={exportOriginals} /> : (
+            <div className="iv-main">
+              <EmptyState art={<Tile icon={MousePointerClickIcon} />} title="왼쪽에서 그림을 고르세요">
+                글자 영역을 그리고 번역을 넣으면 원본 위에 찍어 패치에 넣어요.
+              </EmptyState>
+            </div>
+          )}
         </div>
       )}
     </div>

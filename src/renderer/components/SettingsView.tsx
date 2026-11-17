@@ -5,6 +5,7 @@ import { FontPicker } from './FontPicker';
 import { ImageFolderSettings } from './ImageView';
 import { FontEmbedSection } from './PatchView';
 import { TextWindowSettings } from './TextWindowSettings';
+import { ScreenHead, Switch } from './ui';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
 
@@ -53,7 +54,7 @@ export function SettingsView() {
 
   return (
     <div className="settings">
-      <h1 className="page-title">설정</h1>
+      <ScreenHead title="설정" desc="테마, 모델, 게임 폰트와 창, 그림 폴더를 정해요. 바꾸면 바로 저장돼요." />
 
       <section className="card settings-card" aria-labelledby="set-theme">
         <span id="set-theme" className="card-title">테마</span>
@@ -72,10 +73,7 @@ export function SettingsView() {
 
       <section className="card settings-card" aria-labelledby="set-motion">
         <span id="set-motion" className="card-title">움직임</span>
-        <label className="check">
-          <input type="checkbox" checked={settings.motion} onChange={(e) => void save({ motion: e.target.checked })} />
-          움직임 켜기
-        </label>
+        <Switch label="움직임 켜기" checked={settings.motion} onChange={(e) => void save({ motion: e.target.checked })} />
         <span className="hint">작업 진행, 승인, 가져오기 같은 순간을 짧게 움직여 알려 줘요. 끄면 화면의 움직임이 모두 멈춰요. 윈도우에서 애니메이션 효과를 꺼 두었으면 여기와 상관없이 멈춰요.</span>
       </section>
 

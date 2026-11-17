@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PromptKind } from '../../shared/api';
 import { useApp } from '../state';
+import { ScreenHead, Seg } from './ui';
 
 const SAVE_DELAY = 800;
 
@@ -79,19 +80,14 @@ export function GuideView() {
   const title = `${info.label}에 보내는 글`;
   return (
     <div className="glossary">
-      <div className="page-head">
-        <div className="col">
-          <h1 className="page-title">번역 지침</h1>
-          <span className="sub">여기 보이는 글 전체가 그대로 전달돼요. 프로그램이 뒤에서 더 붙이는 문구는 없어요.</span>
-        </div>
-      </div>
+      <ScreenHead title="번역 지침" desc="여기 보이는 글 전체가 그대로 전달돼요. 프로그램이 뒤에서 더 붙이는 문구는 없어요." />
       <div className="row-gap">
-        <div className="seg" role="group" aria-label="지침 종류">
+        <Seg label="지침 종류">
           {KINDS.map((k) => (
             <button key={k.kind} type="button" aria-pressed={kind === k.kind} className={kind === k.kind ? 'on' : ''}
               onClick={() => void show(k.kind)}>{k.label}</button>
           ))}
-        </div>
+        </Seg>
         <span className="sub small">{info.what}</span>
       </div>
       {error && <span className="err-text" role="alert">{error}</span>}

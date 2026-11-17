@@ -1,6 +1,8 @@
+import { DownloadIcon, UploadIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { ImportPlan } from '../../shared/api';
 import { num } from '../format';
+import { ICON } from '../icons';
 import { useApp } from '../state';
 
 /** Shows what an outside translator's file would change, and imports it. Conflicts are skipped unless chosen. */
@@ -61,12 +63,14 @@ export function ExchangeActions({ ids }: { ids: string[] }) {
   };
   return (
     <span className="exchange-actions">
-      <button type="button" className="btn small-btn" disabled={ids.length === 0}
-        onClick={() => void run(async () => {
-          const file = await useApp.exportRows(ids);
-          if (file) setNote(`내보냈어요: ${file}`);
-        })}>{`내보내기 (${num(ids.length)})`}</button>
-      <button type="button" className="btn small-btn" onClick={() => void run(async () => { setPlan(await useApp.planImport()); })}>가져오기</button>
+      <span className="grp">
+        <button type="button" disabled={ids.length === 0}
+          onClick={() => void run(async () => {
+            const file = await useApp.exportRows(ids);
+            if (file) setNote(`내보냈어요: ${file}`);
+          })}><UploadIcon {...ICON} />{`내보내기 (${num(ids.length)})`}</button>
+        <button type="button" onClick={() => void run(async () => { setPlan(await useApp.planImport()); })}><DownloadIcon {...ICON} />가져오기</button>
+      </span>
       {note && <span className="mute small">{note}</span>}
       {error && <span className="err-text small" role="alert">{error}</span>}
       {plan && <ExchangeDialog plan={plan} onClose={(n) => { setPlan(null); if (n !== null) setNote(`가져온 번역 ${num(n)}개`); }} />}

@@ -1,9 +1,12 @@
+import { CheckCheckIcon, CheckIcon, ChevronRightIcon, CircleCheckIcon, PuzzleIcon, SparklesIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { translateRanges } from '../../core/decisions/keys';
 import type { DecisionGroup, KeepRule, Row } from '../../shared/api';
 import { num } from '../format';
+import { ICON } from '../icons';
 import { jobActive, orderedRows, useApp } from '../state';
 import { CodeText } from './CodeText';
+import { EmptyState, ScreenHead, Seg, Tile } from './ui';
 
 type Filter = 'all' | 'open' | 'suggested' | 'translate' | 'skip';
 
@@ -138,36 +141,45 @@ function GroupCard({ group, rows, focused }: { group: DecisionGroup; rows: Row[]
   const isJs = group.key.startsWith('js:');
   const h = group.hints;
   const meta = [h.metaText, h.metaDesc].filter((x) => x !== undefined && x !== '').join(' · ');
+  const decided = d?.status === 'confirmed';
   return (
-    <section ref={ref} data-testid="decision-card" className={`card decision-card${focused ? ' focus' : ''}`} aria-label={group.label}>
-      <div className="decision-head">
-        <span className="mono decision-label">{group.label}</span>
-        <span className="mute small">{KIND_LABEL[group.kind] ?? group.kind}</span>
-        <span className="mute small">{`${num(group.count)}곳`}</span>
-        {d?.status === 'confirmed' && <span className={`chip${d.translate ? '' : ' warn'}`}>{d.translate ? '번역함' : '번역 안 함'}</span>}
+    <section ref={ref} data-testid="decision-card" className={`li decision-card${focused ? ' focus' : ''}`} aria-label={group.label}>
+      <Tile icon={decided ? CheckIcon : PuzzleIcon} tone={decided ? undefined : 'warn'} />
+      <div className="li-main decision-main">
+        <div className="decision-head">
+          <span className="mono decision-label">{group.label}</span>
+          <span className="tag">{KIND_LABEL[group.kind] ?? group.kind}</span>
+          <span className="mute small">{`${num(group.count)}곳`}</span>
+        </div>
+        {!picking && (
+          <div className="decision-samples">
+            {group.samples.map((s, i) => <div key={i}><Sample text={s} keep={shownKeep} /></div>)}
+          </div>
+        )}
+        {(meta || h.metaType) && <div className="hint">{`플러그인 설명: ${meta || h.metaType}`}</div>}
+        {h.fileNames > 0 && <div className="hint">{`표본 ${group.samples.length}개 중 ${h.fileNames}개가 그림·소리 파일 이름과 같아요`}</div>}
+        {d?.status === 'suggested' && (
+          <div className="decision-suggest">
+            <SparklesIcon {...ICON} />
+            <span>{`추천: ${d.translate ? '번역함' : '번역 안 함'}${d.reason ? ` — ${d.reason}` : ''}`}</span>
+            <span className="mute small">{d.by === 'meta' ? ' (플러그인 주석)' : d.by === 'claude' ? ' (Claude)' : ''}</span>
+          </div>
+        )}
+        {picking && <Picker group={group} onCancel={() => setPicking(false)} />}
+        {isJs && open && <JsStrings rows={rows} />}
       </div>
       {!picking && (
-        <div className="decision-samples">
-          {group.samples.map((s, i) => <div key={i}><Sample text={s} keep={shownKeep} /></div>)}
-        </div>
-      )}
-      {(meta || h.metaType) && <div className="hint">{`플러그인 설명: ${meta || h.metaType}`}</div>}
-      {h.fileNames > 0 && <div className="hint">{`표본 ${group.samples.length}개 중 ${h.fileNames}개가 그림·소리 파일 이름과 같아요`}</div>}
-      {d?.status === 'suggested' && (
-        <div className="decision-suggest">
-          <span>{`추천: ${d.translate ? '번역함' : '번역 안 함'}${d.reason ? ` — ${d.reason}` : ''}`}</span>
-          <span className="mute small">{d.by === 'meta' ? ' (플러그인 주석)' : d.by === 'claude' ? ' (Claude)' : ''}</span>
-        </div>
-      )}
-      {picking ? <Picker group={group} onCancel={() => setPicking(false)} /> : (
         <div className="decision-actions">
-          <button type="button" className="btn soft small-btn" onClick={() => setPicking(true)}>번역함</button>
-          <button type="button" className="btn small-btn" onClick={() => void useApp.setDecision(group.key, { translate: false, keep: { mode: 'whole' } })}>번역 안 함</button>
-          <button type="button" className="btn ghost small-btn" onClick={() => useApp.showDecisionRows(group.key)}>이 묶음의 줄 보기</button>
+          {/* Translating opens the picker for which part to translate; the choice shows filled once it is confirmed. */}
+          <div className="choice" role="group" aria-label={`${group.label} 번역 여부`}>
+            <button type="button" className={decided && d.translate ? 'on' : ''} aria-pressed={decided && d.translate} onClick={() => setPicking(true)}>번역함</button>
+            <button type="button" className={decided && !d.translate ? 'on no' : ''} aria-pressed={decided && !d.translate}
+              onClick={() => void useApp.setDecision(group.key, { translate: false, keep: { mode: 'whole' } })}>번역 안 함</button>
+          </div>
           {isJs && <button type="button" className="btn ghost small-btn" aria-expanded={open} onClick={() => setOpen(!open)}>문자열 하나씩 보기</button>}
+          <button type="button" className="ico" aria-label="이 묶음의 줄 보기" title="이 묶음의 줄 보기" onClick={() => useApp.showDecisionRows(group.key)}><ChevronRightIcon {...ICON} /></button>
         </div>
       )}
-      {isJs && open && <JsStrings rows={rows} />}
     </section>
   );
 }
@@ -206,31 +218,43 @@ export function DecisionView() {
   const chips: [Filter, string, number][] = [
     ['open', '정할 것', counts.open], ['suggested', '추천 받음', counts.suggested], ['translate', '번역함', counts.translate], ['skip', '번역 안 함', counts.skip],
   ];
+  const decided = counts.translate + counts.skip;
   return (
     <div className="decision-view">
-      <div className="decision-top">
-        <div>
-          <h2>판단 필요</h2>
-          <p className="mute">플러그인이 쓰는 값 중 화면에 보이는 글자만 골라 번역해요. 같은 종류는 한 번만 정하면 돼요.</p>
-        </div>
-        <div className="decision-top-actions">
-          <button type="button" className="btn" disabled={busy || groups.length === 0} onClick={() => void run(() => useApp.decide())}>Claude에게 추천 받기</button>
-          {suggestions > 0 && (
-            <button type="button" className="btn primary" onClick={() => void run(() => useApp.confirmDecisions())}>{`추천 전부 받아들이기 (${num(suggestions)})`}</button>
-          )}
-        </div>
-      </div>
+      <ScreenHead title="판단 필요" count={groups.length > 0 ? `${num(groups.length)}묶음` : undefined}
+        desc="플러그인이 쓰는 값 중 화면에 보이는 글자만 골라 번역해요. 같은 종류는 한 번만 정하면 돼요.">
+        {/* One main button: asking Claude, or taking what it suggested once there is something to take. */}
+        <button type="button" className={`btn${suggestions > 0 ? '' : ' primary'}`} disabled={busy || groups.length === 0} onClick={() => void run(() => useApp.decide())}>
+          <SparklesIcon {...ICON} />Claude에게 추천 받기
+        </button>
+        {suggestions > 0 && (
+          <button type="button" className="btn primary" onClick={() => void run(() => useApp.confirmDecisions())}><CheckCheckIcon {...ICON} />{`추천 전부 받아들이기 (${num(suggestions)})`}</button>
+        )}
+      </ScreenHead>
       {error && <div className="err-text small" role="alert">{error}</div>}
-      <div className="filters">
-        {chips.map(([key, label, n]) => (
-          <button key={key} type="button" className={`pill${filter === key ? ' on' : ''}`} aria-pressed={filter === key}
-            onClick={() => setFilter(filter === key ? 'all' : key)}>{`${label} ${num(n)}`}</button>
-        ))}
-      </div>
-      {groups.length === 0 && <p className="mute">판단할 항목이 없어요.</p>}
-      <div className="decision-list">
-        {shown.map((g) => <GroupCard key={g.key} group={g} rows={rowsByKey.get(g.key) ?? []} focused={app.decisionFocus === g.key} />)}
-      </div>
+      {groups.length > 0 && (
+        <div className="decision-bar">
+          {/* A chip pressed again shows every group (the chips filter; none picked means all). */}
+          <Seg label="판단 거르기">
+            {chips.map(([key, label, n]) => (
+              <button key={key} type="button" className={filter === key ? 'on' : ''} aria-pressed={filter === key}
+                onClick={() => setFilter(filter === key ? 'all' : key)}>{label}{' '}<span className="n">{num(n)}</span></button>
+            ))}
+          </Seg>
+          <div className="prog" role="progressbar" aria-label="정한 묶음" aria-valuemin={0} aria-valuemax={groups.length} aria-valuenow={decided}>
+            <i style={{ width: `${(decided / groups.length) * 100}%` }} />
+          </div>
+          <span className="mono mute small">{`${num(decided)} / ${num(groups.length)}`}</span>
+        </div>
+      )}
+      {groups.length === 0 && (
+        <EmptyState art={<Tile icon={CircleCheckIcon} />} title="정할 것이 없어요">판단할 항목이 없어요.</EmptyState>
+      )}
+      {shown.length > 0 && (
+        <div className="list decision-list">
+          {shown.map((g) => <GroupCard key={g.key} group={g} rows={rowsByKey.get(g.key) ?? []} focused={app.decisionFocus === g.key} />)}
+        </div>
+      )}
     </div>
   );
 }

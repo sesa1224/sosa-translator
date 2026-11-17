@@ -1,10 +1,12 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { BookOpenTextIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Row, SceneInfo, SceneLine } from '../../shared/api';
 import { filterRows } from '../../shared/rows';
 import { num, STATUS_LABEL } from '../format';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
+import { EmptyState, Tile } from './ui';
 
 const CHIP_STATUSES = new Set<Row['status']>(['needs-review', 'error', 'declined']);
 const CHIP_CLASS: Partial<Record<Row['status'], string>> = { 'needs-review': 'st-warn', error: 'st-err', declined: 'st-err' };
@@ -138,7 +140,13 @@ export function StoryView() {
     getItemKey: (i) => visible[i].key,
   });
 
-  if (!file) return <div className="story-empty sub">왼쪽에서 범위를 고르면 장면이 나와요</div>;
+  if (!file) {
+    return (
+      <EmptyState art={<Tile icon={BookOpenTextIcon} />} title="왼쪽에서 범위를 고르면 장면이 나와요">
+        대사를 장면별로 이어서 읽으며 말투와 흐름을 살필 수 있어요.
+      </EmptyState>
+    );
+  }
   return (
     <div className="story" ref={scrollRef} aria-label="스토리">
       {error && <div className="err-text small" role="alert">{error}</div>}

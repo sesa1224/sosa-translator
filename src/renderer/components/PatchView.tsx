@@ -1,9 +1,14 @@
-import { DiffIcon, PlayIcon } from 'lucide-react';
+import { BracesIcon, DiffIcon, FileTextIcon, GitBranchIcon, MessageCircleIcon, PlayIcon, PuzzleIcon, SpellCheckIcon, TypeIcon, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ListOp, Patch, PatchStatus, PathSeg } from '../../shared/api';
 import { ICON } from '../icons';
 import { usePreviewState } from '../preview/usePreview';
 import { eventActions, useApp, type AttachedEvent } from '../state';
+import { Inkdrop } from './Inkdrop';
+import { EmptyState, ScreenHead, Switch, Tile } from './ui';
+
+/** The tile at the start of a patch row says what kind of change it is. */
+const PATCH_ICON: Record<Patch['body']['kind'], LucideIcon> = { event: GitBranchIcon, json: BracesIcon, plugin: PuzzleIcon, font: TypeIcon, josa: SpellCheckIcon };
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const seg = (s: PathSeg | undefined): unknown => (typeof s === 'object' && s !== null ? s.key : s);
@@ -76,7 +81,8 @@ function PatchRow({ p, status }: { p: Patch; status: PatchStatus | undefined }) 
   };
   const ev = eventOf(p);
   return (
-    <div className="patch-row" data-patch={p.id}>
+    <div className="li patch-row" data-patch={p.id}>
+      <Tile icon={PATCH_ICON[p.body.kind]} tone={status?.state === 'conflict' ? 'warn' : status?.state === 'disabled' ? 'mute' : undefined} />
       <div className="patch-main">
         <input className="patch-title" aria-label="수정 제목" value={title} onChange={(e) => setTitle(e.target.value)}
           onBlur={saveTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(); }} />
@@ -87,7 +93,7 @@ function PatchRow({ p, status }: { p: Patch; status: PatchStatus | undefined }) 
       <div className="patch-actions">
         <StateChip status={status} />
         <label className="check small"><input type="checkbox" checked={p.originalBug} onChange={(e) => void run(() => eventActions.updatePatch(p.id, { originalBug: e.target.checked }))} />원본 버그</label>
-        <label className="check small"><input type="checkbox" role="switch" checked={p.enabled} onChange={(e) => void run(() => eventActions.updatePatch(p.id, { enabled: e.target.checked }))} />적용</label>
+        <Switch className="small" label="적용" checked={p.enabled} onChange={(e) => void run(() => eventActions.updatePatch(p.id, { enabled: e.target.checked }))} />
         {ev && <button type="button" className="btn ghost small-btn" onClick={() => eventActions.openEvents({ file: ev.file, listPath: ev.listPath, line: null })}>이벤트 보기</button>}
         {status?.state === 'conflict' && (
           <button type="button" className="btn soft small-btn" onClick={() => eventActions.askClaude(`이 수정이 충돌났어: ${p.title}`, ev)}>Claude에게 맡기기</button>
@@ -142,20 +148,28 @@ export function PatchView() {
   };
   const patches = list?.patches ?? [];
   return (
-    <div className="ev-page">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">수정 내역</h1>
-          <span className="sub">원본 대비 바뀐 점만 모아둔 목록이에요. 빌드할 때 원본 위에 얹어요.</span>
-        </div>
-        <button type="button" className="btn" onClick={() => void openReport()}>제작자 전달용 목록</button>
-      </div>
+    <div className="ev-page patch-view">
+      <ScreenHead title="수정 내역" count={patches.length > 0 ? `${patches.length}개` : undefined} desc="원본 대비 바뀐 점만 모아둔 목록이에요. 빌드할 때 원본 위에 얹어요.">
+        <button type="button" className="btn" onClick={() => void openReport()}><FileTextIcon {...ICON} />제작자 전달용 목록</button>
+      </ScreenHead>
       {error && <span className="err-text small" role="alert">{error}</span>}
+      <h2 className="sec">자동으로 맞추는 것</h2>
       <JosaSection />
-      <div className="card">
-        {list && patches.length === 0 && <div className="ev-empty sub">아직 수정이 없어요. 이벤트 화면에서 줄을 끼워 넣거나, 채팅에서 버그를 설명해 보세요.</div>}
-        {patches.map((p) => <PatchRow key={p.id} p={p} status={list?.statuses.find((s) => s.id === p.id)} />)}
-      </div>
+      <h2 className="sec">직접 고친 것</h2>
+      {list && patches.length === 0 && (
+        <EmptyState art={<Inkdrop size={56} />} title="수정 내역이 비어 있어요"
+          actions={<>
+            <button type="button" className="btn" onClick={() => eventActions.openEvents()}><GitBranchIcon {...ICON} />이벤트 화면 열기</button>
+            <button type="button" className="btn" onClick={() => useApp.setRightTab('chat')}><MessageCircleIcon {...ICON} />채팅으로 설명하기</button>
+          </>}>
+          아직 수정이 없어요. 이벤트 화면에서 줄을 끼워 넣거나, 채팅에서 버그를 설명해 보세요.
+        </EmptyState>
+      )}
+      {patches.length > 0 && (
+        <div className="list">
+          {patches.map((p) => <PatchRow key={p.id} p={p} status={list?.statuses.find((s) => s.id === p.id)} />)}
+        </div>
+      )}
       {report !== null && <ReportDialog text={report} onClose={() => setReport(null)} />}
     </div>
   );
@@ -182,12 +196,17 @@ function JosaSection() {
     }
   };
   return (
-    <section className="card settings-card" aria-labelledby="patch-josa">
-      <span id="patch-josa" className="card-title">조사 자동 맞춤</span>
-      <label className="check"><input type="checkbox" role="switch" checked={on} onChange={() => void toggle()} />조사 자동 맞춤 켜기</label>
-      <span className="hint">%1은(는) 같은 조사를 게임이 이름을 넣은 뒤에 맞춰요</span>
-      {conflicts.length > 0 && <span className="warn-text small" role="note">{`이 플러그인 때문에 조사가 안 맞을 수 있어요: ${conflicts.join(', ')}`}</span>}
-      {error && <span className="err-text small" role="alert">{error}</span>}
+    <section className="list" aria-labelledby="patch-josa">
+      <div className="li">
+        <Tile icon={SpellCheckIcon} />
+        <div className="li-main">
+          <span id="patch-josa" className="li-t">조사 자동 맞춤</span>
+          <span className="li-d">%1은(는) 같은 조사를 게임이 이름을 넣은 뒤에 맞춰요</span>
+          {conflicts.length > 0 && <span className="warn-text small" role="note">{`이 플러그인 때문에 조사가 안 맞을 수 있어요: ${conflicts.join(', ')}`}</span>}
+          {error && <span className="err-text small" role="alert">{error}</span>}
+        </div>
+        <input type="checkbox" role="switch" className="sw" aria-label="조사 자동 맞춤 켜기" checked={on} onChange={() => void toggle()} />
+      </div>
     </section>
   );
 }
@@ -240,8 +259,8 @@ export function FontEmbedSection() {
       ) : (
         <>
           <span>{`고른 폰트: ${name}`}</span>
-          <label className="check"><input type="checkbox" role="switch" checked={on} onChange={toggle} />이 폰트를 패치에 넣기</label>
-          <label className="check"><input type="checkbox" checked={subset} onChange={(e) => changeSubset(e.target.checked)} />쓰는 글자만 남겨 용량 줄이기</label>
+          <Switch label="이 폰트를 패치에 넣기" checked={on} onChange={toggle} />
+          <Switch label="쓰는 글자만 남겨 용량 줄이기" checked={subset} onChange={(e) => changeSubset(e.target.checked)} />
           <span className="hint">폰트 파일이 패치에 들어가요. 배포해도 되는 폰트인지 확인하세요(본명조, 본고딕, 나눔 계열, Pretendard 등은 괜찮아요. 윈도우 기본 폰트나 유료 폰트는 안 돼요).</span>
         </>
       )}

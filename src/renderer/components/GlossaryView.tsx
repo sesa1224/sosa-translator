@@ -1,10 +1,13 @@
+import { CheckIcon, WandSparklesIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { termsIn } from '../../core/glossary/match';
 import { SPEAKER_PRESETS } from '../../core/text/speaker';
 import type { CharacterCard, DraftChoice, DraftMode, Glossary, ProjectRules, Row, SpeakerDetection, Term, TermCategory, TermScope } from '../../shared/api';
 import { num } from '../format';
+import { ICON } from '../icons';
 import { orderedRows, useApp } from '../state';
 import { DraftDialog } from './DraftDialog';
+import { Callout, ScreenHead, Switch } from './ui';
 
 const CATEGORY_LABEL: Record<TermCategory, string> = { name: '이름', place: '지명', term: '용어', sfx: '효과음', other: '기타' };
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as TermCategory[];
@@ -276,10 +279,7 @@ function Rules({ rules }: { rules: ProjectRules }) {
       <div className="card-head"><span id="g-rules" className="card-title">형식 규칙 · 프로그램이 검사</span></div>
       <div className="pad rules">
         {toggles.map(([k, label]) => (
-          <label key={k} className="rule-line check">
-            <span>{label}</span>
-            <input type="checkbox" checked={(rules[k] as boolean) && !off(k)} disabled={off(k)} onChange={(e) => set({ [k]: e.target.checked })} />
-          </label>
+          <Switch key={k} className="rule-line" label={label} checked={(rules[k] as boolean) && !off(k)} disabled={off(k)} onChange={(e) => set({ [k]: e.target.checked })} />
         ))}
         <NumberRule id="g-max-lines" label="대사 최대 줄 수" value={rules.maxLines} onSave={(v) => set({ maxLines: v })} />
         <NumberRule id="g-max-width" label="한 줄 최대 글자 수" value={rules.maxLineWidthChars} onSave={(v) => set({ maxLineWidthChars: v })} />
@@ -367,20 +367,14 @@ export function GlossaryView() {
 
   return (
     <div className="glossary">
-      <div className="page-head">
-        <div className="col">
-          <h1 className="page-title">용어집</h1>
-          <span className="sub">{provisional.length > 0
-            ? `용어 ${num(confirmed)}개 확정 · ${num(provisional.length)}개는 추천안으로 진행 중이에요`
-            : `용어 ${num(confirmed)}개 확정`}</span>
-        </div>
-        <div className="row-gap">
-          <button type="button" className="btn" disabled={drafting} onClick={() => setAsking(true)}>{g.terms.length > 0 ? '초안 다시 받기' : '초안 받기'}</button>
-          <button type="button" className={`btn${g.confirmedAt === null || glossaryDirty ? ' primary' : ''}`}
-            disabled={g.confirmedAt !== null && !glossaryDirty} onClick={() => void confirm()}>{confirmLabel}</button>
-        </div>
-      </div>
-      {g.confirmedAt === null && <span className="hint">확정해야 전체 번역을 맡길 수 있어요. 결정 안 한 용어가 남아 있어도 확정할 수 있어요.</span>}
+      <ScreenHead title="용어집" count={`${num(g.terms.length)}개`} desc={provisional.length > 0
+        ? `용어 ${num(confirmed)}개 확정 · ${num(provisional.length)}개는 추천안으로 진행 중이에요`
+        : `용어 ${num(confirmed)}개 확정`}>
+        <button type="button" className="btn" disabled={drafting} onClick={() => setAsking(true)}><WandSparklesIcon {...ICON} />{g.terms.length > 0 ? '초안 다시 받기' : '초안 받기'}</button>
+        <button type="button" className={`btn${g.confirmedAt === null || glossaryDirty ? ' primary' : ''}`}
+          disabled={g.confirmedAt !== null && !glossaryDirty} onClick={() => void confirm()}><CheckIcon {...ICON} />{confirmLabel}</button>
+      </ScreenHead>
+      {g.confirmedAt === null && <Callout>확정해야 전체 번역을 맡길 수 있어요. 결정 안 한 용어가 남아 있어도 확정할 수 있어요.</Callout>}
       {error && <span className="err-text" role="alert">{error}</span>}
 
       {notices.map((n) => (

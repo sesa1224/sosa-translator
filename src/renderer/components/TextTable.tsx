@@ -1,9 +1,11 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { ArrowRightIcon, BookOpenTextIcon, ScanSearchIcon, SparklesIcon, Table2Icon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
 import { filterRows, scrollMarks } from '../../shared/rows';
 import { filterGroups, progressParts } from '../filterGroups';
 import { num, STATUS_LABEL } from '../format';
+import { ICON } from '../icons';
 import { motionClock, rowMotionStyle, type RowMotion } from '../motion';
 import { jobActive, orderedRows, shownRows, useApp } from '../state';
 import { StageSlot, useRevealRow } from './BigPreview';
@@ -12,6 +14,7 @@ import { ReviewDialog } from './ReviewDialog';
 import { StoryView } from './StoryView';
 import { ExchangeActions } from './ExchangeDialog';
 import { confirmAndRewrap } from './TextWindowSettings';
+import { Callout, Seg } from './ui';
 
 /** What the translation cell shows for a needs-decision row whose decision says more than the target (null = the usual). */
 function decisionCell(r: Row): string | null {
@@ -50,18 +53,21 @@ function JobActions() {
     }
   };
   return (
-    <div className="job-actions">
-      <button type="button" className="btn primary" disabled={!confirmed || busy || fresh === 0} onClick={() => void translate()}>
-        {`새 문장 ${num(fresh)}개 번역 맡기기`}
-      </button>
-      {!confirmed && <>
-        <span className="warn-text small">용어집을 먼저 확정하세요</span>
-        <button type="button" className="btn ghost small-btn" onClick={() => useApp.setView('glossary')}>용어집으로</button>
-      </>}
-      <button type="button" className="btn" disabled={busy} onClick={() => useApp.openReview()}>번역 전체 검수</button>
-      {error && <span className="err-text small" role="alert">{error}</span>}
-      {app.reviewOpen && <ReviewDialog onClose={() => useApp.closeReview()} />}
-    </div>
+    <>
+      {!confirmed && (
+        <Callout action={<button type="button" className="btn" onClick={() => useApp.setView('glossary')}>용어집으로<ArrowRightIcon {...ICON} /></button>}>
+          <b>용어집을 먼저 확정하세요</b>{' '}확정해야 이름과 용어가 한결같이 번역돼요.
+        </Callout>
+      )}
+      <div className="job-actions">
+        <button type="button" className="btn primary" disabled={!confirmed || busy || fresh === 0} onClick={() => void translate()}>
+          <SparklesIcon {...ICON} />{`새 문장 ${num(fresh)}개 번역 맡기기`}
+        </button>
+        <button type="button" className="btn" disabled={busy} onClick={() => useApp.openReview()}><ScanSearchIcon {...ICON} />번역 전체 검수</button>
+        {error && <span className="err-text small" role="alert">{error}</span>}
+        {app.reviewOpen && <ReviewDialog onClose={() => useApp.closeReview()} />}
+      </div>
+    </>
   );
 }
 
@@ -261,6 +267,7 @@ export function TextTable() {
       <StageSlot />
       <div className="text-head">
         <h1 className="page-title">텍스트</h1>
+        <span className="cnt">{`${num(rows.length)}줄`}</span>
         <TextModeSwitch />
         {scopeLabel && (
           <button type="button" className="pill on" onClick={() => useApp.setQuery({ file: undefined })} aria-label="범위 필터 해제" title={`범위 ${scopeLabel} 해제`}>
@@ -277,7 +284,6 @@ export function TextTable() {
             {`묶음 ${query.decisionKey} ×`}
           </button>
         )}
-        <span className="mono sub small">{`${num(rows.length)}줄`}</span>
         <ExchangeActions ids={rows.map((r) => r.id)} />
         <ReviewBulkActions ids={rows.filter((r) => r.review).map((r) => r.id)} />
         {query.status === 'overflow' && <RewrapVisible ids={rows.map((r) => r.id)} />}
@@ -345,9 +351,9 @@ function TableRow({ r, index, start, measure, sel, busy, motion, onPick }: {
 function TextModeSwitch() {
   const { textMode } = useApp();
   return (
-    <div className="seg" role="group" aria-label="보기 방식">
-      <button type="button" aria-pressed={textMode === 'table'} className={textMode === 'table' ? 'on' : ''} onClick={() => useApp.setTextMode('table')}>표</button>
-      <button type="button" aria-pressed={textMode === 'story'} className={textMode === 'story' ? 'on' : ''} onClick={() => useApp.setTextMode('story')}>스토리</button>
-    </div>
+    <Seg label="보기 방식">
+      <button type="button" aria-pressed={textMode === 'table'} className={textMode === 'table' ? 'on' : ''} onClick={() => useApp.setTextMode('table')}><Table2Icon {...ICON} />표</button>
+      <button type="button" aria-pressed={textMode === 'story'} className={textMode === 'story' ? 'on' : ''} onClick={() => useApp.setTextMode('story')}><BookOpenTextIcon {...ICON} />스토리</button>
+    </Seg>
   );
 }

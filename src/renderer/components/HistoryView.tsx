@@ -1,11 +1,15 @@
+import { DownloadIcon, MessageCircleIcon, PencilLineIcon, ScanSearchIcon, SparklesIcon, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { changedWords } from '../../core/update/carry';
 import type { ActionLine, ActionOrigin, ActionPreview, ActionSummary, CancelResult } from '../../shared/api';
 import { num, STATUS_LABEL } from '../format';
 import { useApp } from '../state';
 import { DiffPieces } from './DiffPieces';
+import { Inkdrop } from './Inkdrop';
+import { EmptyState, ScreenHead, Tile } from './ui';
 
 const WHO: Record<ActionOrigin, string> = { user: '사용자', batch: '번역 작업', review: '검수', chat: '채팅', external: '외부 번역' };
+const WHO_ICON: Record<ActionOrigin, LucideIcon> = { user: PencilLineIcon, batch: SparklesIcon, review: ScanSearchIcon, chat: MessageCircleIcon, external: DownloadIcon };
 const GONE = '(지금은 없는 문장)';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -122,20 +126,21 @@ export function HistoryView() {
 
   return (
     <div className="history-view">
-      <div className="page-head">
-        <h1 className="page-title">작업 기록</h1>
-      </div>
-      <span className="hint">번역문에 생긴 변화를 행동마다 남겨요(최근 200개). 용어집·판단·그림·이벤트 수정은 여기서 되돌리지 않아요. 줄을 누르면 바뀐 문장이 보여요.</span>
+      <ScreenHead title="작업 기록" count={history && history.length > 0 ? `${num(history.length)}개` : undefined}
+        desc="번역문에 생긴 변화를 행동마다 남겨요(최근 200개). 용어집·판단·그림·이벤트 수정은 여기서 되돌리지 않아요. 줄을 누르면 바뀐 문장이 보여요." />
       {note && <span className="accent-text small" role="status">{note}</span>}
       {error && <span className="err-text small" role="alert">{error}</span>}
       {history === null && <span className="sub small">기록을 읽는 중이에요</span>}
-      {history !== null && history.length === 0 && <div className="empty">아직 기록이 없어요. 번역을 고치거나 작업을 돌리면 여기에 쌓여요.</div>}
-      {history?.map((a) => {
+      {history !== null && history.length === 0 && (
+        <EmptyState art={<Inkdrop size={56} />} title="아직 쌓인 기록이 없어요">아직 기록이 없어요. 번역을 고치거나 작업을 돌리면 여기에 쌓여요.</EmptyState>
+      )}
+      {history !== null && history.length > 0 && <div className="list hv-list">{history.map((a) => {
         const undone = a.undoneAt !== undefined;
         const expanded = open[a.id] === true;
         return (
-          <article key={a.id} className={`card hv-item${undone ? ' hv-undone' : ''}`} aria-label={a.label}>
+          <article key={a.id} className={`li hv-item${undone ? ' hv-undone' : ''}`} aria-label={a.label}>
             <div className="hv-head">
+              <Tile icon={WHO_ICON[a.origin]} tone={undone ? 'mute' : undefined} />
               {/* The row itself is the toggle; the two action buttons sit beside it, so pressing them never opens it. */}
               <button type="button" className="hv-toggle" aria-expanded={expanded} onClick={() => toggle(a.id)}>
                 <span className="hv-meta">
@@ -159,7 +164,7 @@ export function HistoryView() {
             {expanded && loaded[a.id] && <ActionLines d={loaded[a.id]} onMore={() => void fetchLines(a.id, loaded[a.id].lines.length)} />}
           </article>
         );
-      })}
+      })}</div>}
     </div>
   );
 }

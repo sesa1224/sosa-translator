@@ -1,13 +1,18 @@
+import { ArrowRightIcon, CircleHelpIcon, DiffIcon, FileCheckIcon, FileMinusIcon, FilePenIcon, FilePlusIcon, ImageIcon, SparklesIcon, TriangleAlertIcon, Undo2Icon, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { num } from '../format';
+import { ICON } from '../icons';
 import { eventActions, jobActive, updateActions, useApp } from '../state';
+import { Inkdrop } from './Inkdrop';
+import { Callout, EmptyState, ScreenHead, Tile } from './ui';
 
 export const ASK_CLAUDE_TEXT = '업데이트 뒤 충돌난 수정을 고쳐줘';
 
-function Card({ label, children }: { label: string; children: ReactNode }) {
+function Card({ label, icon, tone, children }: { label: string; icon: LucideIcon; tone?: 'warn'; children: ReactNode }) {
   return (
     <section className="card update-card" aria-label={label}>
-      {children}
+      <Tile icon={icon} tone={tone} />
+      <div className="update-body">{children}</div>
     </section>
   );
 }
@@ -24,8 +29,10 @@ export function UpdateView() {
   if (!s) {
     return (
       <div className="update-view">
-        <h1 className="page-title">업데이트 결과</h1>
-        <span className="sub">{s === null ? '가져온 업데이트가 없어요.' : '읽는 중…'}</span>
+        <ScreenHead title="업데이트 결과" />
+        {s === null
+          ? <EmptyState art={<Inkdrop size={56} />} title="아직 업데이트가 없어요">가져온 업데이트가 없어요.</EmptyState>
+          : <span className="sub">읽는 중…</span>}
       </div>
     );
   }
@@ -48,24 +55,24 @@ export function UpdateView() {
 
   return (
     <div className="update-view">
-      <h1 className="page-title">{`${s.fromLabel} → ${s.toLabel}`}</h1>
+      <ScreenHead title={`${s.fromLabel} → ${s.toLabel}`} desc="게임 새 버전을 가져오며 바뀐 점이에요. 그대로인 문장의 번역은 이어받았어요." />
       <div className="update-cards">
-        <Card label="그대로인 문장">
+        <Card label="그대로인 문장" icon={FileCheckIcon}>
           <span>{`그대로인 문장 ${num(s.kept)}개 · 번역 ${num(s.keptTranslated)}개를 이어받았어요`}</span>
         </Card>
-        <Card label="새 문장">
+        <Card label="새 문장" icon={FilePlusIcon}>
           <span>{`새 문장 ${num(s.added)}개`}</span>
           <button type="button" className="btn ghost small-btn" aria-label="새 문장 보기" onClick={() => updateActions.showStatus('untranslated')}>보기</button>
         </Card>
-        <Card label="바뀐 문장">
+        <Card label="바뀐 문장" icon={FilePenIcon}>
           <span>{`바뀐 문장 ${num(s.changed)}개 · 이전 번역을 참고로 붙였어요`}</span>
           {s.carried > 0 && <span className="sub small">{`그중 ${num(s.carried)}개는 문장부호만 달라서 이전 번역을 미리 넣었어요(검토 필요)`}</span>}
           <button type="button" className="btn ghost small-btn" aria-label="바뀐 문장 보기" onClick={() => updateActions.showStatus('changed')}>보기</button>
         </Card>
-        <Card label="사라진 문장">
+        <Card label="사라진 문장" icon={FileMinusIcon}>
           <span>{`사라진 문장 ${num(s.removed)}개 · 번역 ${num(s.removedTranslated)}개는 보관했어요`}</span>
         </Card>
-        <Card label="수정">
+        <Card label="수정" icon={DiffIcon} tone={conflicts.length > 0 ? 'warn' : undefined}>
           <span>{`수정: 그대로 ${num(unchanged)} · 자리를 옮김 ${num(moved)} · 충돌 ${num(conflicts.length)}`}</span>
           {conflicts.length > 0 && (
             <>
@@ -78,14 +85,14 @@ export function UpdateView() {
             </>
           )}
         </Card>
-        <Card label="그림">
+        <Card label="그림" icon={ImageIcon}>
           <span>{`원본이 바뀐 그림 ${num(s.images.changed.length)}장`}</span>
           {s.images.changed.length > 0 && (
             <button type="button" className="btn ghost small-btn" aria-label="바뀐 그림 보기" onClick={() => updateActions.showImageProblems()}>보기</button>
           )}
           <span className="sub small">{`새 그림 ${num(s.images.added)}장`}</span>
         </Card>
-        <Card label="판단 필요">
+        <Card label="판단 필요" icon={CircleHelpIcon}>
           <span>{`판단 필요: 새 묶음 ${num(s.decisions.newGroups)}개`}</span>
           {s.decisions.newGroups > 0 && (
             <button type="button" className="btn ghost small-btn" aria-label="새 묶음 보기" onClick={() => useApp.openDecisions()}>보기</button>
@@ -94,19 +101,26 @@ export function UpdateView() {
       </div>
       {s.warnings.length > 0 && (
         <section className="card update-card" aria-label="경고">
+          <Tile icon={TriangleAlertIcon} tone="warn" />
+          <div className="update-body">
           <span className="warn-text">경고</span>
           <ul className="update-list">
             {s.warnings.map((w, i) => <li key={i}><span className="mono small">{w.file}</span><span className="small">{w.message}</span></li>)}
           </ul>
+          </div>
         </section>
+      )}
+      {!confirmed && (
+        <Callout action={<button type="button" className="btn" onClick={() => useApp.setView('glossary')}>용어집으로<ArrowRightIcon {...ICON} /></button>}>
+          <b>용어집을 먼저 확정하세요</b>
+        </Callout>
       )}
       <div className="row-gap">
         <button type="button" className="btn primary" disabled={!confirmed || jobActive(app) || busy}
           title={!confirmed ? '용어집을 먼저 확정하세요' : undefined}
-          onClick={() => void run(() => useApp.translate(undefined))}>새·바뀐 문장 번역 맡기기</button>
-        {!confirmed && <span className="warn-text small">용어집을 먼저 확정하세요</span>}
+          onClick={() => void run(() => useApp.translate(undefined))}><SparklesIcon {...ICON} />새·바뀐 문장 번역 맡기기</button>
         <div className="grow" />
-        <button type="button" className="btn" disabled={busy} onClick={() => setConfirming(true)}>이 업데이트 되돌리기</button>
+        <button type="button" className="btn" disabled={busy} onClick={() => setConfirming(true)}><Undo2Icon {...ICON} />이 업데이트 되돌리기</button>
       </div>
       {error && <span className="err-text small" role="alert">{error}</span>}
       {confirming && (
