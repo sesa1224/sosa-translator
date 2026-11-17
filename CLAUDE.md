@@ -12,8 +12,9 @@ RPG Maker MV/MZ 게임을 일본어에서 한국어로 번역하는 윈도우용
 | `docs/ARCHITECTURE.md` | 프로세스 구성, 데이터 흐름, 기능별로 거치는 모듈, 새 기능을 넣을 때 손대는 곳. 코드를 고치기 전에 읽는다 |
 | `docs/superpowers/plans/` | 단계별 구현 계획(모두 끝남). 맨 위 `README.md` 가 각 문서를 안내한다. 계획서의 "병렬 작업 규칙"은 지금 따르지 않는다 |
 | `docs/default-style-guide.md` | 새 프로젝트에 들어가는 기본 번역 지침. 빌드 때 앱에 그대로 들어간다. 이 파일을 고치면 기본값이 바뀐다 |
-| `docs/mockup/Main.dc.html` | 화면 시안. 배치, 간격, 문구의 기준(시안 도구 형식이라 그대로 실행되지는 않는다) |
-| `README.md` | 사용자용 안내: 준비물, 실행, 처음부터 끝까지 쓰는 법, 프로젝트 폴더의 파일, 채팅 도구, 명령줄 도구, 문제 해결 |
+| `docs/2026-11-17-화면-새단장-설계.md` | 1.10~1.12 의 화면 새단장 설계(끝남). 화면을 왜 지금처럼 잡았는지 찾아볼 때 본다 |
+| `docs/mockup/Main.dc.html` | 처음의 화면 시안(시안 도구 형식이라 그대로 실행되지는 않는다). 지금 모양의 기준은 앱 화면 자체다 |
+| `README.md` | 사용자용 안내: 준비물, 실행, 화면 둘러보기, 처음부터 끝까지 쓰는 법, 프로젝트 폴더의 파일, 채팅 도구, 명령줄 도구, 문제 해결 |
 | `CHANGELOG.md` | 버전별 바뀐 점. 사용자에게 보이는 변화가 생기면 여기에 한 줄을 더한다 |
 
 ## 구조
@@ -38,10 +39,15 @@ src/main/              Electron 메인 프로세스
   translate/           번역·검수·판단 추천·용어집 초안 작업, 항목 탭의 한 줄 Claude 초안(lineDraft.ts)
   images.ts render/    그림 서비스와 보이지 않는 렌더 작업 창
   preview.ts fonts/    미리보기, 폰트 목록, 폰트 넣기(fontEmbed.ts)
+  windowControls.ts    틀 없는 주 창의 창 단추 채널(window:*). windowState.ts 는 창 크기·자리 기억(window.json)
   buildNotes.ts gameRun.ts bridge.ts settings.ts story.ts
 src/mcp/               Claude CLI 가 띄우는 stdio MCP 서버. 도구 호출을 로컬 브리지로 메인에 넘긴다
 src/preload/           렌더러에 window.api 를(index.ts), 렌더 작업 창에 그 통로를(render.ts) 내준다
-src/renderer/          React 화면. 상태와 액션은 state.ts, 화면 전환은 App.tsx 의 SCREENS, Ctrl+K 명령 표는 commands.ts, 그림 찍기는 render-worker/
+src/renderer/          React 화면. 상태와 액션은 state.ts, 화면 전환과 오른쪽 패널 접기는 App.tsx, Ctrl+K 명령 표는 commands.ts, 그림 찍기는 render-worker/
+  components/ui.tsx    화면 공통 부품(ScreenHead, Seg, Switch, Callout, Tile, EmptyState, SetRow, Stat). 화면은 이것을 쓴다
+  components/Inkdrop.tsx  도우미 캐릭터 먹물이(채팅, 빈 화면)
+  theme.css            테마 여덟 가지의 토큰과 뜻 색, 공통 부품 모양, 움직임
+  filterGroups.ts guideBlocks.ts  텍스트 거르기 묶음, 번역 지침을 ## 제목에서 나누기
 src/shared/            메인과 렌더러가 같이 쓰는 것. api.ts(채널 목록과 window.api 모양), rows.ts(행·필터·통계)
 tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다. 가짜 window.api 는 tests/renderer/fakeApi.tsx
 ```
@@ -57,6 +63,19 @@ tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄
 - **Claude CLI 에는 앱의 MCP 도구만 준다.** 내장 도구는 끈다(`--tools ""`). 사용자 전역 설정과 기본 시스템 프롬프트도 뺀다(`--setting-sources project`, `--system-prompt`). 호출마다 수천 토큰이 걸린 문제라서 되돌리지 않는다.
 - **공개 이름은 바꾸지 말고 추가한다.** `src/core/index.ts` 와 `src/shared/api.ts` 의 이름에 다른 코드와 계획서가 기댄다.
 - **사용자에게 보이는 문구는 한국어, 코드의 식별자와 주석은 영어.** 주석은 코드가 무엇을 하는지가 아니라 왜 그렇게 했는지를 적는다.
+- **색은 뜻이다.** 상태는 뜻 색 토큰(`--ok` 끝남·승인, `--info` 새로 생김·Claude 가 함·아직 사람이 안 봄, `--warn` 사람이 봐야 함, `--err` 막힘)으로 말하고, 강조색(`--accent`)은 주 단추와 지금 고른 것에만 쓴다. 색은 테마 토큰만 쓴다.
+
+## 화면을 고칠 때
+
+겉모양을 모든 화면에 한꺼번에 입혔더니 "양산형 같다"는 말을 들었다(기획서 9장). 화면마다 아래를 지킨다. 부품과 토큰은 `docs/ARCHITECTURE.md` 4장 "화면 하나 더하기".
+
+- **쓰임새부터.** 그 화면에 무엇을 하러 오는지를 한 줄로 정하고, 그 일에 필요한 것이 가장 크고 가장 위에 온다.
+- **주 단추는 화면에 하나.** 나머지는 조용한 단추. 줄마다 되풀이되는 단추는 펼친 줄이나 가리킨 줄에서만 또렷하게.
+- **숫자는 글에서 꺼낸다.** 판단에 쓰는 수는 큰 숫자 칸(`Stat`)으로, 0 은 흐리게. 같은 수를 두 곳에 되풀이하지 않는다.
+- **덜 중요한 것은 접는다.** 지난 것, 가끔 쓰는 것, 길게 늘어지는 목록은 한 줄로 줄이고 누르면 펼친다.
+- **뜻 없는 꾸밈은 넣지 않는다.** 그림자, 테두리, 타일, 장식 글꼴은 구별을 도울 때만. 게임 제목에는 장식 글꼴을 쓰지 않는다(일본어·한자가 깨진다).
+- **표의 줄은 스크롤·선택·글자 입력에 움직이지 않는다.** 줄의 높이와 글자 크기도 바꾸지 않는다.
+- **좁은 창(폭 1100~1440)에서도 본다.** 오른쪽 패널을 접었을 때와 폈을 때 모두. 화면은 내용이 찬 상태로 실제 앱에서 확인한다.
 
 ## 일하는 방식
 
