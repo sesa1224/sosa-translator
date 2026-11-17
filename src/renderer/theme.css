@@ -3,7 +3,7 @@
    flat --panel so text reads the same in every theme. Values come from docs/mockup/2026-11-17-새단장-시안.html. */
 :root {
   --sans: 'IBM Plex Sans KR', system-ui, sans-serif; --mono: 'IBM Plex Mono', monospace;
-  --r: 10px; --tfont: var(--sans); --art: none; --frame-line: var(--line);
+  --r: 10px; --tfont: var(--sans); --art: none; --art-right: none; --frame-line: var(--line);
 }
 :root[data-theme="dark"], [data-theme="dark"] {
   --bg: #121418; --panel: #181B20; --card: #1F232A; --line: #2A2F38; --hair: #21252C; --thumb: #353B46;
@@ -24,7 +24,9 @@
   --sub: #C4B6E6; --mute: #9A8BC2; --accent: #E9C46A; --accent-bg: #3D3050; --accent-text: #F3D98F; --on-accent: #2A1848;
   --warn: #FFB36B; --warn-bg: #4A2E22; --err: #FF8FA3; --err-bg: #4A1F35; --thumb: #4B3A85;
   --r: 14px; --tfont: 'Rajdhani', var(--sans); --frame-line: rgba(233, 196, 106, .6);
-  --art: radial-gradient(circle at 8% 96%, rgba(124, 108, 255, .45), transparent 32%), radial-gradient(circle at 93% 2%, #C2183F 0 3%, rgba(194, 24, 63, .3) 3.5%, transparent 9%);
+  --art: radial-gradient(circle at 8% 96%, rgba(124, 108, 255, .45), transparent 32%);
+  /* The red moon sits large and faint behind the right panel: in the title bar it ran into the window buttons. */
+  --art-right: radial-gradient(circle 110px at 70% 78%, rgba(194, 24, 63, .25) 0, rgba(194, 24, 63, .2) 104px, transparent 110px), radial-gradient(circle 190px at 70% 78%, rgba(194, 24, 63, .1), transparent);
   color-scheme: dark;
 }
 :root[data-theme="ember"], [data-theme="ember"] {
@@ -40,7 +42,7 @@
   --sub: #B8B2A5; --mute: #8E8A80; --accent: #C0392B; --accent-bg: #3A1A16; --accent-text: #F0A397; --on-accent: #FFFFFF;
   --warn: #D9B45A; --warn-bg: #3A3018; --err: #F2A093; --err-bg: #3D1F1C; --thumb: #3A3D40;
   --r: 2px; --tfont: 'Nanum Brush Script', var(--sans);
-  --art: radial-gradient(circle at 4.5% 62%, rgba(192, 57, 43, .9) 0 1.4%, transparent 1.6%), radial-gradient(ellipse 14% 20% at 4% 104%, #26292B 0 60%, transparent 61%), radial-gradient(ellipse 12% 26% at 13% 108%, #1D2022 0 60%, transparent 61%);
+  --art: radial-gradient(ellipse 14% 20% at 4% 104%, #26292B 0 60%, transparent 61%), radial-gradient(ellipse 12% 26% at 13% 108%, #1D2022 0 60%, transparent 61%);
   color-scheme: dark;
 }
 :root[data-theme="deep"], [data-theme="deep"] {
@@ -173,7 +175,7 @@ select.input { padding: 0 12px; }
 .note-box { margin-top: 16px; padding: 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .main { flex: 1 1 auto; min-width: 0; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;
   background: var(--panel); border: 1px solid var(--frame-line); border-bottom: 0; border-radius: var(--r) var(--r) 0 0; }
-.right { width: 380px; flex: none; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; }
+.right { width: 380px; flex: none; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; background: var(--art-right); }
 .right-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .right-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .statusbar { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 8px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--sub); }
@@ -600,5 +602,8 @@ select.input { padding: 0 12px; }
 /* ---- theme touches beyond the tokens (still only on the frame and titles) ---- */
 :root[data-theme="murim"] .brand-title { font-size: 21px; font-weight: 400; }
 :root[data-theme="murim"] .page-title, :root[data-theme="murim"] .picker-head h1 { font-weight: 400; line-height: 1; }
+:root[data-theme="murim"] .nav-head.work-head { position: relative; }
+/* The red sun, small, in the empty end of the "작업" heading row: over the menu it covered the scope names. */
+:root[data-theme="murim"] .nav-head.work-head::after { content: ''; position: absolute; right: 10px; top: calc(50% - 3px); width: 17px; height: 17px; margin-top: -8.5px; border-radius: 50%; background: rgba(192, 57, 43, .9); }
 :root[data-theme="hanji"] .topbar, :root[data-theme="hanji"] .picker-titlebar { border-top: 4px solid #1F1B16; }
 :root[data-theme="rpg"] .main { border-width: 3px 3px 0; box-shadow: 0 0 0 3px #000; }

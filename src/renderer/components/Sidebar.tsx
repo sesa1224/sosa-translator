@@ -12,7 +12,7 @@ export function Sidebar() {
   useEffect(() => { if (meta) void useApp.loadImages(); }, [meta]);
   return (
     <nav className="sidebar" aria-label="작업 메뉴">
-      <span className="nav-head">작업</span>
+      <span className="nav-head work-head">작업</span>
       <button type="button" className={`nav-btn${view === 'text' ? ' on' : ''}`} aria-current={view === 'text' ? 'page' : undefined}
         onClick={() => useApp.setView('text')}>
         <span>텍스트</span><span className="mono sub small">{num(snapshot.stats.untranslated)}</span>
