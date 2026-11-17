@@ -245,6 +245,7 @@ select.input { padding: 0 12px; }
 .resume .picker-name { font-size: 26px; font-weight: 700; line-height: 1.2; }
 .eng { flex: none; font: 600 11px var(--mono); padding: 1px 8px; border-radius: 99px; background: var(--card); color: var(--sub); border: 1px solid var(--line); }
 .picker-others { display: flex; flex-direction: column; }
+.picker-sec { display: block; }
 .picker-list .li { padding: 10px 14px; }
 .picker-list .picker-item .mono { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Starting a new project: a large dashed place to drop a game folder on, with the picker button in it. */

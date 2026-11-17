@@ -121,7 +121,8 @@ export function ProjectPicker() {
       )}
       {rest.length > 0 && (
         <section className="picker-others" aria-label="기존 프로젝트">
-          <h3 className="bv-sec">다른 프로젝트</h3>
+          {/* Not a heading: the screen's one heading is "프로젝트", which tests and screen readers look for. */}
+          <span className="bv-sec picker-sec">다른 프로젝트</span>
           <ul className="list picker-list">
             {rest.map((p) => (
               <li key={p.dir} className="li">
