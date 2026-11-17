@@ -81,7 +81,8 @@ test('용어집 초안 → 확정 → 전체 번역 → 검수 → 빌드', asyn
   // A Claude draft of one line, on request: it shows in the list and the line stays untranslated.
   await w.getByText('月光草', { exact: true }).click();
   await w.getByRole('button', { name: 'Claude 초안 받기' }).click();
-  await expect(w.getByRole('region', { name: '비슷한 번역' }).getByText('Claude 초안', { exact: true })).toBeVisible();
+  // "Claude 초안" shows while it loads too; the take button means the draft came back and the one job slot is free.
+  await expect(w.getByRole('region', { name: '비슷한 번역' }).locator('.tm-claude').getByRole('button', { name: '가져오기' })).toBeVisible();
   await expect(w.getByRole('row', { name: /月光草.*번역 전/ })).toBeVisible();
   // The command search opens with Ctrl+K and closes with Esc.
   await w.keyboard.press('Control+K');
