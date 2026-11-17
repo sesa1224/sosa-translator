@@ -72,6 +72,31 @@ test('표기 경고 칩은 경고가 있을 때만 나오고 그 줄만 거른�
   await user.click(screen.getByRole('button', { name: '표기 경고 1' }));
   expect(useApp.get().query.status).toBe('notation');
 });
+test('거르기 단추는 상태, 살펴볼 것, 그 밖으로 묶이고 색과 흐림으로 구별된다', async () => {
+  const many = manyRows(1200).map((r, i): Row => (i < 3 ? { ...r, status: 'error', target: 'x' } : i < 1100 ? { ...r, status: 'translated', target: 'y' } : r));
+  await openFake({ rows: [...many, { ...many[0], id: 'ext', external: true, status: 'translated', target: 'z' }] });
+  const group = (name: string) => screen.getByRole('group', { name });
+  const status = group('상태'); const attention = group('살펴볼 것'); const other = group('그 밖');
+  expect(status).toContainElement(screen.getByRole('button', { name: '전체 1,201' }));
+  expect(status).toContainElement(screen.getByRole('button', { name: '번역 완료 1,098' }));
+  expect(attention).toContainElement(screen.getByRole('button', { name: '오류 3' }));
+  expect(other).toContainElement(screen.getByRole('button', { name: '외부 번역 1' }));
+  // A count worth a look stands out; an empty button dims but can still be pressed.
+  expect(screen.getByRole('button', { name: '오류 3' })).toHaveClass('hot', 'tone-err');
+  const none = screen.getByRole('button', { name: '판단 필요 0' });
+  expect(none).toHaveClass('zero'); expect(none).not.toHaveClass('hot'); expect(none).toBeEnabled();
+  expect(screen.getByRole('button', { name: '검토 필요 0' })).toHaveClass('zero');
+  // The number reads in the fixed-width face, apart from the name.
+  expect(screen.getByRole('button', { name: '오류 3' }).querySelector('.fc-num')?.textContent).toBe('3');
+  // The progress bar under "상태" is decoration, with each part's share of all lines.
+  const bar = status.querySelector('.fg-bar') as HTMLElement;
+  expect(bar).toHaveAttribute('aria-hidden', 'true');
+  expect([...bar.children].map((c) => [c.className, (c as HTMLElement).style.width])).toEqual([
+    ['tone-none', `${(100 * 100 / 1201).toFixed(3)}%`], ['tone-done', `${(100 * 1098 / 1201).toFixed(3)}%`]]);
+  await user.click(screen.getByRole('button', { name: '오류 3' }));
+  expect(screen.getByRole('button', { name: '오류 3' })).toHaveClass('on');
+  expect(screen.getByLabelText('문장 검색')).toHaveAttribute('placeholder', '원문이나 번역에서 찾기');
+});
 test('표 오른쪽 띠에 오류와 검수 필요 줄의 위치', async () => {
   const rows = manyRows(400).map((r, i) => (i === 0 ? { ...r, status: 'error' as const, target: 'x' } : i === 399 ? { ...r, status: 'needs-review' as const, target: 'y' } : r));
   await openFake({ rows });

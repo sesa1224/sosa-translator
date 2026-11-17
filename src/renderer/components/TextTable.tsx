@@ -2,6 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
 import { filterRows, scrollMarks } from '../../shared/rows';
+import { filterGroups, progressParts } from '../filterGroups';
 import { num, STATUS_LABEL } from '../format';
 import { motionClock, rowMotionStyle, type RowMotion } from '../motion';
 import { jobActive, orderedRows, shownRows, useApp } from '../state';
@@ -153,31 +154,35 @@ function FilterBar() {
     setText(q);
   }, [query.text]);
   if (!snapshot) return null;
-  const s = snapshot.stats;
-  const chips: [StatusFilter, string, number][] = [
-    ['all', '전체', s.total], ['untranslated', '미번역', s.untranslated], ['translated', '번역 완료', s.translated ?? 0],
-    ['needs-review', '검토 필요', s.needsReview],
-    ['approved', '승인됨', s.approved], ['error', '오류', s.error], ['needs-decision', '판단 필요', s.needsDecision],
-  ];
-  if (s.declined > 0) chips.push(['declined', '거절됨', s.declined]);
-  if (s.provisional > 0) chips.push(['provisional', '추천안 용어 사용', s.provisional]);
-  if ((s.external ?? 0) > 0) chips.push(['external', '외부 번역', s.external]);
-  if (skipped > 0) chips.push(['skipped', '번역 안 함', skipped]);
-  if ((s.changed ?? 0) > 0) chips.push(['changed', '바뀐 문장', s.changed]);
-  if ((s.reviewTaken ?? 0) > 0) chips.push(['review-taken', '검수로 바뀜', s.reviewTaken ?? 0]);
-  if ((s.reviewPassed ?? 0) > 0) chips.push(['review-passed', '검수 의견 넘김', s.reviewPassed ?? 0]);
-  if ((s.notation ?? 0) > 0) chips.push(['notation', '표기 경고', s.notation ?? 0]);
-  if ((s.overflow ?? 0) > 0 || query.status === 'overflow') chips.push(['overflow', '창 넘침', s.overflow ?? 0]);
   const current = query.status ?? 'all';
+  const groups = filterGroups(snapshot.stats, skipped, current);
+  const parts = progressParts(snapshot.stats);
   return (
     <>
-      <div className="filters">
-        {chips.map(([key, label, n]) => (
-          <button key={key} type="button" className={`pill${current === key ? ' on' : ''}`} aria-pressed={current === key}
-            onClick={() => useApp.setQuery({ status: key })}>{`${label} ${num(n)}`}</button>
+      <div className="filters filter-groups">
+        {groups.map((g) => (
+          <div key={g.id} className={`fgroup fg-${g.id}`} role="group" aria-labelledby={`fg-head-${g.id}`}>
+            <span id={`fg-head-${g.id}`} className="fg-head">{g.title}</span>
+            <div className="fg-chips">
+              {g.chips.map((c) => {
+                const on = current === c.key;
+                const cls = `pill fchip tone-${c.tone}${on ? ' on' : ''}${c.n === 0 ? ' zero' : g.id === 'attention' ? ' hot' : ''}`;
+                return (
+                  <button key={c.key} type="button" className={cls} aria-pressed={on} onClick={() => useApp.setQuery({ status: c.key })}>
+                    <i className="fc-dot" aria-hidden="true" /><span className="fc-label">{c.label}</span>{' '}<span className="fc-num">{num(c.n)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {g.id === 'status' && (
+              <div className="fg-bar" aria-hidden="true">
+                {parts.map((p) => <i key={p.tone} className={`tone-${p.tone}`} style={{ width: `${(p.share * 100).toFixed(3)}%` }} />)}
+              </div>
+            )}
+          </div>
         ))}
         <label htmlFor="q" className="sr-only">문장 검색</label>
-        <input id="q" className="input search" type="search" placeholder="月光草" value={text} onChange={(e) => setText(e.target.value)} />
+        <input id="q" className="input search" type="search" placeholder="원문이나 번역에서 찾기" value={text} onChange={(e) => setText(e.target.value)} />
       </div>
       {REVIEW_STATUSES.has(current) && <ReviewKindChips status={current} />}
     </>
