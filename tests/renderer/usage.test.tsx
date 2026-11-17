@@ -1,9 +1,9 @@
 // Each screen laid out by what people come to it for: what they need first is largest and on top.
 import { act, cleanup, screen, within } from '@testing-library/react';
 import { type UserEvent } from '@testing-library/user-event';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { useApp } from '../../src/renderer/state';
-import type { Row } from '../../src/shared/api';
+import type { Glossary, Row } from '../../src/shared/api';
 import { baseRows, errorRowId, fakeApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
 
 let api: FakeApi;
@@ -104,4 +104,103 @@ test('항목 패널: 검사 문제는 줄마다 뜻 색 아이콘', async () => 
   const checks = screen.getByRole('group', { name: '검사' });
   expect(checks.querySelector('.ck-err')).not.toBeNull();
   expect(within(checks).getByText(/제어 코드/)).toHaveClass('err-text');
+});
+
+// ---- glossary ----
+
+const term = (id: string, source: string, target: string, status: 'confirmed' | 'provisional' = 'confirmed') =>
+  ({ id, source, target, category: 'term' as const, status, candidates: status === 'provisional' ? [{ target, reason: '' }, { target: target + '2', reason: '' }] : [] });
+
+async function openGlossary(g: Partial<Glossary>) {
+  await open({ glossary: g });
+  act(() => { useApp.setView('glossary'); });
+  await screen.findByRole('heading', { name: '용어집' });
+}
+
+test('용어집 머리의 요약: 용어 수, 결정 필요(경고색), 인물 카드 수, 확정 여부를 큰 상태로', async () => {
+  await openGlossary({ terms: [term('a', '月光草', '월광초'), term('b', '乙女', '오토메', 'provisional')], characters: [{ id: 'c', source: 'リナ', target: '리나', speech: '' }], confirmedAt: '2026-11-13T03:00:00.000Z' });
+  const sum = screen.getByRole('group', { name: '용어집 요약' });
+  expect(within(sum).getByText('용어').previousElementSibling).toHaveTextContent('2');
+  const need = within(sum).getByText('결정 필요').closest('.stat');
+  expect(need).toHaveClass('warn');
+  expect(within(sum).getByText('인물 카드').previousElementSibling).toHaveTextContent('1');
+  expect(within(sum).getByText('확정됨').closest('.stat')).toHaveClass('ok');
+  expect(within(sum).getByText('2026-11-13')).toBeVisible();
+  await openGlossary({ terms: [term('a', '月光草', '월광초')], confirmedAt: null });
+  expect(within(screen.getByRole('group', { name: '용어집 요약' })).getByText('아직 확정 전').closest('.stat')).toHaveClass('warn');
+});
+
+test('용어집은 용어 / 인물 카드 / 형식 규칙을 한 번에 하나씩, 기본은 용어', async () => {
+  await openGlossary({ terms: [term('a', '月光草', '월광초')], characters: [{ id: 'c', source: 'リナ', target: '리나', speech: '' }] });
+  const tabs = screen.getByRole('group', { name: '용어집 보기' });
+  expect(within(tabs).getByRole('button', { name: /^용어/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getAllByTestId('term-row')).toHaveLength(1);
+  expect(screen.queryByLabelText('リナ 말투')).toBeNull();
+  await user.click(within(tabs).getByRole('button', { name: /^인물 카드/ }));
+  expect(screen.getByLabelText('リナ 말투')).toBeVisible();
+  expect(screen.queryAllByTestId('term-row')).toHaveLength(0);
+  await user.click(within(tabs).getByRole('button', { name: '형식 규칙' }));
+  expect(screen.getByRole('switch', { name: '제어 코드 유지' })).toBeVisible();
+});
+
+test('결정이 필요한 용어는 맨 위 묶음에 모이고, 아래 목록에는 나머지만', async () => {
+  await openGlossary({ terms: [term('a', '月光草', '월광초'), term('b', '乙女', '오토메', 'provisional')], confirmedAt: null });
+  const need = screen.getByRole('region', { name: '결정이 필요한 용어' });
+  expect(within(need).getByRole('region', { name: '乙女 결정' })).toBeVisible();
+  expect(before(need, screen.getAllByTestId('term-row')[0])).toBe(true);
+  expect(screen.getAllByTestId('term-row')).toHaveLength(1);
+  // With terms, confirming is the main button.
+  expect(screen.getByRole('button', { name: '용어집 확정' })).toHaveClass('primary');
+});
+
+test('용어가 없으면 가운데 빈 화면의 초안 받기가 주 단추', async () => {
+  await openGlossary({ terms: [], confirmedAt: null });
+  const es = document.querySelector('.es') as HTMLElement;
+  expect(within(es).getByRole('button', { name: '초안 받기' })).toHaveClass('primary');
+  expect(screen.getAllByRole('button', { name: '초안 받기' })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: '용어집 확정' })).not.toHaveClass('primary');
+});
+
+// ---- translation guide ----
+
+test('번역 지침: ## 제목으로 만든 차례를 누르면 편집칸이 그 줄로 가고, 머리에 글자 수', async () => {
+  await open();
+  act(() => { useApp.setView('guide'); });
+  await screen.findByRole('heading', { name: '번역 지침' });
+  const box = () => screen.getByLabelText(/에 보내는 글$/) as HTMLTextAreaElement;
+  await vi.waitFor(() => expect(box().value).toContain('## 기본 태도'));
+  const toc = screen.getByRole('navigation', { name: '차례' });
+  await user.click(within(toc).getByRole('button', { name: '기본 태도' }));
+  expect(box().selectionStart).toBe(box().value.indexOf('## 기본 태도'));
+  expect(document.activeElement).toBe(box());
+  expect(screen.getByText(`약 ${box().value.length.toLocaleString('ko-KR')}자 · 번역 묶음마다 함께 보내요`)).toBeVisible();
+});
+
+// ---- decisions ----
+
+test('판단 필요: 정하지 않은 묶음이 위, 종류별 머리글, 정한 줄은 체크 타일과 ok 색 번역함', async () => {
+  cleanup();
+  api = fakeApi();
+  api.groupsValue = [
+    { key: 'param:Menu:title', label: 'Menu · title', kind: 'plugin-param', count: 3, samples: ['記録'], hints: { fileNames: 0 },
+      decision: { translate: true, keep: { mode: 'whole' }, status: 'confirmed', by: 'user' } },
+    { key: 'mv:D_TEXT', label: 'D_TEXT', kind: 'plugin-command', count: 2, samples: ['D_TEXT 筋力'], hints: { fileNames: 0 }, decision: null },
+    { key: 'note:SG', label: 'SG説明', kind: 'note', count: 1, samples: ['夜に光る草'], hints: { fileNames: 0 },
+      decision: { translate: true, keep: { mode: 'whole' }, status: 'suggested', by: 'claude', reason: '보이는 글' } },
+  ];
+  user = await openFakeWith(api);
+  act(() => { void useApp.openDecisions(); });
+  await screen.findByRole('heading', { name: '판단 필요' });
+  const labels = (await screen.findAllByTestId('decision-card')).map((c) => c.getAttribute('aria-label'));
+  expect(labels).toEqual(['D_TEXT', 'SG説明', 'Menu · title']);
+  const open = screen.getByRole('region', { name: '정할 묶음' });
+  expect(within(open).getByText('플러그인 커맨드', { selector: '.dv-kind' })).toBeVisible();
+  expect(within(open).getByText('메모란', { selector: '.dv-kind' })).toBeVisible();
+  const done = screen.getByRole('region', { name: '정한 묶음' });
+  expect(within(done).getByText('플러그인 설정', { selector: '.dv-kind' })).toBeVisible();
+  const menu = within(done).getByTestId('decision-card');
+  expect(menu.querySelector('.tile')).toHaveClass('ok');
+  expect(within(menu).getByRole('button', { name: '번역함' })).toHaveClass('on');
+  // Claude's suggestion is new and not yet seen by a person: the info colour.
+  expect(screen.getAllByTestId('decision-card')[1].querySelector('.tile')).toHaveClass('info');
 });

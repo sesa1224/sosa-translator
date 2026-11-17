@@ -7,7 +7,7 @@ import { num } from '../format';
 import { ICON } from '../icons';
 import { orderedRows, useApp } from '../state';
 import { DraftDialog } from './DraftDialog';
-import { Callout, ScreenHead, Switch } from './ui';
+import { Callout, EmptyState, ScreenHead, Seg, Stat, Switch, Tile } from './ui';
 
 const CATEGORY_LABEL: Record<TermCategory, string> = { name: '이름', place: '지명', term: '용어', sfx: '효과음', other: '기타' };
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as TermCategory[];
@@ -47,7 +47,10 @@ function DecisionCard({ term, rows, onChoose }: { term: Term; rows: Row[]; onCho
     <section className="card decide" aria-label={`${term.source} 결정`}>
       <div className="row-between wrap">
         <span><b>{term.source}</b> <span className="sub">을 어떻게 옮길까요?</span></span>
-        <span className="chip warn">{`추천안으로 진행 중 · ${num(used)}문장`}</span>
+        <span className="row-gap">
+          <span className="chip warn">{`추천안으로 진행 중 · ${num(used)}문장`}</span>
+          <button type="button" className="btn ghost small-btn" aria-label={`${term.source} 삭제`} onClick={() => void useApp.removeTerm(term.id)}>삭제</button>
+        </span>
       </div>
       {examples.length > 0 && <span className="sub small">{`예문: ${examples.join(' / ')}`}</span>}
       <div className="cand-grid">
@@ -115,7 +118,7 @@ function TermRow({ term }: { term: Term }) {
   );
 }
 
-function TermList({ terms }: { terms: Term[] }) {
+function TermList({ terms, quietEmpty }: { terms: Term[]; quietEmpty?: boolean }) {
   const [cat, setCat] = useState<TermCategory | 'all'>('all');
   const [q, setQ] = useState('');
   const [src, setSrc] = useState('');
@@ -149,7 +152,7 @@ function TermList({ terms }: { terms: Term[] }) {
         <input id="g-search" className="input search" type="search" placeholder="용어 찾기" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="term-list">
-        {shown.length === 0 && <div className="empty sub">용어가 없어요</div>}
+        {shown.length === 0 && !quietEmpty && <div className="empty sub">용어가 없어요</div>}
         {shown.map((t) => <TermRow key={t.id} term={t} />)}
         <div className="term-row add">
           <label htmlFor="g-new-src" className="sr-only">새 용어 원문</label>
@@ -330,6 +333,7 @@ export function GlossaryView() {
   const [error, setError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [tab, setTab] = useState<'terms' | 'chars' | 'rules'>('terms');
   if (!glossary) return <div className="empty sub">용어집을 읽는 중…</div>;
   const g: Glossary = glossary;
   const provisional = g.terms.filter((t) => t.status === 'provisional');
@@ -364,17 +368,34 @@ export function GlossaryView() {
     }
   };
   const confirmLabel = g.confirmedAt === null ? '용어집 확정' : glossaryDirty ? '다시 확정' : `확정됨 · ${dateLabel(g.confirmedAt)}`;
+  const empty = g.terms.length === 0;
+  const needsConfirm = g.confirmedAt === null || glossaryDirty;
+  const ask = (primary: boolean) => (
+    <button type="button" className={`btn${primary ? ' primary' : ''}`} disabled={drafting} onClick={() => setAsking(true)}>
+      <WandSparklesIcon {...ICON} />{empty ? '초안 받기' : '초안 다시 받기'}
+    </button>
+  );
 
   return (
     <div className="glossary">
       <ScreenHead title="용어집" count={`${num(g.terms.length)}개`} desc={provisional.length > 0
         ? `용어 ${num(confirmed)}개 확정 · ${num(provisional.length)}개는 추천안으로 진행 중이에요`
         : `용어 ${num(confirmed)}개 확정`}>
-        <button type="button" className="btn" disabled={drafting} onClick={() => setAsking(true)}><WandSparklesIcon {...ICON} />{g.terms.length > 0 ? '초안 다시 받기' : '초안 받기'}</button>
-        <button type="button" className={`btn${g.confirmedAt === null || glossaryDirty ? ' primary' : ''}`}
+        {!empty && ask(false)}
+        <button type="button" className={`btn${needsConfirm && !empty ? ' primary' : ''}`}
           disabled={g.confirmedAt !== null && !glossaryDirty} onClick={() => void confirm()}><CheckIcon {...ICON} />{confirmLabel}</button>
       </ScreenHead>
-      {g.confirmedAt === null && <Callout>확정해야 전체 번역을 맡길 수 있어요. 결정 안 한 용어가 남아 있어도 확정할 수 있어요.</Callout>}
+      <div className="stats" role="group" aria-label="용어집 요약">
+        <Stat label="용어" value={g.terms.length} />
+        <Stat label="결정 필요" value={provisional.length} tone="warn" />
+        <Stat label="인물 카드" value={g.characters.length} />
+        {/* Whether the whole thing is settled, said in words: it decides whether lines can be sent at all. */}
+        <div className={`stat stat-state ${needsConfirm ? 'warn' : 'ok'}`}>
+          <b>{g.confirmedAt === null ? '아직 확정 전' : glossaryDirty ? '확정 뒤 바뀜' : '확정됨'}</b>
+          <span>{g.confirmedAt === null ? '확정해야 번역을 맡길 수 있어요' : glossaryDirty ? '다시 확정하면 번역에 쓰여요' : dateLabel(g.confirmedAt)}</span>
+        </div>
+      </div>
+      {g.confirmedAt === null && !empty && <Callout>확정해야 전체 번역을 맡길 수 있어요. 결정 안 한 용어가 남아 있어도 확정할 수 있어요.</Callout>}
       {error && <span className="err-text" role="alert">{error}</span>}
 
       {notices.map((n) => (
@@ -390,16 +411,32 @@ export function GlossaryView() {
       ))}
 
       {asking && <DraftDialog onClose={() => setAsking(false)} onStart={(m, c) => void draft(m, c)} />}
-      {provisional.map((t) => <DecisionCard key={t.id} term={t} rows={rows} onChoose={choose} />)}
 
-      <div className="glossary-grid">
-        <TermList terms={g.terms} />
-        <div className="col gap">
-          <Characters cards={g.characters} />
-          <Rules rules={g.rules} />
-        </div>
-      </div>
-      <GuideLink />
+      <Seg label="용어집 보기">
+        <button type="button" className={tab === 'terms' ? 'on' : ''} aria-pressed={tab === 'terms'} onClick={() => setTab('terms')}>용어 <span className="n">{num(g.terms.length)}</span></button>
+        <button type="button" className={tab === 'chars' ? 'on' : ''} aria-pressed={tab === 'chars'} onClick={() => setTab('chars')}>인물 카드 <span className="n">{num(g.characters.length)}</span></button>
+        <button type="button" className={tab === 'rules' ? 'on' : ''} aria-pressed={tab === 'rules'} onClick={() => setTab('rules')}>형식 규칙</button>
+      </Seg>
+
+      {tab === 'terms' && <>
+        {empty && (
+          <EmptyState art={<Tile icon={WandSparklesIcon} />} title="아직 용어가 없어요" actions={ask(true)}>
+            초안을 받으면 대본을 읽고 이름과 용어, 인물 카드를 채워요. 아래에서 직접 하나씩 더해도 돼요.
+          </EmptyState>
+        )}
+        {provisional.length > 0 && (
+          <section className="need" aria-label="결정이 필요한 용어">
+            <h3 className="need-head">결정이 필요한 용어 <span className="mono">{num(provisional.length)}</span></h3>
+            {provisional.map((t) => <DecisionCard key={t.id} term={t} rows={rows} onChoose={choose} />)}
+          </section>
+        )}
+        <TermList terms={g.terms.filter((t) => t.status !== 'provisional')} quietEmpty={empty} />
+      </>}
+      {tab === 'chars' && <Characters cards={g.characters} />}
+      {tab === 'rules' && <>
+        <Rules rules={g.rules} />
+        <GuideLink />
+      </>}
     </div>
   );
 }

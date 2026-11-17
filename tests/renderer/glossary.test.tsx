@@ -31,6 +31,9 @@ async function openGlossary(g: Partial<Glossary> = {}) {
   await screen.findByRole('heading', { name: '용어집' });
 }
 
+/** The glossary shows one of 용어 / 인물 카드 / 형식 규칙 at a time. */
+const tab = (name: RegExp | string) => user.click(within(screen.getByRole('group', { name: '용어집 보기' })).getByRole('button', { name }));
+
 test('후보를 고른다', async () => {
   await openGlossary({ terms: [provisionalOtome] }); expect(screen.getByText('추천안으로 진행 중 · 23문장')).toBeVisible();
   api.chooseResult = { changed: ['o1', 'o2', 'o3'], uncertain: ['o1', 'o2'] };
@@ -53,7 +56,7 @@ test('확정과 초안', async () => {
   await user.click(screen.getByRole('button', { name: '용어집 확정' })); expect(api.calls).toContainEqual(['glossary.confirm']);
 });
 test('화자 줄 패턴 자동 찾기', async () => {
-  await openGlossary(); api.speakerDetection = { pattern: 'x', presetId: 'bracket', coverage: 0.97 };
+  await openGlossary(); await tab('형식 규칙'); api.speakerDetection = { pattern: 'x', presetId: 'bracket', coverage: 0.97 };
   await user.click(screen.getByRole('button', { name: '자동으로 찾기' })); expect(await screen.findByText('대사의 97%가 맞아요')).toBeVisible();
 });
 
@@ -84,9 +87,11 @@ test('인물 카드, 형식 규칙, 번역 지침으로 가기', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   try {
     await openGlossary({ characters: [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말' }] });
+    await tab(/^인물 카드/);
     const speech = screen.getByLabelText('リナ 말투');
     await user.clear(speech); await user.type(speech, '존댓말'); await user.tab();
     expect(api.calls).toContainEqual(['glossary.setCharacters', [{ id: 'c1', source: 'リナ', target: '리나', speech: '존댓말' }]]);
+    await tab('형식 규칙');
     await user.click(screen.getByLabelText('줄 수를 원문과 같게'));
     expect(api.calls).toContainEqual(['glossary.setRules', { sameLineCount: true }]);
     await user.click(screen.getByLabelText('괄호 （ ）도 반각으로'));
@@ -103,6 +108,7 @@ test('인물 카드, 형식 규칙, 번역 지침으로 가기', async () => {
 });
 test('인물 카드의 신음·감탄 스타일', async () => {
   await openGlossary({ characters: [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말' }] });
+  await tab(/^인물 카드/);
   await user.type(screen.getByLabelText('リナ 신음·감탄 스타일'), '참다가 새는 짧은 소리'); await user.tab();
   expect(api.calls).toContainEqual(['glossary.setCharacters', [{ id: 'c1', source: 'リナ', target: '리나', speech: '반말', moanStyle: '참다가 새는 짧은 소리' }]]);
 });
@@ -138,12 +144,14 @@ test('이름 용어를 화자 이름에만 적용하게 켜고 끈다', async ()
 
 test('표기 검사 규칙: 끄면 가린 글자 규칙도 잠긴다', async () => {
   await openGlossary();
+  await tab('형식 규칙');
   await user.click(screen.getByLabelText('표기 검사'));
   expect(api.calls).toContainEqual(['glossary.setRules', { notationCheck: false }]);
   await user.click(screen.getByLabelText('가린 글자는 풀어서 쓰기'));
   expect(api.calls).toContainEqual(['glossary.setRules', { unmask: false }]);
   cleanup();
   await openGlossary({ rules: { ...defaultFakeGlossary().rules, notationCheck: false } });
+  await tab('형식 규칙');
   expect(screen.getByLabelText('가린 글자는 풀어서 쓰기')).toBeDisabled();
 });
 

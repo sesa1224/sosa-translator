@@ -1,5 +1,5 @@
 import { CheckCheckIcon, CheckIcon, ChevronRightIcon, CircleCheckIcon, PuzzleIcon, SparklesIcon } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { translateRanges } from '../../core/decisions/keys';
 import type { DecisionGroup, KeepRule, Row } from '../../shared/api';
 import { num } from '../format';
@@ -10,6 +10,7 @@ import { EmptyState, ScreenHead, Seg, Tile } from './ui';
 
 type Filter = 'all' | 'open' | 'suggested' | 'translate' | 'skip';
 
+const KIND_ORDER = ['plugin-command', 'plugin-param', 'note', 'script', 'comment', 'plugin-js'];
 const KIND_LABEL: Record<string, string> = {
   'plugin-command': '플러그인 커맨드', 'plugin-param': '플러그인 설정', script: '스크립트', comment: '주석', note: '메모란', 'plugin-js': '플러그인 JS',
 };
@@ -142,13 +143,17 @@ function GroupCard({ group, rows, focused }: { group: DecisionGroup; rows: Row[]
   const h = group.hints;
   const meta = [h.metaText, h.metaDesc].filter((x) => x !== undefined && x !== '').join(' · ');
   const decided = d?.status === 'confirmed';
+  // Decided is done (ok), Claude's or the plugin's suggestion is new and not yet seen by a person (info), the rest waits (warn).
+  const state = filterOf(group, rows);
+  const tile = state === 'translate' || state === 'skip'
+    ? <Tile icon={CheckIcon} tone="ok" />
+    : state === 'suggested' ? <Tile icon={SparklesIcon} tone="info" /> : <Tile icon={PuzzleIcon} tone="warn" />;
   return (
     <section ref={ref} data-testid="decision-card" className={`li decision-card${focused ? ' focus' : ''}`} aria-label={group.label}>
-      <Tile icon={decided ? CheckIcon : PuzzleIcon} tone={decided ? undefined : 'warn'} />
+      {tile}
       <div className="li-main decision-main">
         <div className="decision-head">
           <span className="mono decision-label">{group.label}</span>
-          <span className="tag">{KIND_LABEL[group.kind] ?? group.kind}</span>
           <span className="mute small">{`${num(group.count)}곳`}</span>
         </div>
         {!picking && (
@@ -219,6 +224,14 @@ export function DecisionView() {
     ['open', '정할 것', counts.open], ['suggested', '추천 받음', counts.suggested], ['translate', '번역함', counts.translate], ['skip', '번역 안 함', counts.skip],
   ];
   const decided = counts.translate + counts.skip;
+  // What still waits comes first, by kind, so one kind can be settled in one go; settled groups follow.
+  const kindRank = (k: string) => { const i = KIND_ORDER.indexOf(k); return i < 0 ? KIND_ORDER.length : i; };
+  const byKind = (list: DecisionGroup[]) => list.map((g, i) => ({ g, i })).sort((a, b) => kindRank(a.g.kind) - kindRank(b.g.kind) || a.i - b.i).map((x) => x.g);
+  const isDone = (g: DecisionGroup) => { const f = filterOf(g, rowsByKey.get(g.key)); return f === 'translate' || f === 'skip'; };
+  const sections = [
+    { title: '정할 묶음', groups: byKind(shown.filter((g) => !isDone(g))) },
+    { title: '정한 묶음', groups: byKind(shown.filter(isDone)) },
+  ];
   return (
     <div className="decision-view">
       <ScreenHead title="판단 필요" count={groups.length > 0 ? `${num(groups.length)}묶음` : undefined}
@@ -250,11 +263,19 @@ export function DecisionView() {
       {groups.length === 0 && (
         <EmptyState art={<Tile icon={CircleCheckIcon} />} title="정할 것이 없어요">판단할 항목이 없어요.</EmptyState>
       )}
-      {shown.length > 0 && (
-        <div className="list decision-list">
-          {shown.map((g) => <GroupCard key={g.key} group={g} rows={rowsByKey.get(g.key) ?? []} focused={app.decisionFocus === g.key} />)}
-        </div>
-      )}
+      {sections.map((sec) => sec.groups.length > 0 && (
+        <section key={sec.title} className="dv-sec" aria-label={sec.title}>
+          <h3 className="bv-sec">{sec.title} <span className="mono mute">{num(sec.groups.length)}</span></h3>
+          <div className="list decision-list">
+            {sec.groups.map((g, i) => (
+              <Fragment key={g.key}>
+                {(i === 0 || sec.groups[i - 1].kind !== g.kind) && <div className="li dv-kind-row"><span className="dv-kind">{KIND_LABEL[g.kind] ?? g.kind}</span></div>}
+                <GroupCard group={g} rows={rowsByKey.get(g.key) ?? []} focused={app.decisionFocus === g.key} />
+              </Fragment>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

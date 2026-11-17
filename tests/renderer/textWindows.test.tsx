@@ -90,6 +90,8 @@ test('목록: 창 넘침 필터와 보이는 줄만 다시 맞추기', async () 
 test('형식 규칙: 창을 넘는 줄은 자동으로 나누기 (기본 켬)', async () => {
   const user = await openFakeWith(api);
   act(() => { useApp.setView('glossary'); });
+  // Rules are one of the glossary's three views.
+  await user.click(within(await screen.findByRole('group', { name: '용어집 보기' })).getByRole('button', { name: '형식 규칙' }));
   const box = await screen.findByLabelText('창을 넘는 줄은 자동으로 나누기');
   expect(box).toBeChecked();
   await user.click(box);

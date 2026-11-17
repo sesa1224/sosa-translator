@@ -30,6 +30,8 @@ test('켜고 끄는 설정은 스위치: 역할, 이름, 누르기와 스페이�
 
 test('형식 규칙의 켜기·끄기도 스위치다', async () => {
   await open('glossary');
+  // Rules are one of the glossary's three views.
+  await user.click(within(await screen.findByRole('group', { name: '용어집 보기' })).getByRole('button', { name: '형식 규칙' }));
   const sw = await screen.findByRole('switch', { name: '제어 코드 유지' });
   expect(sw).toHaveClass('sw');
 });
