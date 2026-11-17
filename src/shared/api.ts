@@ -125,7 +125,10 @@ export interface ModelOption { id: string; label: string }
 /** Model per job. glossaryRead: model for reading the script in a draft (missing = the glossary model); decide: missing = DEFAULT_DECIDE_MODEL. */
 export interface StageModels { glossary: string; translate: string; review: string; patchNotes: string; glossaryRead?: string; decide?: string }
 /** reviewSkipPassed: a review leaves out lines whose remark the user passed over and that are unchanged since. */
-export interface AppSettings { theme: 'dark' | 'light'; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean }
+/** Screen themes, in the order the settings show them. An unknown value in settings.json reads as 'dark'. */
+export const THEME_NAMES = ['dark', 'light', 'moon', 'ember', 'murim', 'deep', 'rpg', 'hanji'] as const;
+export type ThemeName = typeof THEME_NAMES[number];
+export interface AppSettings { theme: ThemeName; models: ModelOption[]; chatModel: string; claudePath: string | null; projectsDir: string; stageModels: StageModels; reviewSkipPassed: boolean }
 export const DEFAULT_STAGE_MODELS: StageModels = { glossary: 'claude-fable-5-2', translate: 'claude-opus-5-5', review: 'claude-fable-5-2', patchNotes: 'claude-haiku-5-5' };
 export const DEFAULT_DECIDE_MODEL = 'claude-fable-5-2';
 export const DEFAULT_MODELS: ModelOption[] = [
@@ -281,6 +284,8 @@ export interface PushEvents {
   'images:changed': ImageEntry[];
   /** The action log, newest first, after an action was logged or cancelled. */
   'history:changed': ActionSummary[];
+  /** Sent only to the window whose maximized state changed (the title bar's maximize button follows it). */
+  'window:maximized': boolean;
 }
 export type PushChannel = keyof PushEvents;
 
@@ -354,6 +359,12 @@ export interface InvokeChannels {
   'app:claudePath': () => string | null;
   'app:claudeStatus': () => ClaudeStatus;
   'app:showItemInFolder': (file: string) => void;
+
+  // The frameless main window's own buttons; each acts on the window that asked (src/main/windowControls.ts).
+  'window:minimize': () => void;
+  'window:toggleMaximize': () => void;
+  'window:close': () => void;
+  'window:isMaximized': () => boolean;
 
   'decisions:groups': () => DecisionGroup[];
   'decisions:set': (key: string, d: DecisionInput) => void;
@@ -483,6 +494,10 @@ export interface Api {
     decide: Call<'job:decide'>;
   };
   app: { claudePath: Call<'app:claudePath'>; showItemInFolder: Call<'app:showItemInFolder'>; claudeStatus: Call<'app:claudeStatus'> };
+  windowControls: {
+    minimize: Call<'window:minimize'>; toggleMaximize: Call<'window:toggleMaximize'>;
+    close: Call<'window:close'>; isMaximized: Call<'window:isMaximized'>;
+  };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
   decisions: {
     groups: Call<'decisions:groups'>; set: Call<'decisions:set'>;

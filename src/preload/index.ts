@@ -84,6 +84,12 @@ const api: Api = {
     showItemInFolder: (file) => call('app:showItemInFolder', file),
     claudeStatus: () => call('app:claudeStatus'),
   },
+  windowControls: {
+    minimize: () => call('window:minimize'),
+    toggleMaximize: () => call('window:toggleMaximize'),
+    close: () => call('window:close'),
+    isMaximized: () => call('window:isMaximized'),
+  },
   decisions: {
     groups: () => call('decisions:groups'),
     set: (key, d) => call('decisions:set', key, d),

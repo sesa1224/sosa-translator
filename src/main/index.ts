@@ -3,7 +3,7 @@
 // MVMZ_ are test hooks used by the end-to-end tests.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron';
 import { startBridge, writeMcpConfig, type Bridge } from './bridge.js';
 import { ClaudeChat, findClaude } from './claude/chat.js';
 import { registerIpc } from './ipc.js';
@@ -12,6 +12,7 @@ import type { ProjectService } from './projectService.js';
 import type { PushChannel, PushEvents } from '../shared/api.js';
 import { RenderService } from './render/renderService.js';
 import { createRenderWindow, renderWindows } from './render/renderWindow.js';
+import { registerWindowControls, reportMaximize } from './windowControls.js';
 
 if (process.env.MVMZ_USER_DATA) app.setPath('userData', process.env.MVMZ_USER_DATA);
 
@@ -63,6 +64,9 @@ function createWindow(): BrowserWindow {
     minWidth: 1100,
     minHeight: 700,
     title: 'MV/MZ 번역 작업실',
+    // The title bar is drawn by the page (TopBar, ProjectPicker) in the theme's colours. Edge resizing,
+    // Aero Snap and double-click-to-maximize still come from Windows through the page's drag regions.
+    frame: false,
     backgroundColor: '#121418',
     webPreferences: {
       preload: path.join(here, '../preload/index.cjs'),
@@ -72,6 +76,7 @@ function createWindow(): BrowserWindow {
   });
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(path.join(here, '../renderer/index.html'));
+  reportMaximize(win);
   return win;
 }
 
@@ -153,6 +158,7 @@ app.whenReady().then(async () => {
     },
   });
 
+  registerWindowControls(ipcMain, (sender) => BrowserWindow.fromWebContents(sender as WebContents));
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

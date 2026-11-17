@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readJsonFile, writeJsonFile } from '../core/util/json.js';
-import { DEFAULT_MODELS, DEFAULT_STAGE_MODELS, type AppSettings, type StageModels } from '../shared/api.js';
+import { DEFAULT_MODELS, DEFAULT_STAGE_MODELS, THEME_NAMES, type AppSettings, type StageModels, type ThemeName } from '../shared/api.js';
 
 const SETTINGS_FILE = 'settings.json';
 export const PROJECTS_FOLDER_NAME = 'MVMZ 번역 작업실';
@@ -45,7 +45,7 @@ export async function loadSettings(dir: string, documentsDir?: string): Promise<
   }
   if (!raw || typeof raw !== 'object') return d;
   return {
-    theme: raw.theme === 'light' || raw.theme === 'dark' ? raw.theme : d.theme,
+    theme: (THEME_NAMES as readonly unknown[]).includes(raw.theme) ? raw.theme as ThemeName : d.theme,
     models: isModelList(raw.models) ? raw.models.map((m: { id: string; label: string }) => ({ id: m.id, label: m.label })) : d.models,
     chatModel: typeof raw.chatModel === 'string' && raw.chatModel ? raw.chatModel : d.chatModel,
     claudePath: typeof raw.claudePath === 'string' && raw.claudePath ? raw.claudePath : null,

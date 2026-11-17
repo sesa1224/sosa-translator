@@ -164,6 +164,12 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       undo: rec('chat.undo', () => []),
     },
     app: { claudePath: rec('app.claudePath', () => 'C:/claude.exe'), showItemInFolder: rec('app.showItemInFolder', () => undefined), claudeStatus: rec('app.claudeStatus', () => upState.claude) },
+    windowControls: {
+      minimize: rec('windowControls.minimize', () => undefined),
+      toggleMaximize: rec('windowControls.toggleMaximize', () => undefined),
+      close: rec('windowControls.close', () => undefined),
+      isMaximized: rec('windowControls.isMaximized', () => false),
+    },
     decisions: {
       groups: rec('decisions.groups', () => fake.groupsValue),
       set: rec('decisions.set', () => undefined),

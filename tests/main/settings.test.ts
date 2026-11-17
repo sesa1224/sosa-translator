@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeEach, expect, test } from 'vitest';
 import { loadSettings, saveSettings } from '../../src/main/settings.js';
-import { DEFAULT_MODELS } from '../../src/shared/api.js';
+import { DEFAULT_MODELS, THEME_NAMES } from '../../src/shared/api.js';
 import { cleanupTempDirs, makeTempDir } from '../helpers/fs.js';
 
 let dir: string;
@@ -33,4 +33,16 @@ test('넘긴 의견 줄 건너뛰기는 기본으로 켜져 있다', async () =>
   expect((await loadSettings(dir)).reviewSkipPassed).toBe(true);
   await saveSettings(dir, { ...(await loadSettings(dir)), reviewSkipPassed: false });
   expect((await loadSettings(dir)).reviewSkipPassed).toBe(false);
+});
+
+test('테마는 여덟 가지, 모르는 값은 어두운으로 읽는다', async () => {
+  for (const theme of THEME_NAMES) {
+    await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ theme }));
+    expect((await loadSettings(dir)).theme).toBe(theme);
+  }
+  expect(THEME_NAMES).toEqual(['dark', 'light', 'moon', 'ember', 'murim', 'deep', 'rpg', 'hanji']);
+  for (const theme of ['neon', 3, null]) {
+    await writeFile(path.join(dir, 'settings.json'), JSON.stringify({ theme }));
+    expect((await loadSettings(dir)).theme).toBe('dark');
+  }
 });
