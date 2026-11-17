@@ -11,6 +11,7 @@ import { computeScopes, computeStats } from '../../src/shared/rows';
 import type { ActionLine, ActionSummary, CancelResult, DecisionGroup, ImportPlan } from '../../src/shared/api';
 import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } from '../../src/shared/api';
 import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
+import type { SimilarTranslation } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS }, reviewSkipPassed: true };
@@ -58,6 +59,8 @@ export type FakeApi = Api & {
   historyValue: ActionSummary[]; historyResult: CancelResult;
   /** Changed lines per action id; history.detail pages them like the main process (at most 100). */
   historyLines: Record<string, ActionLine[]>;
+  /** What similar.find answers, per line id (none when missing). */
+  similarValue: Record<string, SimilarTranslation[]>;
 };
 
 export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
@@ -91,6 +94,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     historyValue: [],
     historyResult: { restored: 0, skipped: 0 },
     historyLines: {},
+    similarValue: {},
     inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
@@ -122,6 +126,9 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       switchPastReview: rec('unit.switchPastReview', () => []),
       acceptReviews: rec('unit.acceptReviews', (ids: string[]) => ids.length),
       rejectReviews: rec('unit.rejectReviews', (ids: string[]) => ids.length),
+    },
+    similar: {
+      find: rec('similar.find', (id: string) => fake.similarValue[id] ?? []),
     },
     glossary: {
       get: rec('glossary.get', () => fake.glossaryValue),

@@ -43,6 +43,9 @@ const api: Api = {
     acceptReviews: (ids) => call('unit:acceptReviews', ids),
     rejectReviews: (ids) => call('unit:rejectReviews', ids),
   },
+  similar: {
+    find: (id) => call('similar:find', id),
+  },
   glossary: {
     get: () => call('glossary:get'),
     upsertTerm: (t) => call('glossary:upsertTerm', t),

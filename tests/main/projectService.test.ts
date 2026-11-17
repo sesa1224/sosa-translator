@@ -1,10 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, expect, test } from 'vitest';
 import { ProjectService } from '../../src/main/projectService.js';
 import type { ChangeEvent } from '../../src/shared/api.js';
 import { cleanupTempDirs } from '../helpers/fs.js';
+import { miniItems } from '../helpers/miniGame.js';
 import { freshGame, idFinder } from './helpers.js';
 
 let game: string, proj: string, svc: ProjectService;
@@ -43,6 +44,27 @@ test('동시에 온 쓰기는 순서대로 적용되고 파일이 온전하다',
   expect(() => JSON.parse(readFileSync(path.join(proj, 'translations.json'), 'utf8'))).not.toThrow();
 });
 test('없는 id', async () => { await expect(svc.setTranslation('nope', 'x', 'user')).rejects.toThrow('없는 항목입니다: nope'); });
+test('비슷한 번역: 번역이 생기면 찾고, 지우면 사라진다', async () => {
+  const fresh = await freshGame();
+  const items = [...miniItems(), { id: 2, name: '星の砂', description: '夜に光る草の種。\\C[2]貴重\\C[0]だ', note: '' }];
+  writeFileSync(path.join(fresh.game, 'data', 'Items.json'), JSON.stringify(items));
+  const s = await ProjectService.create(fresh.game, fresh.proj, '약초원');
+  const idIn = idFinder(() => s.units());
+  try {
+    const grass = idIn('夜に光る草。\\C[2]貴重\\C[0]だ');
+    const seed = idIn('夜に光る草の種。\\C[2]貴重\\C[0]だ');
+    expect(s.similar(seed)).toEqual([]);
+    await s.setTranslation(grass, '밤에 빛나는 풀. \\C[2]귀하\\C[0]다', 'user');
+    expect(s.similar(seed)).toEqual([{ id: grass, source: '夜に光る草。\\C[2]貴重\\C[0]だ', target: '밤에 빛나는 풀. \\C[2]귀하\\C[0]다', score: 78 }]);
+    // The line itself is never offered.
+    expect(s.similar(grass)).toEqual([]);
+    await s.clearTranslation(grass, 'user');
+    expect(s.similar(seed)).toEqual([]);
+    expect(() => s.similar('nope')).toThrow('없는 항목입니다: nope');
+  } finally {
+    await s.close();
+  }
+});
 
 // Extra coverage beyond the plan's assertions.
 test('상태 바꾸기, 지우기, 되돌리기(출처 없이)', async () => {

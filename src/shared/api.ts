@@ -93,6 +93,8 @@ export type GameDirCheck =
   | { ok: false; error: string; packed?: PackedGameInfo };
 export interface Snapshot { meta: ProjectMeta; gameTitle: string | null; rows: Row[]; stats: Stats; scopes: Scope[] }
 export interface UnitDetail { row: Row; issues: Issue[]; refs: string[] }
+/** An earlier translation of a sentence like the selected one; score is the match in percent (0~100, whole). */
+export interface SimilarTranslation { id: string; source: string; target: string; score: number; location: string }
 export interface ProjectChanged { rows: Row[]; stats: Stats; scopes: Scope[]; origin: Origin }
 
 // Copy of core ProjectMeta (checked in src/main/ipc.ts).
@@ -314,6 +316,8 @@ export interface InvokeChannels {
   'unit:switchPastReview': (id: string) => Issue[];
   'unit:acceptReviews': (ids: string[]) => number;
   'unit:rejectReviews': (ids: string[]) => number;
+  /** Translated sentences like this line's source, best first (the program measures it, no model call). */
+  'similar:find': (id: string) => SimilarTranslation[];
 
   'glossary:get': () => Glossary;
   'glossary:upsertTerm': (t: Omit<Term, 'id'>) => Term;
@@ -458,6 +462,7 @@ export interface Api {
     acceptReview: Call<'unit:acceptReview'>; rejectReview: Call<'unit:rejectReview'>; switchPastReview: Call<'unit:switchPastReview'>;
     acceptReviews: Call<'unit:acceptReviews'>; rejectReviews: Call<'unit:rejectReviews'>;
   };
+  similar: { find: Call<'similar:find'> };
   chat: {
     send: Call<'chat:send'>; stop: Call<'chat:stop'>; reset: Call<'chat:reset'>;
     setModel: Call<'chat:setModel'>; undo: Call<'chat:undo'>;

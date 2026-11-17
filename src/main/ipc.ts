@@ -12,7 +12,7 @@ import {
   DEFAULT_DECIDE_MODEL,
   type AppSettings, type ChatEvent, type ChatImage, type DecisionInput, type FontInfo, type InvokeChannel, type JobProgress,
   type PreviewState, type ProjectChanged, type ProjectListItem, type PushChannel, type PushEvents, type ReviewPlan,
-  type ReviewScopeArg, type Row, type Snapshot, type UnitDetail,
+  type ReviewScopeArg, type Row, type SimilarTranslation, type Snapshot, type UnitDetail,
 } from '../shared/api.js';
 import type * as glossaryTypes from '../core/glossary/types.js';
 import { PROMPT_KINDS } from '../core/glossary/prompts.js';
@@ -392,6 +392,10 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('unit:setTranslation', (id: string, target: string) => svc().setTranslation(id, target, 'user'));
   handle('unit:setStatus', (id: string, status: TranslationStatus) => svc().setStatus(id, status, 'user'));
   handle('unit:clear', (id: string) => svc().clearTranslation(id, 'user'));
+  handle('similar:find', (id: string): SimilarTranslation[] => {
+    const s = svc();
+    return s.similar(String(id)).map((h) => ({ ...h, location: locationLabel(s.unit(h.id)!) }));
+  });
 
   handle('chat:send', async (text: string, images: ChatImage[] = [], attachedUnitId?: string) => {
     let message = String(text ?? '');

@@ -59,6 +59,7 @@ import {
 import { loadNames } from '../core/events/names.js';
 import { describeCommand } from '../core/events/describe.js';
 import { listLabel } from '../core/events/browse.js';
+import { buildSimilarIndex, findSimilar, type SimilarHit, type SimilarIndex } from '../core/similar/find.js';
 import { importVersion as coreImportVersion, readUpdateSummary, rollbackVersion as coreRollbackVersion, versionsOf } from '../core/update/importVersion.js';
 import type { UpdateSummary, VersionInfo } from '../core/update/types.js';
 import type { ChangeEvent, Origin, RewrapReason, RewrapReport, RewrapScope } from '../shared/api.js';
@@ -146,6 +147,8 @@ export class ProjectService extends EventEmitter {
     this.log = loadHistory(projectDir);
     this.loadDecisionData();
     registerFontContributor(this); // font and plugin files of patches go into every build
+    // Every translation write ends in 'changed', so dropping the index there keeps it right without each write knowing.
+    this.on('changed', () => { this.similarCache = null; });
     // The patch notes list the fixes that went into each build.
     this.buildSummaries.push(async () => {
       const applied = new Set((await this.patchStatuses()).filter((x) => x.state === 'applied').map((x) => x.id));
@@ -228,6 +231,7 @@ export class ProjectService extends EventEmitter {
       this.byId.clear();
       for (const u of units) this.byId.set(u.id, u);
       this.refreshRowDecisions();
+      this.similarCache = null;
       this.emit('units-changed');
     });
   }
@@ -1012,6 +1016,19 @@ export class ProjectService extends EventEmitter {
     if (touched.length > 0) this.emit('changed', { ids: [...new Set(touched)], origin: 'user' });
   }
 
+  // ---- similar translations ----
+  /** Index of the translated lines for similar(); built on the first lookup after a change. */
+  private similarCache: SimilarIndex | null = null;
+
+  /** Translated lines whose source reads like this line's, best first (computed here, no model call). */
+  similar(id: string): SimilarHit[] {
+    const unit = this.require(id);
+    if (this.similarCache === null) {
+      this.similarCache = buildSimilarIndex(this.unitList.map((u) => ({ id: u.id, source: u.source, target: this.store.get(u.id).target ?? '' })));
+    }
+    return findSimilar(unit.source, this.similarCache, { excludeId: id });
+  }
+
   // ---- patches (bug fixes and additions recorded as changes against the original) ----
   private patchCache: Patch[] | null = null;
 
@@ -1272,6 +1289,7 @@ export class ProjectService extends EventEmitter {
     this.gameFileNames = new Set();
     this.loadDecisionData();
     this.patchCache = null;
+    this.similarCache = null;
   }
 
   // ---- build notes ----
