@@ -388,7 +388,14 @@ select.input { padding: 0 12px; }
 .fp-metrics[open] { display: flex; flex-direction: column; gap: 10px; }
 .fp-metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
 .fp-metric-grid .input::placeholder { color: var(--mute); }
-.tw-row { display: grid; grid-template-columns: 64px minmax(110px, 140px) minmax(80px, 100px) 1fr auto; gap: 10px; align-items: end; }
+/* Wraps instead of a fixed grid: in a narrow window the last grid column shrank to a letter per line. */
+.tw-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.tw-row > .tw-name { flex: 0 0 64px; }
+.tw-row > :nth-child(2) { flex: 0 1 140px; min-width: 110px; }
+.tw-row > :nth-child(3) { flex: 0 1 100px; min-width: 80px; }
+.tw-row > .tw-chars { flex: 1 1 160px; }
+.tw-row > .btn { flex: none; white-space: nowrap; }
+.tw-row .input { width: 100%; }
 .tw-row .input::placeholder { color: var(--mute); }
 .tw-name { font-weight: 600; padding-bottom: 8px; }
 .tw-chars { padding-bottom: 8px; }
