@@ -842,12 +842,16 @@ select.input { padding: 0 12px; }
 .iv-grid { flex: 1 1 auto; overflow: auto; min-height: 200px; }
 .iv-grid-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-bottom: 6px; box-sizing: border-box; }
 .iv-cell { display: flex; flex-direction: column; gap: 4px; align-items: stretch; padding: 4px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); text-align: left; min-width: 0; }
-.iv-cell.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-/* A thin line along the top of each picture in its status colour, so the grid reads as done / to do at a glance. */
-.iv-cell { border-top-width: 3px; }
-.iv-todo { border-top-color: var(--warn); }
-.iv-done, .iv-manual { border-top-color: var(--ok); }
-.iv-problem { border-top-color: var(--err); }
+/* A thin line along the top of each picture in its status colour, so the grid reads as done / to do at a glance.
+   It is drawn inside the cell and the chosen picture is marked by a ring outside it, so a chosen picture still
+   shows its status. The extra top padding takes the place of the old 3px top border: the cell keeps its height. */
+.iv-grid-row { padding: 3px 3px 6px; }
+.iv-cell { position: relative; padding-top: 6px; }
+.iv-cell::before { content: ''; position: absolute; top: 1px; left: 5px; right: 5px; height: 3px; border-radius: 2px; background: var(--iv-tone, transparent); }
+.iv-todo { --iv-tone: var(--warn); }
+.iv-done, .iv-manual { --iv-tone: var(--ok); }
+.iv-problem { --iv-tone: var(--err); }
+.iv-cell.on { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 .iv-cell .st { padding: 0 8px; font-size: 11px; }
 /* Status counts over the screen that are also the filter: the number large in its meaning colour. */
 .iv-filter { display: flex; flex-wrap: wrap; gap: 8px; flex: none; }
