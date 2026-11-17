@@ -43,22 +43,33 @@ function LineRuns({ line, palette, family }: { line: LaidLine; palette: string[]
  * Draws a laid-out message the way the game's window would: real pixel sizes, scaled down to fit.
  * Overflowing lines stick out of the window; lines past maxLines are drawn under it.
  */
-export function MessageWindow({ layout, metrics, palette, family }: { layout: Layout; metrics: WindowMetrics; palette: string[]; family: string | null }) {
-  const [ref, outer] = useWidth<HTMLDivElement>();
+/** Where the text starts in the window and how wide the window and the drawing (with text sticking out) are, in game px. */
+function windowGeometry(layout: Layout, metrics: WindowMetrics): { help: boolean; withFace: boolean; left: number; boxWidth: number; content: number } {
   const help = layout.window === 'help';
   const withFace = !help && (layout.withFace ?? layout.available < plainWidth(metrics));
-  const maxLines = layout.maxLines ?? metrics.maxLines;
-  const height = metrics.padding * 2 + metrics.lineHeight * maxLines;
   // The help window draws from the text padding (Window_Help); the message window as the engine does (textLeft).
   const left = help ? metrics.padding + metrics.textPadding : textLeft(metrics, withFace);
   // The window as wide as the line width in use (a width the user set may differ from the detected window).
   const rightMargin = metrics.engine === 'MV' ? metrics.padding : metrics.padding + metrics.textPadding;
   const boxWidth = left + layout.available + rightMargin;
+  // Room for text that sticks out of the window, so the overflow stays visible inside the panel.
+  const content = Math.max(boxWidth, left + layout.maxWidth + 16);
+  return { help, withFace, left, boxWidth, content };
+}
+
+/** Width the drawing takes at full size; the large preview lines its input up with it. */
+export function windowDrawWidth(layout: Layout, metrics: WindowMetrics): number {
+  return windowGeometry(layout, metrics).content;
+}
+
+export function MessageWindow({ layout, metrics, palette, family }: { layout: Layout; metrics: WindowMetrics; palette: string[]; family: string | null }) {
+  const [ref, outer] = useWidth<HTMLDivElement>();
+  const { help, withFace, left, boxWidth, content } = windowGeometry(layout, metrics);
+  const maxLines = layout.maxLines ?? metrics.maxLines;
+  const height = metrics.padding * 2 + metrics.lineHeight * maxLines;
   const shown = layout.lines.slice(0, maxLines);
   const rest = layout.lines.slice(maxLines);
   const restHeight = rest.length > 0 ? 24 + rest.length * metrics.lineHeight : 0;
-  // Room for text that sticks out of the window, so the overflow stays visible inside the panel.
-  const content = Math.max(boxWidth, left + layout.maxWidth + 16);
   const scale = outer > 0 ? Math.min(1, outer / content) : 1;
   return (
     <div ref={ref} className="gp-frame" style={{ height: (height + restHeight) * scale }}>

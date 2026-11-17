@@ -2,7 +2,7 @@ import { useEffect, useMemo, useSyncExternalStore, type KeyboardEvent } from 're
 import { createPortal } from 'react-dom';
 import type { Layout, Row, WindowMetrics } from '../../shared/api';
 import { orderedRows, shownRows, useApp } from '../state';
-import { GamePreview, MessageWindow, MIMIC_NOTE, previewProblem, usePreviewLayout, type PreviewLayout } from './GamePreview';
+import { GamePreview, MessageWindow, MIMIC_NOTE, previewProblem, usePreviewLayout, windowDrawWidth, type PreviewLayout } from './GamePreview';
 
 // The large preview ("크게 보며 고치기") is drawn by the item tab into a place the text table keeps above itself.
 // The item tab keeps the draft, so the stage's input and the item's input are one draft and saving, conflicts
@@ -105,15 +105,16 @@ function BigStage({ row, preview, draft, onDraft, onKey, saving }: {
         <button type="button" className="sbtn2" disabled={!next} onClick={() => go(next)}>다음 줄<span aria-hidden="true">›</span></button>
         <button type="button" className="sbtn2" onClick={() => useApp.setBigPreview(false)}>작게</button>
       </div>
-      <div className="stage-window">
+      {/* One column as wide as the window at full size, so the input lines up under the window it fills. */}
+      <div className="stage-col" style={state && layout ? { maxWidth: windowDrawWidth(layout, state.metrics) } : undefined}>
         {problem ?? (state && layout && <MessageWindow layout={layout} metrics={state.metrics} palette={palette} family={family} />)}
-      </div>
-      <label htmlFor="stage-target" className="sr-only">큰 미리보기 번역</label>
-      <textarea id="stage-target" className="stage-input" rows={3} value={draft} disabled={saving} placeholder="여기에 바로 번역을 쓰세요"
-        onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} />
-      <div className="stage-foot">
-        <span>Ctrl+Enter 로 저장</span>
-        <span>{MIMIC_NOTE}</span>
+        <label htmlFor="stage-target" className="sr-only">큰 미리보기 번역</label>
+        <textarea id="stage-target" className="stage-input" rows={3} value={draft} disabled={saving} placeholder="여기에 바로 번역을 쓰세요"
+          onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} />
+        <div className="stage-foot">
+          <span>Ctrl+Enter 로 저장</span>
+          <span>{MIMIC_NOTE}</span>
+        </div>
       </div>
     </section>
   );
