@@ -4,7 +4,7 @@ import { type UserEvent } from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 import { useApp } from '../../src/renderer/state';
 import type { Glossary, Row } from '../../src/shared/api';
-import { baseRows, errorRowId, fakeApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
+import { baseRows, errorRowId, eventsFake, fakeApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
 
 let api: FakeApi;
 let user: UserEvent;
@@ -203,4 +203,24 @@ test('판단 필요: 정하지 않은 묶음이 위, 종류별 머리글, 정한
   expect(within(menu).getByRole('button', { name: '번역함' })).toHaveClass('on');
   // Claude's suggestion is new and not yet seen by a person: the info colour.
   expect(screen.getAllByTestId('decision-card')[1].querySelector('.tile')).toHaveClass('info');
+});
+
+// ---- patches ----
+
+test('수정 내역: 적용된 수정은 종류 타일이 ok 색, 꺼진 수정은 흐림', async () => {
+  cleanup();
+  api = fakeApi();
+  const ev = eventsFake(api);
+  const body = { kind: 'event' as const, file: 'data/Map001.json', listPath: ['events', 1, 'pages', 0, 'list'], baseHash: 'h', ops: [] };
+  ev.patches = [
+    { id: 'p1', title: '켜진 수정', note: '', enabled: true, originalBug: false, createdBy: 'user', createdAt: '', body },
+    { id: 'p2', title: '꺼진 수정', note: '', enabled: false, originalBug: false, createdBy: 'user', createdAt: '', body },
+  ];
+  ev.statuses = [{ id: 'p1', state: 'applied' }, { id: 'p2', state: 'disabled' }];
+  user = await openFakeWith(api);
+  await user.click(within(screen.getByRole('navigation', { name: '작업 메뉴' })).getByRole('button', { name: /^수정 내역/ }));
+  const on = (await screen.findByDisplayValue('켜진 수정')).closest('.li') as HTMLElement;
+  expect(on.querySelector('.tile')).toHaveClass('ok');
+  const off = screen.getByDisplayValue('꺼진 수정').closest('.li') as HTMLElement;
+  expect(off.querySelector('.tile')).toHaveClass('mute');
 });

@@ -161,3 +161,19 @@ test('project:reloaded 뒤 표의 줄이 새 스냅숏의 것이고 선택과 �
   expect(useApp.get().query).toEqual({ status: 'all' });
   expect(screen.getAllByRole('row').some((r) => r.textContent?.includes('星の砂'))).toBe(true);
 });
+
+test('결과 화면 맨 위: 빌드 기록처럼 숫자 칸(이어받은 번역 ok, 바뀐 문장 warn, 새 문장 info, 사라진 문장 흐림), 다음 할 일과 주 단추', async () => {
+  await openResult();
+  const nums = screen.getByRole('group', { name: '업데이트 요약' });
+  const stat = (label: string) => within(nums).getByText(label).closest('.stat') as HTMLElement;
+  expect(stat('이어받은 번역')).toHaveClass('ok');
+  expect(stat('이어받은 번역')).toHaveTextContent('30');
+  expect(stat('바뀐 문장')).toHaveClass('warn');
+  expect(stat('새 문장')).toHaveClass('info');
+  expect(stat('사라진 문장')).not.toHaveClass('warn', 'ok', 'info');
+  const next = screen.getByRole('region', { name: '다음 할 일' });
+  expect(within(next).getByRole('button', { name: '새·바뀐 문장 번역 맡기기' })).toHaveClass('primary');
+  expect(screen.getAllByRole('button').filter((b) => b.classList.contains('primary') && b.closest('.update-view'))).toHaveLength(1);
+  // The step comes before the detail cards.
+  expect(next.compareDocumentPosition(screen.getByRole('region', { name: '그대로인 문장' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});

@@ -10,15 +10,38 @@ import { EmptyState, ScreenHead, Tile } from './ui';
 
 const WHO: Record<ActionOrigin, string> = { user: '사용자', batch: '번역 작업', review: '검수', chat: '채팅', external: '외부 번역' };
 const WHO_ICON: Record<ActionOrigin, LucideIcon> = { user: PencilLineIcon, batch: SparklesIcon, review: ScanSearchIcon, chat: MessageCircleIcon, external: DownloadIcon };
+/** Claude's work (a job, a review, the chat) is new and not yet looked at by a person: the info colour. The user is plain. */
+const WHO_TONE: Record<ActionOrigin, string> = { user: '', batch: ' who-info', review: ' who-info', chat: ' who-info', external: '' };
 const GONE = '(지금은 없는 문장)';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** '2026-11-16 10:30' in local time. */
-function when(iso: string): string {
+/** '14:05' in local time; the day is in the group's heading. */
+function clockOf(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return Number.isNaN(d.getTime()) ? iso : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const dayKey = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+/** '오늘' and '어제' said before the date, since those are the days people look back on most. */
+function dayHead(iso: string): string {
+  const k = dayKey(iso);
+  const now = new Date();
+  if (k === dayKey(now.toISOString())) return `오늘 · ${dayLabel(iso)}`;
+  if (k === dayKey(new Date(now.getTime() - 86400000).toISOString())) return `어제 · ${dayLabel(iso)}`;
+  return dayLabel(iso);
+}
+
+/** The newest-first log cut into days. */
+function byDay(list: ActionSummary[]): ActionSummary[][] {
+  const out: ActionSummary[][] = [];
+  for (const a of list) {
+    const last = out.at(-1);
+    if (last && dayKey(last[0].at) === dayKey(a.at)) last.push(a);
+    else out.push([a]);
+  }
+  return out;
 }
 
 function resultNote(r: CancelResult): string {
@@ -134,37 +157,45 @@ export function HistoryView() {
       {history !== null && history.length === 0 && (
         <EmptyState art={<Inkdrop size={56} />} title="아직 쌓인 기록이 없어요">아직 기록이 없어요. 번역을 고치거나 작업을 돌리면 여기에 쌓여요.</EmptyState>
       )}
-      {history !== null && history.length > 0 && <div className="list hv-list">{history.map((a) => {
-        const undone = a.undoneAt !== undefined;
-        const expanded = open[a.id] === true;
-        return (
-          <article key={a.id} className={`li hv-item${undone ? ' hv-undone' : ''}`} aria-label={a.label}>
-            <div className="hv-head">
-              <Tile icon={WHO_ICON[a.origin]} tone={undone ? 'mute' : undefined} />
-              {/* The row itself is the toggle; the two action buttons sit beside it, so pressing them never opens it. */}
-              <button type="button" className="hv-toggle" aria-expanded={expanded} onClick={() => toggle(a.id)}>
-                <span className="hv-meta">
-                  <span className="hv-chevron sub" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
-                  <span className="mono sub small">{when(a.at)}</span>
-                  <span className="tag">{WHO[a.origin]}</span>
-                  <span className="hv-label">{a.label}</span>
-                  <span className="mono sub small">{`${num(a.count)}줄`}</span>
-                  {undone && <span className="warn-text small">취소됨</span>}
-                </span>
-                {a.preview && (
-                  <span className="hv-preview small">
-                    <span className="hv-preview-text">{previewText(a.preview)}</span>
-                    {a.preview.more > 0 && <span className="sub">{`외 ${num(a.preview.more)}줄`}</span>}
+      {history !== null && history.length > 0 && byDay(history).map((day) => (
+        <section key={dayKey(day[0].at)} className="hv-day" aria-label={dayLabel(day[0].at)}>
+          <h3 className="bv-sec hv-date">{dayHead(day[0].at)}</h3>
+          <div className="list hv-list">{day.map((a) => {
+            const undone = a.undoneAt !== undefined;
+            const expanded = open[a.id] === true;
+            return (
+              <article key={a.id} className={`li hv-item${undone ? ' hv-undone' : ''}`} aria-label={a.label}>
+                <div className="hv-head">
+                  <Tile icon={WHO_ICON[a.origin]} tone={undone ? 'mute' : WHO_TONE[a.origin] ? 'info' : 'mute'} />
+                  {/* The row itself is the toggle; the two action buttons sit beside it, so pressing them never opens it. */}
+                  <button type="button" className="hv-toggle" aria-expanded={expanded} onClick={() => toggle(a.id)}>
+                    <span className="hv-meta">
+                      <span className="hv-chevron sub" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+                      <span className="mono sub small hv-time">{clockOf(a.at)}</span>
+                      <span className={`who${WHO_TONE[a.origin]}`}>{WHO[a.origin]}</span>
+                      <span className="hv-label">{a.label}</span>
+                      <span className="mono sub small">{`${num(a.count)}줄`}</span>
+                      {undone && <span className="warn-text small">취소됨</span>}
+                    </span>
+                    {a.preview && (
+                      <span className="hv-preview small">
+                        <span className="hv-preview-text">{previewText(a.preview)}</span>
+                        {a.preview.more > 0 && <span className="sub">{`외 ${num(a.preview.more)}줄`}</span>}
+                      </span>
+                    )}
+                  </button>
+                  {/* Always there but quiet, so a column of rows does not turn into a column of big buttons. */}
+                  <span className="hv-acts">
+                    <button type="button" className="btn ghost small-btn" disabled={busy || undone} onClick={() => void cancelOne(a)}>이 행동만 취소</button>
+                    <button type="button" className="btn ghost small-btn" disabled={busy} onClick={() => void rollback(a, history)}>이 시점으로 되돌리기</button>
                   </span>
-                )}
-              </button>
-              <button type="button" className="btn small-btn" disabled={busy || undone} onClick={() => void cancelOne(a)}>이 행동만 취소</button>
-              <button type="button" className="btn ghost small-btn" disabled={busy} onClick={() => void rollback(a, history)}>이 시점으로 되돌리기</button>
-            </div>
-            {expanded && loaded[a.id] && <ActionLines d={loaded[a.id]} onMore={() => void fetchLines(a.id, loaded[a.id].lines.length)} />}
-          </article>
-        );
-      })}</div>}
+                </div>
+                {expanded && loaded[a.id] && <ActionLines d={loaded[a.id]} onMore={() => void fetchLines(a.id, loaded[a.id].lines.length)} />}
+              </article>
+            );
+          })}</div>
+        </section>
+      ))}
     </div>
   );
 }

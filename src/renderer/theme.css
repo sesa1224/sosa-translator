@@ -731,11 +731,22 @@ select.input { padding: 0 12px; }
 .ev-head { justify-content: space-between; }
 .ev-empty, .ev-pad { padding: 18px; }
 .ev-main .es, .iv-main .es { border: 0; }
-.ev-lines { padding: 10px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.9; overflow-x: auto; }
-.ev-line { position: relative; display: flex; align-items: center; gap: 12px; padding-right: 12px; min-height: 30px; }
+/* The flow of an event: numbers in a quiet margin, indent guides, and each kind of command in its own colour
+   (talk in the text colour with the speaker as a pill, choices and branches info, plugin commands fixed-width warn,
+   the rest quiet). */
+.ev-lines { padding: 6px 0; font-size: 13.5px; line-height: 1.7; overflow-x: auto; }
+.ev-line { position: relative; display: flex; align-items: stretch; padding-right: 12px; min-height: 30px; }
 .ev-line:hover { background: var(--card); }
-.ev-num { color: var(--mute); min-width: 2.5em; text-align: right; flex: none; }
+.ev-num { flex: none; width: 3.4em; box-sizing: border-box; padding: 4px 10px 0 0; text-align: right; font-size: 12px; color: var(--mute); border-right: 1px solid var(--hair); }
+.ev-body { flex: 1; min-width: 0; display: flex; align-items: center; padding-top: 3px; padding-bottom: 3px;
+  background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 20px) 18px 0 / calc(var(--ind, 0) * 20px) 100% no-repeat; }
 .ev-text { white-space: pre-wrap; word-break: break-word; flex: 1; }
+.ev-kw { font-size: 11.5px; color: var(--mute); margin-right: 8px; }
+.ev-who { display: inline-block; font-size: 11.5px; line-height: 18px; padding: 0 8px; margin-right: 8px; border-radius: 99px; background: var(--card); color: var(--sub); border: 1px solid var(--line); }
+.ev-k-talk .ev-say { color: var(--text); }
+.ev-k-flow .ev-text { color: var(--info); }
+.ev-k-plugin .ev-text { color: var(--warn); font-family: var(--mono); font-size: 12.5px; }
+.ev-k-misc .ev-text { color: var(--mute); }
 .ev-add { background: var(--accent-bg); color: var(--accent-text); }
 .ev-del { background: var(--err-bg); color: var(--err); }
 .ev-del .ev-text { text-decoration: line-through; }
@@ -756,6 +767,8 @@ select.input { padding: 0 12px; }
 .patch-title { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); font-size: 14px; font-weight: 500; padding: 4px 6px; margin-left: -6px; }
 .patch-title:hover, .patch-title:focus { border-color: var(--line); background: var(--bg); }
 .patch-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* "적용" on means the change goes into the build: the done colour, not the accent. */
+.patch-row .sw:checked { background: var(--ok); }
 .check { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; }
 .btn.danger { border-color: var(--err); color: var(--err); background: var(--err-bg); }
 .report-dialog { width: min(720px, 100%); }
@@ -775,7 +788,22 @@ select.input { padding: 0 12px; }
 .iv-grid { flex: 1 1 auto; overflow: auto; min-height: 200px; }
 .iv-grid-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-bottom: 6px; box-sizing: border-box; }
 .iv-cell { display: flex; flex-direction: column; gap: 4px; align-items: stretch; padding: 4px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); text-align: left; min-width: 0; }
-.iv-cell.on { border-color: var(--accent); }
+.iv-cell.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* A thin line along the top of each picture in its status colour, so the grid reads as done / to do at a glance. */
+.iv-cell { border-top-width: 3px; }
+.iv-todo { border-top-color: var(--warn); }
+.iv-done, .iv-manual { border-top-color: var(--ok); }
+.iv-problem { border-top-color: var(--err); }
+.iv-cell .st { padding: 0 8px; font-size: 11px; }
+/* Status counts over the screen that are also the filter: the number large in its meaning colour. */
+.iv-filter { display: flex; flex-wrap: wrap; gap: 8px; flex: none; }
+.ivf { min-width: 84px; display: inline-flex; flex-direction: column-reverse; align-items: flex-start; gap: 0; padding: 7px 12px; border-radius: var(--r); border: 1px solid var(--hair); background: var(--bg); color: var(--sub); text-align: left; }
+.ivf b { font-size: 20px; font-weight: 600; line-height: 1.2; color: var(--text); }
+.ivf-l { font-size: 12px; }
+.ivf.warn b { color: var(--warn); } .ivf.ok b { color: var(--ok); } .ivf.err b { color: var(--err); } .ivf.mute b { color: var(--sub); }
+.ivf.zero b { color: var(--mute); font-weight: 400; }
+.ivf:hover { border-color: var(--line); }
+.ivf.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-bg); }
 .iv-thumb { height: 96px; display: flex; align-items: center; justify-content: center; border-radius: 4px;
   background: repeating-conic-gradient(#2a2d33 0% 25%, #1b1d22 0% 50%) 50% / 12px 12px; overflow: hidden; }
 .iv-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -824,6 +852,14 @@ select.input { padding: 0 12px; }
 .hv-preview { display: flex; gap: 8px; min-width: 0; padding-left: 22px; color: var(--sub); }
 .hv-preview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hv-undone .hv-head { opacity: 0.55; }
+.hv-day { flex: none; display: flex; flex-direction: column; }
+.hv-time { min-width: 3em; }
+/* Who did it: the user plain, Claude's work (a job, a review, the chat) in the info colour. */
+.who { flex: none; font-size: 11.5px; line-height: 18px; padding: 0 8px; border-radius: 99px; background: var(--card); color: var(--sub); }
+.who-info { background: var(--info-bg); color: var(--info); }
+.hv-acts { flex: none; display: flex; gap: 2px; }
+.hv-acts .btn { height: 30px; padding: 0 8px; font-size: 12px; color: var(--sub); }
+.hv-acts .btn:hover:not(:disabled) { color: var(--text); background: var(--card); }
 .hv-undone .hv-label { text-decoration: line-through; }
 .hv-detail { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 12px 62px; }
 .hv-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -879,6 +915,9 @@ select.input { padding: 0 12px; }
 /* ---- game updates ---- */
 .update-view { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
 .update-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+/* The one next step after an update, with its main button. */
+.next { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: calc(var(--r) + 2px); background: var(--bg); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: var(--shadow); }
+.next-text { flex: 1 1 280px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .update-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--bg); box-shadow: var(--shadow); }
 .update-body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .update-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }

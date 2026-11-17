@@ -82,7 +82,7 @@ function PatchRow({ p, status }: { p: Patch; status: PatchStatus | undefined }) 
   const ev = eventOf(p);
   return (
     <div className="li patch-row" data-patch={p.id}>
-      <Tile icon={PATCH_ICON[p.body.kind]} tone={status?.state === 'conflict' ? 'warn' : status?.state === 'disabled' ? 'mute' : undefined} />
+      <Tile icon={PATCH_ICON[p.body.kind]} tone={status?.state === 'conflict' ? 'warn' : status?.state === 'disabled' ? 'mute' : status?.state === 'applied' ? 'ok' : undefined} />
       <div className="patch-main">
         <input className="patch-title" aria-label="수정 제목" value={title} onChange={(e) => setTitle(e.target.value)}
           onBlur={saveTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(); }} />

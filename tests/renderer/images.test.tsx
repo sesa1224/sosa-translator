@@ -37,6 +37,8 @@ async function openImages() {
 }
 
 const grid = () => screen.getByRole('list', { name: '그림 목록' });
+/** A status filter: its name is the status and how many pictures have it. */
+const chip = (label: string) => within(screen.getByRole('group', { name: '그림 거르기' })).getByRole('button', { name: new RegExp(`^${label} \\d`) });
 const cells = () => within(grid()).queryAllByRole('button').map((b) => b.getAttribute('data-file'));
 const recipeCalls = () => api.calls.filter((c) => c[0] === 'images.setRecipe');
 const lastRegions = () => recipeCalls().at(-1)![2] as any[];
@@ -53,17 +55,22 @@ test('사이드바 숫자는 할 것 수, 필터 칩이 격자를 거른다', as
   await user.click(nav.getByRole('button', { name: /^이미지/ }));
   await screen.findByRole('heading', { name: '이미지' });
   await waitFor(() => expect(cells()).toHaveLength(5));
-  await user.click(screen.getByRole('button', { name: '할 것' }));
+  await user.click(chip('할 것'));
   expect(cells()).toEqual([MENU]);
-  await user.click(screen.getByRole('button', { name: '끝남' }));
+  // Each status count carries its meaning colour.
+  expect(chip('할 것')).toHaveClass('warn');
+  expect(chip('끝남')).toHaveClass('ok');
+  expect(chip('문제 있음')).toHaveClass('err');
+  expect(within(grid()).getByText('할 것')).toHaveClass('st-warn');
+  await user.click(chip('끝남'));
   expect(cells()).toEqual(['img/pictures/logo.png', 'img/pictures/old.png']);
-  await user.click(screen.getByRole('button', { name: '건너뜀' }));
+  await user.click(chip('건너뜀'));
   expect(cells()).toEqual(['img/system/skip.png']);
-  await user.click(screen.getByRole('button', { name: '안 본 것' }));
+  await user.click(chip('안 본 것'));
   expect(cells()).toEqual(['img/titles1/title.png']);
-  await user.click(screen.getByRole('button', { name: '문제 있음' }));
+  await user.click(chip('문제 있음'));
   expect(cells()).toEqual(['img/pictures/old.png']);
-  await user.click(screen.getByRole('button', { name: '전체' }));
+  await user.click(chip('전체'));
   expect(within(grid()).getByText('이벤트 3곳')).toBeVisible();
 });
 
@@ -146,13 +153,13 @@ test('글이 영역을 넘치면 알린다', async () => {
 test('원본 내보내기: 고른 그림 한 장, 또는 보이는 그림 전부', async () => {
   const user = await openImages();
   await waitFor(() => expect(cells()).toHaveLength(5));
-  await user.click(screen.getByRole('button', { name: '할 것' }));
+  await user.click(chip('할 것'));
   imagesFake(api).exportFailed = 0;
   await user.click(screen.getByRole('button', { name: '보이는 원본 1장 내보내기' }));
   expect(api.calls).toContainEqual(['images.exportOriginals', [MENU]]);
   expect(await screen.findByText('원본 1장을 내보냈어요: C:\\내보낸 그림')).toBeVisible();
 
-  await user.click(screen.getByRole('button', { name: '전체' }));
+  await user.click(chip('전체'));
   imagesFake(api).exportFailed = 2;
   await user.click(screen.getByRole('button', { name: '보이는 원본 5장 내보내기' }));
   expect(api.calls.at(-1)).toEqual(['images.exportOriginals', cells()]);
@@ -173,7 +180,7 @@ test('원본 내보내기: 고르지 않으면 아무것도 안 보이고, 보�
   expect(api.calls).toContainEqual(['images.exportOriginals', cells()]);
   expect(screen.queryByText(/내보냈어요/)).toBeNull();
   await user.selectOptions(screen.getByLabelText('폴더'), 'img/system');
-  await user.click(screen.getByRole('button', { name: '할 것' }));
+  await user.click(chip('할 것'));
   expect(screen.getByRole('button', { name: '보이는 원본 0장 내보내기' })).toBeDisabled();
 });
 

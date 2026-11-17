@@ -1,5 +1,5 @@
 import { MousePointerClickIcon } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { describeCommand } from '../../core/events/describe';
 import { emptyNames } from '../../core/events/nameFormat';
 import type { EventCommand, EventDetail, EventFileInfo, EventLine, EventListInfo, EventRef, ListOp, Patch, PathSeg, UsageTarget } from '../../shared/api';
@@ -85,6 +85,35 @@ function LineText({ text, onName }: { text: string; onName(t: UsageTarget, title
   }
   if (last < text.length) parts.push(text.slice(last));
   return <>{parts}</>;
+}
+
+/** What kind of command a line is, so the flow can be read at a glance: talk, choices and branches, plugin, the rest. */
+const TALK = new Set([101, 401, 105, 405]);
+const FLOW = new Set([102, 402, 403, 404, 111, 411, 412, 112, 413, 113, 115, 117, 118, 119]);
+const PLUGIN = new Set([356, 357, 657]);
+function lineKind(code: number): 'talk' | 'flow' | 'plugin' | 'misc' {
+  if (TALK.has(code)) return 'talk';
+  if (FLOW.has(code)) return 'flow';
+  if (PLUGIN.has(code)) return 'plugin';
+  return 'misc';
+}
+
+/** A line's words; dialogue has its speaker taken out into a small pill so the spoken words stand alone. */
+function LineBody({ text, code, onName }: { text: string; code: number; onName(t: UsageTarget, title: string): void }) {
+  const talk = lineKind(code) === 'talk' ? /^(대사|스크롤 글)(?: \[([^\]]+)\])? ([\s\S]*)$/.exec(text) : null;
+  if (!talk) return <span className="ev-text"><LineText text={text} onName={onName} /></span>;
+  return (
+    <span className="ev-text">
+      <span className="ev-kw">{talk[1]}</span>
+      {talk[2] && <span className="ev-who">{talk[2]}</span>}
+      <span className="ev-say"><LineText text={talk[3]} onName={onName} /></span>
+    </span>
+  );
+}
+
+/** The indented part of a line: guides down each level, so where a branch starts and ends can be followed. */
+function indentStyle(indent: number): CSSProperties {
+  return { '--ind': String(indent), paddingLeft: `${12 + indent * 20}px` } as CSSProperties;
 }
 
 function accessWord(type: UsageTarget['type'], access: EventRef['access']): string {
@@ -284,9 +313,9 @@ export function EventView() {
                 {rows.map((r) => {
                   if (r.kind === 'add') {
                     return (
-                      <div key={r.key} role="listitem" className="ev-line ev-add" style={{ paddingLeft: `${12 + r.indent * 20}px` }}>
+                      <div key={r.key} role="listitem" className="ev-line ev-add">
                         <span className="ev-num mono" aria-hidden="true">+</span>
-                        <span className="ev-text">{`+ ${r.text}`}</span>
+                        <span className="ev-body" style={indentStyle(r.indent)}><span className="ev-text">{`+ ${r.text}`}</span></span>
                       </div>
                     );
                   }
@@ -294,10 +323,11 @@ export function EventView() {
                   const formHere = form && form.line.index === l.index;
                   return (
                     <div key={`o-${l.index}`} role="listitem">
-                      <div data-line={l.index} className={`ev-line${r.deleted ? ' ev-del' : ''}${highlight === l.index ? ' ev-hl' : ''}`}
-                        style={{ paddingLeft: `${12 + l.indent * 20}px` }}>
+                      <div data-line={l.index} className={`ev-line ev-k-${lineKind(l.code)}${r.deleted ? ' ev-del' : ''}${highlight === l.index ? ' ev-hl' : ''}`}>
                         <span className="ev-num mono">{l.index}</span>
-                        <span className="ev-text">{r.deleted && <span aria-hidden="true">− </span>}<LineText text={l.text} onName={(t, title) => void lookUp(t, title)} /></span>
+                        <span className="ev-body" style={indentStyle(l.indent)}>
+                          {r.deleted && <span aria-hidden="true">− </span>}<LineBody text={l.text} code={l.code} onName={(t, title) => void lookUp(t, title)} />
+                        </span>
                         {!r.deleted && (
                           <span className="ev-tools">
                             <button type="button" className="btn ghost small-btn" onClick={() => setForm({ mode: 'insert', line: l })}>이 줄 아래에 끼워 넣기</button>

@@ -45,7 +45,8 @@ async function openEvent(label = '이벤트 1 · 1페이지') {
   await user.click(screen.getByRole('button', { name: /^이벤트/ }));
   await user.click(await screen.findByRole('button', { name: /맵1 \[MAP001\]/ }));
   await user.click(await screen.findByRole('button', { name: new RegExp(`^${label}`) }));
-  await screen.findByText('대사 [リナ] あれ？ / こんな夜に', { exact: false });
+  // A line of dialogue shows its speaker as a pill apart from the words.
+  await screen.findByText('あれ？ / こんな夜に');
   return user;
 }
 
@@ -58,7 +59,23 @@ test('파일과 이벤트를 고르면 풀어쓴 줄이 원본 번호와 함께 
   expect(rowOf(3)).toHaveTextContent('선택지: いいよ / また今度');
   expect(rowOf(11)).toHaveTextContent('11');
   expect(screen.getByText('조건: 스위치 3 [문 열림] 켜짐')).toBeInTheDocument();
-  expect(rowOf(5).style.paddingLeft).not.toBe(rowOf(3).style.paddingLeft);
+  // The number stays in its own margin; only the command moves in with its indent.
+  const body = (n: number) => rowOf(n).querySelector('.ev-body') as HTMLElement;
+  expect(body(5).style.paddingLeft).not.toBe(body(3).style.paddingLeft);
+});
+
+test('명령은 종류별로 구별된다: 대사(화자 알약), 선택지와 분기, 플러그인 커맨드, 그 밖', async () => {
+  eventsFake(api).read = () => ({ ...EV1, lines: [...EV1.lines, line(12, '플러그인 커맨드: ShowRecord 記録', 356)] });
+  await openEvent();
+  expect(rowOf(0)).toHaveClass('ev-k-talk');
+  expect(within(rowOf(0)).getByText('リナ')).toHaveClass('ev-who');
+  expect(rowOf(3)).toHaveClass('ev-k-flow');
+  expect(rowOf(4)).toHaveClass('ev-k-flow');
+  expect(rowOf(11)).toHaveClass('ev-k-misc');
+  expect(rowOf(12)).toHaveClass('ev-k-plugin');
+  // The number comes first, in the quiet fixed-width margin, before the indented body.
+  expect(rowOf(5).firstElementChild).toHaveClass('ev-num');
+  expect(rowOf(5).querySelector('.ev-body')).toHaveStyle({ '--ind': '1' });
 });
 
 test('수정이 걸린 이벤트: 끼워 넣은 줄에 + 와 강조, 지운 줄에 취소선', async () => {

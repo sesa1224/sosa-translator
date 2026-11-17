@@ -4,7 +4,7 @@ import { num } from '../format';
 import { ICON } from '../icons';
 import { eventActions, jobActive, updateActions, useApp } from '../state';
 import { Inkdrop } from './Inkdrop';
-import { Callout, EmptyState, ScreenHead, Tile } from './ui';
+import { EmptyState, ScreenHead, Stat, Tile } from './ui';
 
 export const ASK_CLAUDE_TEXT = '업데이트 뒤 충돌난 수정을 고쳐줘';
 
@@ -41,6 +41,7 @@ export function UpdateView() {
   const moved = s.patches.filter((p) => p.result === 'moved').length;
   const conflicts = s.patches.filter((p) => p.result === 'conflict');
   const confirmed = app.glossary?.confirmedAt != null;
+  const todo = s.added + s.changed;
   const run = async (job: () => Promise<void>) => {
     setError(null);
     setBusy(true);
@@ -56,6 +57,27 @@ export function UpdateView() {
   return (
     <div className="update-view">
       <ScreenHead title={`${s.fromLabel} → ${s.toLabel}`} desc="게임 새 버전을 가져오며 바뀐 점이에요. 그대로인 문장의 번역은 이어받았어요." />
+      {/* The numbers the update is judged by, then what to do about them; the cards below are the detail. */}
+      <div className="stats" role="group" aria-label="업데이트 요약">
+        <Stat label="이어받은 번역" value={s.keptTranslated} tone="ok" />
+        <Stat label="바뀐 문장" value={s.changed} tone="warn" />
+        <Stat label="새 문장" value={s.added} tone="info" />
+        <Stat label="사라진 문장" value={s.removed} />
+        {conflicts.length > 0 && <Stat label="충돌난 수정" value={conflicts.length} tone="err" />}
+      </div>
+      <section className="next" aria-label="다음 할 일">
+        <div className="next-text">
+          <b>다음 할 일</b>
+          <span className="sub">{todo > 0
+            ? `새 문장과 바뀐 문장 ${num(todo)}개를 번역하세요. 바뀐 문장에는 이전 번역이 참고로 붙어 있어요.`
+            : '번역할 새 문장이 없어요. 패치를 빌드하면 새 버전에 맞춘 패치가 나와요.'}</span>
+          {!confirmed && <span className="warn-text small">용어집을 먼저 확정하세요</span>}
+        </div>
+        {!confirmed && <button type="button" className="btn" onClick={() => useApp.setView('glossary')}>용어집으로<ArrowRightIcon {...ICON} /></button>}
+        <button type="button" className="btn primary" disabled={!confirmed || jobActive(app) || busy}
+          title={!confirmed ? '용어집을 먼저 확정하세요' : undefined}
+          onClick={() => void run(() => useApp.translate(undefined))}><SparklesIcon {...ICON} />새·바뀐 문장 번역 맡기기</button>
+      </section>
       <div className="update-cards">
         <Card label="그대로인 문장" icon={FileCheckIcon}>
           <span>{`그대로인 문장 ${num(s.kept)}개 · 번역 ${num(s.keptTranslated)}개를 이어받았어요`}</span>
@@ -110,17 +132,9 @@ export function UpdateView() {
           </div>
         </section>
       )}
-      {!confirmed && (
-        <Callout action={<button type="button" className="btn" onClick={() => useApp.setView('glossary')}>용어집으로<ArrowRightIcon {...ICON} /></button>}>
-          <b>용어집을 먼저 확정하세요</b>
-        </Callout>
-      )}
       <div className="row-gap">
-        <button type="button" className="btn primary" disabled={!confirmed || jobActive(app) || busy}
-          title={!confirmed ? '용어집을 먼저 확정하세요' : undefined}
-          onClick={() => void run(() => useApp.translate(undefined))}><SparklesIcon {...ICON} />새·바뀐 문장 번역 맡기기</button>
         <div className="grow" />
-        <button type="button" className="btn" disabled={busy} onClick={() => setConfirming(true)}><Undo2Icon {...ICON} />이 업데이트 되돌리기</button>
+        <button type="button" className="btn ghost" disabled={busy} onClick={() => setConfirming(true)}><Undo2Icon {...ICON} />이 업데이트 되돌리기</button>
       </div>
       {error && <span className="err-text small" role="alert">{error}</span>}
       {confirming && (

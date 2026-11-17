@@ -142,3 +142,24 @@ test('이 문장 보기: 목록 화면으로 가서 그 항목을 연다, 지금
   expect(api.calls).toContainEqual(['unit.get', 'r-actor']);
   expect(screen.queryByRole('heading', { name: '작업 기록' })).toBeNull();
 });
+
+test('날짜별로 묶어 날짜 머리글을 두고, 줄에는 시각·행위자(Claude 와 작업은 info)·조용한 되돌리기 단추', async () => {
+  api.historyValue = [...actions, { id: 'a0', at: '2026-11-14T03:00:00.000Z', origin: 'chat', label: '채팅으로 고침', count: 2 }];
+  const user = await openFakeWith(api);
+  await user.click(within(screen.getByRole('navigation', { name: '작업 메뉴' })).getByRole('button', { name: '작업 기록' }));
+  await screen.findByRole('heading', { name: '작업 기록' });
+  const days = await within(document.querySelector('.history-view') as HTMLElement).findAllByRole('region');
+  const dayOf = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+  expect(days.map((d) => d.getAttribute('aria-label'))).toEqual([dayOf('2026-11-16T10:30:00.000Z'), dayOf('2026-11-14T03:00:00.000Z')]);
+  expect(within(days[0]).getAllByRole('article')).toHaveLength(3);
+  const [review, batch, mine] = within(days[0]).getAllByRole('article');
+  expect(within(review).getByText('검수')).toHaveClass('who', 'who-info');
+  expect(within(batch).getByText('번역 작업')).toHaveClass('who-info');
+  expect(within(mine).getByText('사용자')).toHaveClass('who');
+  expect(within(mine).getByText('사용자')).not.toHaveClass('who-info');
+  expect(within(within(days[1]).getByRole('article')).getByText('채팅')).toHaveClass('who-info');
+  // The time alone; the day is in the heading.
+  const t = new Date('2026-11-16T10:30:00.000Z');
+  expect(within(review).getByText(`${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`)).toBeVisible();
+  for (const name of ['이 행동만 취소', '이 시점으로 되돌리기']) expect(within(review).getByRole('button', { name })).toHaveClass('ghost');
+});

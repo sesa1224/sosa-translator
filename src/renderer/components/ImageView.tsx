@@ -38,6 +38,10 @@ function useBlobUrl(bytes: Uint8Array | null): string | null {
   return url;
 }
 
+/** The meaning colour of each status: to do wants a person, done and fixed by hand are done, a problem is blocked. */
+const FILTER_TONE: Record<Filter, string> = { all: '', none: 'mute', todo: 'warn', done: 'ok', manual: 'ok', skip: 'mute', problem: 'err' };
+const ST_CLASS: Record<ImageEntry['status'], string> = { none: 'st-none', todo: 'st-warn', done: 'st-ok', manual: 'st-ok', skip: 'st-none' };
+
 function matches(e: ImageEntry, f: Filter): boolean {
   if (f === 'all') return true;
   if (f === 'problem') return e.problem !== undefined;
@@ -70,11 +74,11 @@ function ImageGrid({ entries, current }: { entries: ImageEntry[]; current: strin
           <div key={row.key} className="iv-grid-row" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: CELL_HEIGHT, transform: `translateY(${row.start}px)` }}>
             {entries.slice(row.index * COLUMNS, row.index * COLUMNS + COLUMNS).map((e) => (
               <button key={e.file} type="button" role="button" data-file={e.file} title={e.file}
-                className={`iv-cell${e.file === current ? ' on' : ''}`} aria-pressed={e.file === current} onClick={() => useApp.selectImage(e.file)}>
+                className={`iv-cell iv-${e.problem ? 'problem' : e.status}${e.file === current ? ' on' : ''}`} aria-pressed={e.file === current} onClick={() => useApp.selectImage(e.file)}>
                 <Thumb entry={e} />
                 <span className="iv-cell-name small">{baseName(e.file)}</span>
                 <span className="iv-cell-meta">
-                  <span className={`tag small${e.problem ? ' warn' : ''}`}>{e.problem ? '문제 있음' : STATUS_LABEL[e.status]}</span>
+                  <span className={`st ${e.problem ? 'st-err' : ST_CLASS[e.status]}`}>{e.problem ? '문제 있음' : STATUS_LABEL[e.status]}</span>
                   {e.usedByEvents > 0 && <span className="sub small">{`이벤트 ${num(e.usedByEvents)}곳`}</span>}
                 </span>
               </button>
@@ -521,7 +525,8 @@ export function ImageView() {
   const [folder, setFolder] = useState('');
   useEffect(() => { void useApp.loadImages(); }, []);
   const folders = useMemo(() => [...new Set((images ?? []).map((e) => folderOf(e.file)))].sort(), [images]);
-  const shown = useMemo(() => (images ?? []).filter((e) => matches(e, filter) && (!folder || folderOf(e.file) === folder)), [images, filter, folder]);
+  const inFolder = useMemo(() => (images ?? []).filter((e) => !folder || folderOf(e.file) === folder), [images, folder]);
+  const shown = useMemo(() => inFolder.filter((e) => matches(e, filter)), [inFolder, filter]);
   const current = images?.find((e) => e.file === imageFile) ?? null;
   const [regionCount, setRegionCount] = useState<number | null>(null);
   useEffect(() => {
@@ -556,13 +561,21 @@ export function ImageView() {
         </EmptyState>
       )}
       {images !== null && images.length > 0 && (
+        // How many pictures stand where, as the numbers that also filter the list.
+        <div className="iv-filter" role="group" aria-label="그림 거르기">
+          {FILTERS.map(([f, label]) => {
+            const n = inFolder.filter((e) => matches(e, f)).length;
+            return (
+              <button key={f} type="button" className={`ivf ${FILTER_TONE[f]}${n === 0 ? ' zero' : ''}${filter === f ? ' on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+                <span className="ivf-l">{label}</span> <b className="mono">{num(n)}</b>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {images !== null && images.length > 0 && (
         <div className="iv-cols">
           <div className="iv-side">
-            <div className="fp-chips">
-              {FILTERS.map(([f, label]) => (
-                <button key={f} type="button" className={`pill${filter === f ? ' on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>{label}</button>
-              ))}
-            </div>
             <select className="input" aria-label="폴더" value={folder} onChange={(e) => setFolder(e.target.value)}>
               <option value="">모든 폴더</option>
               {folders.map((f) => <option key={f} value={f}>{f}</option>)}
