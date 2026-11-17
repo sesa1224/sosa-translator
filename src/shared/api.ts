@@ -81,7 +81,8 @@ export interface Scope { file: string; label: string; total: number; done: numbe
 export type Origin = 'user' | 'chat' | 'batch' | 'review' | 'external';
 export interface ChangeEvent { ids: string[]; origin: Origin }
 
-export interface ProjectListItem { dir: string; name: string; engine: string }
+/** touchedAt: when the project folder last changed (ms), so the picker can put the project in use first. */
+export interface ProjectListItem { dir: string; name: string; engine: string; touchedAt?: number }
 /** A game shipped as one exe (Enigma Virtual Box) that the app can unpack: the exe, and how much is inside. */
 export interface PackedGameInfo { exe: string; files: number; bytes: number }
 /**

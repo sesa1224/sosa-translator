@@ -1,10 +1,9 @@
-import { FolderOpenIcon, FolderSearchIcon } from 'lucide-react';
+import { FolderOpenIcon, FolderPlusIcon, FolderSearchIcon } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 import type { GameDirCheck, PackedGameInfo } from '../../shared/api';
 import { ICON } from '../icons';
 import { useApp } from '../state';
 import { Inkdrop } from './Inkdrop';
-import { EmptyState, Tile } from './ui';
 import { WindowControls } from './WindowControls';
 
 function hasFiles(e: DragEvent): boolean {
@@ -25,6 +24,7 @@ export function ProjectPicker() {
   const [over, setOver] = useState(false);
   const [packed, setPacked] = useState<PackedGameInfo | null>(null);
   const [unpacking, setUnpacking] = useState(false);
+  const [latest, ...rest] = [...projects].sort((a, b) => (b.touchedAt ?? 0) - (a.touchedAt ?? 0));
 
   const run = async (job: () => Promise<void>) => {
     setBusy(true);
@@ -107,15 +107,49 @@ export function ProjectPicker() {
         </div>
       </div>
 
-      <section className="card picker-section" aria-label="새 프로젝트">
-        <span className="card-title">새 프로젝트</span>
+      {/* Most people come back to the game they were working on: it is the large thing at the top. */}
+      {latest && (
+        <section className="resume" aria-label="이어서 하기">
+          <div className="resume-text">
+            <span className="bv-kicker">이어서 하기</span>
+            <span className="picker-name">{latest.name}</span>
+            <span className="row-gap"><span className="eng">{latest.engine}</span><span className="mono sub picker-path">{latest.dir}</span></span>
+          </div>
+          <button type="button" className="btn primary" disabled={busy} onClick={() => run(() => useApp.openProject(latest.dir))}
+            aria-label={`${latest.name} 열기`}><FolderOpenIcon {...ICON} />열기</button>
+        </section>
+      )}
+      {rest.length > 0 && (
+        <section className="picker-others" aria-label="기존 프로젝트">
+          <h3 className="bv-sec">다른 프로젝트</h3>
+          <ul className="list picker-list">
+            {rest.map((p) => (
+              <li key={p.dir} className="li">
+                <div className="picker-item">
+                  <span className="picker-name">{p.name}</span>
+                  <span className="mono sub">{p.dir}</span>
+                </div>
+                <span className="eng">{p.engine}</span>
+                <button type="button" className="btn small-btn" disabled={busy} onClick={() => run(() => useApp.openProject(p.dir))}
+                  aria-label={`${p.name} 열기`}>열기</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="picker-section drop-zone" aria-label="새 프로젝트">
+        {projects.length === 0 && !game && !packed
+          ? <Inkdrop size={56} />
+          : <span className="tile" aria-hidden="true"><FolderPlusIcon {...ICON} /></span>}
+        <span className="card-title">{projects.length === 0 ? '첫 번역을 시작해 볼까요?' : '새 프로젝트'}</span>
         <span className="sub">게임 폴더를 고르거나 이 창에 끌어다 놓으면 원본을 복사해 오고 텍스트를 뽑아요. 원본 게임은 수정되지 않아요.</span>
         <div className="picker-row">
-          <button type="button" className={`btn${game ? '' : ' primary'}`} onClick={pick} disabled={busy}><FolderSearchIcon {...ICON} />게임 폴더 고르기</button>
-          <span className="mono sub picker-path">{game?.dir ?? '아직 고르지 않았어요'}</span>
+          <button type="button" className={`btn${game || projects.length > 0 ? '' : ' primary'}`} onClick={pick} disabled={busy}><FolderSearchIcon {...ICON} />게임 폴더 고르기</button>
+          {game ? <span className="mono sub picker-path">{game.dir}</span> : <span className="mute small">아직 고르지 않았어요</span>}
         </div>
         {game && (
-          <>
+          <div className="drop-form">
             <span className="small">{`${game.engine} · ${game.title || '(제목 없음)'}`}</span>
             <div className="field">
               <label htmlFor="project-name">프로젝트 이름</label>
@@ -127,7 +161,7 @@ export function ProjectPicker() {
               <button type="button" className="btn primary" disabled={busy || !name.trim()}
                 onClick={() => run(() => useApp.createProject(game.dir, name.trim()))}>만들기</button>
             </div>
-          </>
+          </div>
         )}
         {packed && (
           <div className="picker-packed" data-testid="packed-game">
@@ -142,30 +176,6 @@ export function ProjectPicker() {
         {busy && <span className="sub" role="status">{unpacking ? '게임을 푸는 중… 큰 게임은 몇 분 걸려요' : '확인하는 중…'}</span>}
         {error && <span className="err-text" role="alert">{error}</span>}
       </section>
-
-      {projects.length === 0 && !game && !packed && (
-        <EmptyState art={<Inkdrop size={64} />} title="첫 번역을 시작해 볼까요?">
-          게임 폴더를 고르면 원본은 그대로 두고 사본에서 문장을 뽑아요. 번역은 프로젝트 폴더에만 쌓여요.
-        </EmptyState>
-      )}
-      {projects.length > 0 && (
-        <section className="card picker-section" aria-label="기존 프로젝트">
-          <span className="card-title">기존 프로젝트</span>
-          <ul className="list picker-list">
-            {projects.map((p) => (
-              <li key={p.dir} className="li">
-                <Tile icon={FolderOpenIcon} />
-                <div className="picker-item">
-                  <span className="picker-name">{p.name}</span>
-                  <span className="mono sub">{p.engine} · {p.dir}</span>
-                </div>
-                <button type="button" className="btn" disabled={busy} onClick={() => run(() => useApp.openProject(p.dir))}
-                  aria-label={`${p.name} 열기`}>열기</button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
       </div>
     </div>
   );

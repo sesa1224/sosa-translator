@@ -75,6 +75,8 @@ test('스냅숏의 게임 제목, 목록, 항목 읽기, 되돌리기, 채팅 �
   const snap = await invoke('project:snapshot');
   expect(snap.gameTitle).toBe('霧の薬草園'); expect(snap.meta.name).toBe('약초원');
   expect(await invoke('project:list')).toEqual([expect.objectContaining({ name: '약초원', engine: 'MZ' })]);
+  // When the project folder last changed, so the picker can put the one in use first.
+  expect((await invoke('project:list'))[0].touchedAt).toBeGreaterThan(Date.now() - 600000);
   const u = await invoke('unit:get', id);
   expect(u).toMatchObject({ row: { id, target: '월광초' }, issues: [], refs: ['Items · 1'] });
   await invoke('unit:setStatus', id, 'approved');

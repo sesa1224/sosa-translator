@@ -239,6 +239,21 @@ select.input { padding: 0 12px; }
 .picker-head .ph-text { flex: 1 1 auto; }
 .picker-item .mono { font-size: 12px; overflow-wrap: anywhere; }
 .picker-name { font-family: var(--gfont); font-weight: 500; }
+/* The project in use, large: the game title in the face that has its kana and kanji, an engine pill, the path small. */
+.resume { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; padding: 20px 22px; border-radius: calc(var(--r) + 4px); background: var(--panel); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: var(--shadow); }
+.resume-text { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1 1 300px; }
+.resume .picker-name { font-size: 26px; font-weight: 700; line-height: 1.2; }
+.eng { flex: none; font: 600 11px var(--mono); padding: 1px 8px; border-radius: 99px; background: var(--card); color: var(--sub); border: 1px solid var(--line); }
+.picker-others { display: flex; flex-direction: column; }
+.picker-list .li { padding: 10px 14px; }
+.picker-list .picker-item .mono { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Starting a new project: a large dashed place to drop a game folder on, with the picker button in it. */
+.drop-zone { align-items: center; text-align: center; padding: 26px 22px; border-radius: calc(var(--r) + 4px); border: 2px dashed var(--line); background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.drop-zone > .sub { max-width: 52ch; }
+.drop-zone .picker-row { justify-content: center; }
+.drop-zone .tile { width: 44px; height: 44px; border-radius: 12px; }
+.drop-form { align-self: stretch; display: flex; flex-direction: column; gap: 12px; text-align: left; padding-top: 6px; border-top: 1px solid var(--hair); }
+.picker-page.drop-on .drop-zone { border-color: var(--accent); }
 
 /* ---- shell ---- */
 /* The frame (title bar, left menu, right panel, status bar) shows the theme's --art over --bg; the middle
@@ -302,8 +317,8 @@ select.input { padding: 0 12px; }
 .scope-box { display: flex; flex-direction: column; gap: 2px; }
 .scope-more { align-self: flex-start; margin: 2px 0 0 4px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--sub); font-size: 12px; }
 .scope-more:hover { background: var(--card); color: var(--text); }
-.nav-settings { flex: none; margin-top: 8px; }
-.note-box { margin-top: 16px; padding: 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.nav-settings { flex: none; margin-top: 6px; height: 40px; }
+.note-box { margin-top: 12px; padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 1px; font-size: 12px; line-height: 1.45; }
 .main { flex: 1 1 auto; min-width: 0; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;
   background: var(--panel); border: 1px solid var(--frame-line); border-bottom: 0; border-radius: var(--r) var(--r) 0 0; }
 .right { width: 380px; flex: none; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; background: var(--art-right); }
@@ -441,7 +456,7 @@ select.input { padding: 0 12px; }
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .step { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: center; padding: 3px 0; }
 .step + .step::before { content: ""; position: absolute; left: 8.5px; top: -8px; height: 12px; width: 1px; background: var(--line); }
-.step-dot { width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent-text); }
+.step-dot { width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center; background: var(--ok-bg); color: var(--ok); }
 .step.err .step-dot { background: var(--err-bg); color: var(--err); }
 .step.stop .step-dot { background: var(--card); }
 .step.run .step-dot { background: transparent; border: 2px solid var(--accent); border-right-color: transparent; animation: rot .7s linear infinite; }
@@ -449,9 +464,9 @@ select.input { padding: 0 12px; }
 /* "n줄을 고쳤어요" after a reply that changed lines. */
 .res { border-radius: 12px; border: 1px solid var(--line); background: var(--bg); box-shadow: var(--shadow); overflow: hidden; }
 .res-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-weight: 500; }
-.res-head svg { color: var(--accent); }
+.res-head svg { color: var(--ok); }
 .res-row { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-top: 1px solid var(--hair); font-size: 12px; }
-.res-row ins { color: var(--accent-text); text-decoration: none; overflow-wrap: anywhere; }
+.res-row ins { color: var(--info); text-decoration: none; overflow-wrap: anywhere; }
 .res-foot { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--hair); }
 .mini { height: 26px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--raise); color: var(--text); font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
 .err-line { font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--err-bg); }
@@ -490,6 +505,19 @@ select.input { padding: 0 12px; }
 .settings-card { padding: 18px; display: flex; flex-direction: column; gap: 14px; background: var(--bg); box-shadow: var(--shadow); }
 .settings-card > .card-title { font-size: 15px; }
 .settings .seg { align-self: flex-start; }
+/* The groups listed on the left (stays in view while the right side scrolls); each setting a row with its words on
+   the left and its control on the right. */
+.set-cols { display: flex; gap: 20px; align-items: flex-start; }
+.set-toc { flex: none; width: 168px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
+.set-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.set-list { display: flex; flex-direction: column; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.set-row + .set-row { border-top: 1px solid var(--hair); }
+.set-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.set-l > label { font-size: 14px; color: var(--text); }
+.set-c { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.set-c select.input { width: 240px; max-width: 100%; }
+@media (max-width: 1350px) { .set-toc { display: none; } }
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .theme-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
 .theme-card:hover { border-color: var(--mute); }

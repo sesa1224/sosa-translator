@@ -1,13 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { DEFAULT_DECIDE_MODEL, type AppSettings, type StageModels, type ThemeName } from '../../shared/api';
 import { useApp } from '../state';
 import { FontPicker } from './FontPicker';
 import { ImageFolderSettings } from './ImageView';
 import { FontEmbedSection } from './PatchView';
 import { TextWindowSettings } from './TextWindowSettings';
-import { ScreenHead, Switch } from './ui';
+import { ScreenHead } from './ui';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
+
+/** The groups of the screen, by the id of each group's heading (the sections below and the ones other screens lend). */
+const TOC: [string, string][] = [
+  ['set-theme', '테마'], ['set-motion', '움직임'], ['set-stages', '단계별 모델'], ['set-models', '모델'], ['set-cli', 'Claude CLI'], ['set-dir', '프로젝트 폴더 위치'],
+  ['set-game-font', '게임 폰트'], ['set-text-windows', '창 크기와 줄바꿈'], ['set-embed', '폰트를 게임에 넣기'], ['set-images', '이미지'],
+];
 
 /** Names shown for each theme; the first two keep the words the settings used before there were more. */
 const THEME_CARDS: { id: ThemeName; name: string; note?: string }[] = [
@@ -52,126 +58,149 @@ export function SettingsView() {
     return save({ models, chatModel });
   };
 
+  const stageSelect = (id: string, value: string, onChange: (v: string) => void, extra?: ReactNode) => (
+    <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+      {extra}
+      {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+    </select>
+  );
+
   return (
     <div className="settings">
       <ScreenHead title="설정" desc="테마, 모델, 게임 폰트와 창, 그림 폴더를 정해요. 바꾸면 바로 저장돼요." />
-
-      <section className="card settings-card" aria-labelledby="set-theme">
-        <span id="set-theme" className="card-title">테마</span>
-        <div className="theme-grid" role="radiogroup" aria-labelledby="set-theme">
-          {THEME_CARDS.map(({ id, name, note }) => (
-            <button key={id} type="button" role="radio" aria-checked={settings.theme === id} aria-label={name}
-              className={`theme-card${settings.theme === id ? ' on' : ''}`} onClick={() => void save({ theme: id })}>
-              {/* The swatch carries the theme's own tokens, so it shows that theme while another is on. */}
-              <span className="theme-swatch" data-theme={id} aria-hidden="true"><i /><i /><i /><i /></span>
-              <span className="theme-name">{name}</span>
-              {note && <span className="mute small">{note}</span>}
-            </button>
+      <div className="set-cols">
+        {/* People come here for one value: the groups are listed so the way to it is one click. */}
+        <nav className="set-toc" aria-label="설정 차례">
+          {TOC.map(([id, name]) => (
+            <button key={id} type="button" className="toc-item" onClick={() => document.getElementById(id)?.closest('section')?.scrollIntoView({ block: 'start' })}>{name}</button>
           ))}
-        </div>
-      </section>
-
-      <section className="card settings-card" aria-labelledby="set-motion">
-        <span id="set-motion" className="card-title">움직임</span>
-        <Switch label="움직임 켜기" checked={settings.motion} onChange={(e) => void save({ motion: e.target.checked })} />
-        <span className="hint">작업 진행, 승인, 가져오기 같은 순간을 짧게 움직여 알려 줘요. 끄면 화면의 움직임이 모두 멈춰요. 윈도우에서 애니메이션 효과를 꺼 두었으면 여기와 상관없이 멈춰요.</span>
-      </section>
-
-      <section className="card settings-card" aria-labelledby="set-stages">
-        <span id="set-stages" className="card-title">단계별 모델</span>
-        <div className="stage-grid">
-          <div className="field">
-            <label htmlFor="stage-glossaryRead">대본 읽기</label>
-            <select id="stage-glossaryRead" className="input" value={settings.stageModels.glossaryRead ?? ''}
-              onChange={(e) => {
-                const { glossaryRead: _old, ...rest } = settings.stageModels;
-                void save({ stageModels: e.target.value ? { ...rest, glossaryRead: e.target.value } : rest });
-              }}>
-              <option value="">용어집 정리와 같음</option>
-              {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-          </div>
-          {STAGES.map(([k, label]) => (
-            <div key={k} className="field">
-              <label htmlFor={`stage-${k}`}>{label}</label>
-              <select id={`stage-${k}`} className="input" value={settings.stageModels[k]}
-                onChange={(e) => void save({ stageModels: { ...settings.stageModels, [k]: e.target.value } })}>
-                {!settings.models.some((m) => m.id === settings.stageModels[k]) && <option value={settings.stageModels[k]}>{settings.stageModels[k]}</option>}
-                {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
+        </nav>
+        <div className="set-main">
+          <section className="card settings-card" aria-labelledby="set-theme">
+            <span id="set-theme" className="card-title">테마</span>
+            <div className="theme-grid" role="radiogroup" aria-labelledby="set-theme">
+              {THEME_CARDS.map(({ id, name, note }) => (
+                <button key={id} type="button" role="radio" aria-checked={settings.theme === id} aria-label={name}
+                  className={`theme-card${settings.theme === id ? ' on' : ''}`} onClick={() => void save({ theme: id })}>
+                  {/* The swatch carries the theme's own tokens, so it shows that theme while another is on. */}
+                  <span className="theme-swatch" data-theme={id} aria-hidden="true"><i /><i /><i /><i /></span>
+                  <span className="theme-name">{name}</span>
+                  {note && <span className="mute small">{note}</span>}
+                </button>
+              ))}
             </div>
-          ))}
-          <div className="field">
-            <label htmlFor="stage-decide">판단 필요 추천</label>
-            <select id="stage-decide" className="input" value={settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}
-              onChange={(e) => void save({ stageModels: { ...settings.stageModels, decide: e.target.value } })}>
-              {!settings.models.some((m) => m.id === (settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL)) && <option value={settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}>{settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}</option>}
-              {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <span className="hint">용어집 초안(대본 읽기와 정리), 전체 번역, 검수를 맡길 때 각각 이 모델을 써요. 대본 읽기를 비우면 용어집 정리 모델로 읽어요.</span>
-      </section>
+          </section>
 
-      <section className="card settings-card" aria-labelledby="set-models">
-        <span id="set-models" className="card-title">모델</span>
-        <div className="field narrow">
-          <label htmlFor="chat-default-model">채팅 기본 모델</label>
-          <select id="chat-default-model" className="input" value={settings.chatModel} onChange={(e) => void save({ chatModel: e.target.value })}>
-            {settings.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
-        </div>
-        <ul className="model-list">
-          {settings.models.map((m) => (
-            <li key={m.id}>
-              <span>{m.label}</span>
-              <span className="mono sub small">{m.id}</span>
-              <div className="grow" />
-              <button type="button" className="btn ghost small-btn" aria-label={`${m.label} 삭제`} disabled={settings.models.length <= 1}
-                title={settings.models.length <= 1 ? '모델이 하나 이상 있어야 합니다' : undefined}
-                onClick={() => void removeModel(m.id)}>삭제</button>
-            </li>
-          ))}
-        </ul>
-        <div className="model-add">
-          <div className="field"><label htmlFor="model-label">모델 이름</label>
-            <input id="model-label" className="input" value={label} placeholder="Claude Opus 6" onChange={(e) => setLabel(e.target.value)} /></div>
-          <div className="field"><label htmlFor="model-id">모델 id</label>
-            <input id="model-id" className="input mono" value={id} placeholder="claude-opus-6" onChange={(e) => setId(e.target.value)} /></div>
-          <button type="button" className="btn" onClick={() => void addModel()}>모델 추가</button>
-        </div>
-        <span className="hint">새 모델이 나오면 여기서 추가해요. 프로그램을 고치지 않아도 돼요.</span>
-      </section>
+          <section className="card settings-card" aria-labelledby="set-motion">
+            <span id="set-motion" className="card-title">움직임</span>
+            <div className="set-list">
+              <div className="set-row">
+                <div className="set-l">
+                  <label htmlFor="set-motion-on">움직임 켜기</label>
+                  <span className="hint">작업 진행, 승인, 가져오기 같은 순간을 짧게 움직여 알려 줘요. 끄면 화면의 움직임이 모두 멈춰요. 윈도우에서 애니메이션 효과를 꺼 두었으면 여기와 상관없이 멈춰요.</span>
+                </div>
+                <div className="set-c">
+                  <input id="set-motion-on" type="checkbox" role="switch" className="sw" checked={settings.motion} onChange={(e) => void save({ motion: e.target.checked })} />
+                </div>
+              </div>
+            </div>
+          </section>
 
-      <section className="card settings-card" aria-labelledby="set-cli">
-        <span id="set-cli" className="card-title">Claude CLI</span>
-        <div className="inline-field">
-          <div className="field grow"><label htmlFor="cli-path">Claude CLI 경로</label>
-            <input id="cli-path" className="input mono" value={cli} placeholder="비우면 자동으로 찾아요" onChange={(e) => setCli(e.target.value)} /></div>
-          <button type="button" className="btn" aria-label="CLI 경로 적용" onClick={() => void save({ claudePath: cli.trim() || null })}>적용</button>
-        </div>
-        <span className="small">
-          {claudePath ? <>지금 쓰는 경로 <span className="mono accent-text path-text">{claudePath}</span></> : <span className="warn-text">Claude CLI를 찾지 못했어요</span>}
-        </span>
-      </section>
+          <section className="card settings-card" aria-labelledby="set-stages">
+            <span id="set-stages" className="card-title">단계별 모델</span>
+            <span className="hint">용어집 초안(대본 읽기와 정리), 전체 번역, 검수를 맡길 때 각각 이 모델을 써요. 대본 읽기를 비우면 용어집 정리 모델로 읽어요.</span>
+            <div className="set-list">
+              <SetRow id="stage-glossaryRead" name="대본 읽기">
+                {stageSelect('stage-glossaryRead', settings.stageModels.glossaryRead ?? '', (v) => {
+                  const { glossaryRead: _old, ...rest } = settings.stageModels;
+                  void save({ stageModels: v ? { ...rest, glossaryRead: v } : rest });
+                }, <option value="">용어집 정리와 같음</option>)}
+              </SetRow>
+              {STAGES.map(([k, label]) => (
+                <SetRow key={k} id={`stage-${k}`} name={label}>
+                  {stageSelect(`stage-${k}`, settings.stageModels[k] ?? '', (v) => void save({ stageModels: { ...settings.stageModels, [k]: v } }),
+                    !settings.models.some((m) => m.id === settings.stageModels[k]) && <option value={settings.stageModels[k]}>{settings.stageModels[k]}</option>)}
+                </SetRow>
+              ))}
+              <SetRow id="stage-decide" name="판단 필요 추천">
+                {stageSelect('stage-decide', settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL, (v) => void save({ stageModels: { ...settings.stageModels, decide: v } }),
+                  !settings.models.some((m) => m.id === (settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL)) && <option value={settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}>{settings.stageModels.decide ?? DEFAULT_DECIDE_MODEL}</option>)}
+              </SetRow>
+            </div>
+          </section>
 
-      <section className="card settings-card" aria-labelledby="set-dir">
-        <span id="set-dir" className="card-title">프로젝트 폴더 위치</span>
-        <div className="inline-field">
-          <div className="field grow"><label htmlFor="projects-dir">프로젝트 폴더</label>
-            <input id="projects-dir" className="input mono" value={dir} onChange={(e) => setDir(e.target.value)} /></div>
-          <button type="button" className="btn" aria-label="프로젝트 폴더 적용" disabled={!dir.trim()}
-            onClick={() => void save({ projectsDir: dir.trim() })}>적용</button>
-        </div>
-        <span className="hint">새 프로젝트가 이 폴더 아래에 만들어져요. 이미 있는 프로젝트는 옮기지 않아요.</span>
-      </section>
+          <section className="card settings-card" aria-labelledby="set-models">
+            <span id="set-models" className="card-title">모델</span>
+            <div className="set-list">
+              <SetRow id="chat-default-model" name="채팅 기본 모델">
+                {stageSelect('chat-default-model', settings.chatModel, (v) => void save({ chatModel: v }))}
+              </SetRow>
+            </div>
+            <ul className="model-list">
+              {settings.models.map((m) => (
+                <li key={m.id}>
+                  <span>{m.label}</span>
+                  <span className="mono sub small">{m.id}</span>
+                  <div className="grow" />
+                  <button type="button" className="btn ghost small-btn" aria-label={`${m.label} 삭제`} disabled={settings.models.length <= 1}
+                    title={settings.models.length <= 1 ? '모델이 하나 이상 있어야 합니다' : undefined}
+                    onClick={() => void removeModel(m.id)}>삭제</button>
+                </li>
+              ))}
+            </ul>
+            <div className="model-add">
+              <div className="field"><label htmlFor="model-label">모델 이름</label>
+                <input id="model-label" className="input" value={label} placeholder="Claude Opus 6" onChange={(e) => setLabel(e.target.value)} /></div>
+              <div className="field"><label htmlFor="model-id">모델 id</label>
+                <input id="model-id" className="input mono" value={id} placeholder="claude-opus-6" onChange={(e) => setId(e.target.value)} /></div>
+              <button type="button" className="btn" onClick={() => void addModel()}>모델 추가</button>
+            </div>
+            <span className="hint">새 모델이 나오면 여기서 추가해요. 프로그램을 고치지 않아도 돼요.</span>
+          </section>
 
-      <FontPicker />
-      <TextWindowSettings />
-      <FontEmbedSection />
-      <ImageFolderSettings />
-      {error && <span className="err-text" role="alert">{error}</span>}
+          <section className="card settings-card" aria-labelledby="set-cli">
+            <span id="set-cli" className="card-title">Claude CLI</span>
+            <div className="inline-field">
+              <div className="field grow"><label htmlFor="cli-path">Claude CLI 경로</label>
+                <input id="cli-path" className="input mono" value={cli} placeholder="비우면 자동으로 찾아요" onChange={(e) => setCli(e.target.value)} /></div>
+              <button type="button" className="btn" aria-label="CLI 경로 적용" onClick={() => void save({ claudePath: cli.trim() || null })}>적용</button>
+            </div>
+            <span className="small">
+              {claudePath ? <>지금 쓰는 경로 <span className="mono ok-text path-text">{claudePath}</span></> : <span className="warn-text">Claude CLI를 찾지 못했어요</span>}
+            </span>
+          </section>
+
+          <section className="card settings-card" aria-labelledby="set-dir">
+            <span id="set-dir" className="card-title">프로젝트 폴더 위치</span>
+            <div className="inline-field">
+              <div className="field grow"><label htmlFor="projects-dir">프로젝트 폴더</label>
+                <input id="projects-dir" className="input mono" value={dir} onChange={(e) => setDir(e.target.value)} /></div>
+              <button type="button" className="btn" aria-label="프로젝트 폴더 적용" disabled={!dir.trim()}
+                onClick={() => void save({ projectsDir: dir.trim() })}>적용</button>
+            </div>
+            <span className="hint">새 프로젝트가 이 폴더 아래에 만들어져요. 이미 있는 프로젝트는 옮기지 않아요.</span>
+          </section>
+
+          <FontPicker />
+          <TextWindowSettings />
+          <FontEmbedSection />
+          <ImageFolderSettings />
+          {error && <span className="err-text" role="alert">{error}</span>}
+        </div>
+      </div>
     </div>
   );
 }
 
+/** One setting: its name (and what it does) on the left, the control on the right. */
+function SetRow({ id, name, desc, children }: { id: string; name: string; desc?: string; children: ReactNode }) {
+  return (
+    <div className="set-row">
+      <div className="set-l">
+        <label htmlFor={id}>{name}</label>
+        {desc && <span className="hint">{desc}</span>}
+      </div>
+      <div className="set-c">{children}</div>
+    </div>
+  );
+}

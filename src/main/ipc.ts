@@ -352,7 +352,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
       const p = path.join(dir, e.name);
       try {
         const meta = await openProject(p);
-        out.push({ dir: p, name: meta.name, engine: meta.engine });
+        // Saves replace files in the folder (write and rename), so its time follows the last work done in it.
+        out.push({ dir: p, name: meta.name, engine: meta.engine, touchedAt: (await stat(p)).mtimeMs });
       } catch {
         // not a project folder
       }

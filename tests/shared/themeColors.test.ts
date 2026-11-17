@@ -59,3 +59,9 @@ test('표의 상태 알약과 거르기 색: 번역 완료는 info, 승인은 ok
   expect(css).toMatch(/\.bv-stat\.new b \{ color: var\(--info\); \}/);
 });
 
+
+test('채팅: 끝난 단계의 체크와 결과 카드는 ok, 결과 카드의 바뀐 글은 info', () => {
+  expect(css).toMatch(/\.step-dot \{[^}]*background: var\(--ok-bg\); color: var\(--ok\);/);
+  expect(css).toMatch(/\.res-head svg \{ color: var\(--ok\); \}/);
+  expect(css).toMatch(/\.res-row ins \{ color: var\(--info\);/);
+});

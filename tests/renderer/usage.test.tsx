@@ -1,10 +1,11 @@
 // Each screen laid out by what people come to it for: what they need first is largest and on top.
-import { act, cleanup, screen, within } from '@testing-library/react';
-import { type UserEvent } from '@testing-library/user-event';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
+import { App } from '../../src/renderer/App';
 import { expect, test, vi } from 'vitest';
 import { useApp } from '../../src/renderer/state';
 import type { Glossary, Row } from '../../src/shared/api';
-import { baseRows, errorRowId, eventsFake, fakeApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
+import { baseRows, errorRowId, eventsFake, fakeApi, installApi, itemId, openFakeWith, type FakeApi } from './fakeApi';
 
 let api: FakeApi;
 let user: UserEvent;
@@ -223,4 +224,61 @@ test('수정 내역: 적용된 수정은 종류 타일이 ok 색, 꺼진 수정�
   expect(on.querySelector('.tile')).toHaveClass('ok');
   const off = screen.getByDisplayValue('꺼진 수정').closest('.li') as HTMLElement;
   expect(off.querySelector('.tile')).toHaveClass('mute');
+});
+
+// ---- settings ----
+
+test('설정: 왼쪽 차례로 그 묶음에 가고, 묶음 안은 이름·설명 왼쪽 조절 칸 오른쪽의 줄 목록', async () => {
+  await open();
+  act(() => { useApp.setView('settings'); });
+  await screen.findByRole('heading', { name: '설정' });
+  const toc = screen.getByRole('navigation', { name: '설정 차례' });
+  const names = within(toc).getAllByRole('button').map((b) => b.textContent);
+  expect(names).toEqual(['테마', '움직임', '단계별 모델', '모델', 'Claude CLI', '프로젝트 폴더 위치', '게임 폰트', '창 크기와 줄바꿈', '폰트를 게임에 넣기', '이미지']);
+  const go = vi.fn();
+  const target = document.getElementById('set-stages')!.closest('section') as HTMLElement;
+  target.scrollIntoView = go;
+  await user.click(within(toc).getByRole('button', { name: '단계별 모델' }));
+  expect(go).toHaveBeenCalled();
+  // A setting is a row: the words on the left, the control on the right.
+  const row = screen.getByLabelText('대본 읽기').closest('.set-row') as HTMLElement;
+  expect(row.querySelector('.set-l')).toHaveTextContent('대본 읽기');
+  expect(row.querySelector('.set-c select')).toBe(screen.getByLabelText('대본 읽기'));
+  expect(screen.getByRole('switch', { name: '움직임 켜기' }).closest('.set-row')).not.toBeNull();
+});
+
+// ---- project picker ----
+
+test('프로젝트 고르기: 가장 최근 프로젝트를 이어서 하기로 크게, 나머지는 한 줄 목록, 새 프로젝트 영역은 아래', async () => {
+  cleanup();
+  api = fakeApi();
+  api.project.list = async () => [
+    { dir: 'C:/p/옛것', name: '옛것', engine: 'MV', touchedAt: 1000 },
+    { dir: 'C:/p/약초원', name: '약초원', engine: 'MZ', touchedAt: 5000 },
+    { dir: 'C:/p/기사', name: '기사', engine: 'MV', touchedAt: 3000 },
+  ];
+  installApi(api);
+  render(<App />);
+  const resume = await screen.findByRole('region', { name: '이어서 하기' });
+  expect(within(resume).getByText('약초원')).toHaveClass('picker-name');
+  expect(within(resume).getByText('MZ')).toHaveClass('eng');
+  expect(within(resume).getByRole('button', { name: '약초원 열기' })).toHaveClass('primary');
+  const rest = screen.getByRole('region', { name: '기존 프로젝트' });
+  expect(within(rest).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['기사 열기', '옛것 열기']);
+  const fresh = screen.getByRole('region', { name: '새 프로젝트' });
+  expect(fresh).toHaveClass('drop-zone');
+  expect(within(fresh).getByRole('button', { name: '게임 폴더 고르기' })).not.toHaveClass('primary');
+  expect(before(rest, fresh)).toBe(true);
+  await userEvent.setup().click(within(resume).getByRole('button', { name: '약초원 열기' }));
+  expect(api.calls).toContainEqual(['project.open', 'C:/p/약초원']);
+});
+
+test('프로젝트가 없으면 새 프로젝트 영역이 위에, 고르기가 주 단추', async () => {
+  cleanup();
+  api = fakeApi();
+  installApi(api);
+  render(<App />);
+  const fresh = await screen.findByRole('region', { name: '새 프로젝트' });
+  expect(within(fresh).getByRole('button', { name: '게임 폴더 고르기' })).toHaveClass('primary');
+  expect(screen.queryByRole('region', { name: '이어서 하기' })).toBeNull();
 });
