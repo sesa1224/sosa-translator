@@ -144,7 +144,7 @@ export function ProjectPicker() {
       </section>
 
       {projects.length === 0 && !game && !packed && (
-        <EmptyState art={<Inkdrop size={64} />} title="첫 프로젝트를 만들어 볼까요?">
+        <EmptyState art={<Inkdrop size={64} />} title="첫 번역을 시작해 볼까요?">
           게임 폴더를 고르면 원본은 그대로 두고 사본에서 문장을 뽑아요. 번역은 프로젝트 폴더에만 쌓여요.
         </EmptyState>
       )}
