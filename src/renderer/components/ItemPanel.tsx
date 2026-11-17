@@ -291,10 +291,10 @@ function SimilarBox({ row, onTake, disabled }: { row: Row; onTake: (target: stri
   if (!listed && !canDraft) return null;
   return (
     <div className="field" role={listed ? 'region' : undefined} aria-label={listed ? '비슷한 번역' : undefined}>
-      <div className="row-between">
+      <div className="row-between similar-head">
         <span className="label">비슷한 번역 <span className="mute">{hits.length > 0 ? '전에 번역한 비슷한 문장' : '전에 번역한 비슷한 문장 없음'}</span></span>
         {canDraft && (
-          <button type="button" className="btn ghost small-btn" disabled={disabled || loading || why !== null}
+          <button type="button" className="btn ghost small-btn claude-draft-btn" disabled={disabled || loading || why !== null}
             title={why ?? '이 줄만 Claude에게 번역시켜 봐요. 토큰을 쓰고, 저장하지 않아요.'} onClick={() => void ask()}>
             <SparklesIcon {...ICON} />Claude 초안 받기
           </button>

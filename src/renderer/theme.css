@@ -597,6 +597,9 @@ select.input { padding: 0 12px; }
 .diff-add { background: var(--accent-bg); color: var(--accent-text); text-decoration: none; }
 .tm { padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--hair); display: flex; flex-direction: column; gap: 3px; }
 .tm-top { display: flex; gap: 8px; align-items: center; }
+.similar-head { gap: 8px; }
+.similar-head .label { min-width: 0; }
+.claude-draft-btn { flex: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .tm-claude { border-color: color-mix(in srgb, var(--accent) 45%, var(--hair)); }
 .tm-claude .skel { width: 85%; margin: 4px 0; }
 .pct { font: 500 11px var(--mono); padding: 0 6px; border-radius: 99px; background: var(--accent-bg); color: var(--accent-text); }
