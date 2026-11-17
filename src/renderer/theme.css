@@ -459,5 +459,8 @@ select.input { padding: 0 12px; }
 .prev-box { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); }
 .diff-del { background: var(--err-bg); color: var(--err); text-decoration: line-through; }
 .diff-add { background: var(--accent-bg); color: var(--accent-text); text-decoration: none; }
+.tm { padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; }
+.tm-top { display: flex; gap: 8px; align-items: center; }
+.pct { font: 500 11px 'IBM Plex Mono', monospace; padding: 0 6px; border-radius: 99px; background: var(--accent-bg); color: var(--accent-text); }
 .cli-guide { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; background: var(--warn-bg); }
 .cli-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }

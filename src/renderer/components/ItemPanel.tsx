@@ -2,7 +2,7 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
 import { changedWords } from '../../core/update/carry';
-import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row } from '../../shared/api';
+import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row, type SimilarTranslation } from '../../shared/api';
 import { jobActive, useApp } from '../state';
 import { CodeText } from './CodeText';
 import { DiffPieces as Pieces } from './DiffPieces';
@@ -131,6 +131,7 @@ export function ItemPanel() {
           <button type="button" className="btn small-btn" disabled={saving || draft === (row.target ?? '')} onClick={() => void save()}>저장</button>
         </div>
       </div>
+      <SimilarBox row={row} onTake={(t) => setDraft(t)} disabled={saving} />
       <div className="field">
         <span className="label">검사</span>
         {row.target === null && <span className="sub small">번역이 아직 없어요</span>}
@@ -213,6 +214,41 @@ function DecisionBox({ row }: { row: Row }) {
         </div>
       )}
       {error && <span className="err-text small" role="alert">{error}</span>}
+    </section>
+  );
+}
+
+// ---- earlier translations of similar sentences ----
+
+/**
+ * Translated sentences that read like this one, asked for each time a line is picked. Taking one only fills the
+ * draft: the user still reads it against this line's source and saves it themselves.
+ */
+function SimilarBox({ row, onTake, disabled }: { row: Row; onTake: (target: string) => void; disabled: boolean }) {
+  const [hits, setHits] = useState<SimilarTranslation[]>([]);
+  useEffect(() => {
+    let live = true;
+    setHits([]);
+    window.api.similar.find(row.id).then((h) => { if (live) setHits(h); }, () => undefined);
+    // A late answer for a line picked earlier must not show under the new one.
+    return () => { live = false; };
+  }, [row.id]);
+  if (hits.length === 0) return null;
+  return (
+    <section className="field" aria-label="비슷한 번역">
+      <span className="label">비슷한 번역 <span className="mute">전에 번역한 비슷한 문장</span></span>
+      {hits.map((h) => (
+        <div key={h.id} className="tm">
+          <div className="tm-top">
+            <span className="pct">{`${h.score}%`}</span>
+            <span className="mono sub small">{h.location}</span>
+            <span className="grow" />
+            <button type="button" className="btn ghost small-btn" disabled={disabled} onClick={() => onTake(h.target)}>가져오기</button>
+          </div>
+          <span className="sub small pre" aria-label="비슷한 원문"><Pieces pieces={changedWords(row.source, h.source).new} kind="new" /></span>
+          <span className="small pre">{h.target}</span>
+        </div>
+      ))}
     </section>
   );
 }
