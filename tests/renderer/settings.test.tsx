@@ -60,3 +60,9 @@ test('테마는 견본 카드에서 고른다', async () => {
   await user.click(within(group).getByRole('radio', { name: '한지와 먹' }));
   expect(document.documentElement.dataset.theme).toBe('hanji');
 });
+
+test('긴 CLI 경로는 줄을 바꿔 설정 화면이 옆으로 밀리지 않는다', async () => {
+  await openSettings();
+  // A path has no spaces to break at; without this the settings page grew a horizontal scrollbar.
+  expect(screen.getByText('C:/claude.exe')).toHaveClass('path-text');
+});

@@ -144,7 +144,7 @@ export function SettingsView() {
           <button type="button" className="btn" aria-label="CLI 경로 적용" onClick={() => void save({ claudePath: cli.trim() || null })}>적용</button>
         </div>
         <span className="small">
-          {claudePath ? <>지금 쓰는 경로 <span className="mono accent-text">{claudePath}</span></> : <span className="warn-text">Claude CLI를 찾지 못했어요</span>}
+          {claudePath ? <>지금 쓰는 경로 <span className="mono accent-text path-text">{claudePath}</span></> : <span className="warn-text">Claude CLI를 찾지 못했어요</span>}
         </span>
       </section>
 

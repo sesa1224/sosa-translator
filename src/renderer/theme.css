@@ -266,6 +266,8 @@ select.input { padding: 0 12px; }
 .theme-swatch > i:nth-child(3) { width: 10px; background: var(--warn); }
 .theme-swatch > i:nth-child(4) { width: 10px; background: var(--err); }
 .field.narrow { max-width: 320px; }
+/* Paths have no spaces to break at; unbroken they widened the page into a horizontal scroll. */
+.path-text { overflow-wrap: anywhere; }
 .model-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .model-list li { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
 .model-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
