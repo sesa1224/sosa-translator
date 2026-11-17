@@ -1,4 +1,4 @@
-import { act, cleanup, screen } from '@testing-library/react';
+import { act, cleanup, screen, within } from '@testing-library/react';
 import { type UserEvent } from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 import { useApp } from '../../src/renderer/state';
@@ -45,4 +45,18 @@ test('테마, 기본 모델, 삭제, CLI 경로, 프로젝트 폴더', async () 
   await user.type(screen.getByLabelText('모델 이름'), '중복');
   await user.click(screen.getByRole('button', { name: '모델 추가' }));
   expect(screen.getByText('이미 있는 모델 id 입니다')).toBeVisible();
+});
+
+test('테마는 견본 카드에서 고른다', async () => {
+  await openSettings();
+  const group = screen.getByRole('radiogroup', { name: '테마' });
+  const names = ['어두운', '밝은', '붉은 달밤', '촛불 어둠', '먹빛 강호', '심우주 청록', '고전 RPG 파랑', '한지와 먹'];
+  for (const name of names) expect(within(group).getByRole('radio', { name })).toBeVisible();
+  expect(within(group).getByRole('radio', { name: '어두운' })).toHaveAttribute('aria-checked', 'true');
+  await user.click(within(group).getByRole('radio', { name: '붉은 달밤' }));
+  expect(api.calls).toContainEqual(['settings.set', { theme: 'moon' }]);
+  expect(document.documentElement.dataset.theme).toBe('moon');
+  expect(within(group).getByRole('radio', { name: '붉은 달밤' })).toHaveAttribute('aria-checked', 'true');
+  await user.click(within(group).getByRole('radio', { name: '한지와 먹' }));
+  expect(document.documentElement.dataset.theme).toBe('hanji');
 });

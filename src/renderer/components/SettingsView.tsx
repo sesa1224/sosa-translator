@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DEFAULT_DECIDE_MODEL, type AppSettings, type StageModels } from '../../shared/api';
+import { DEFAULT_DECIDE_MODEL, type AppSettings, type StageModels, type ThemeName } from '../../shared/api';
 import { useApp } from '../state';
 import { FontPicker } from './FontPicker';
 import { ImageFolderSettings } from './ImageView';
@@ -7,6 +7,13 @@ import { FontEmbedSection } from './PatchView';
 import { TextWindowSettings } from './TextWindowSettings';
 
 const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossary', '용어집 정리'], ['translate', '전체 번역'], ['review', '검수'], ['patchNotes', '패치노트 정리']];
+
+/** Names shown for each theme; the first two keep the words the settings used before there were more. */
+const THEME_CARDS: { id: ThemeName; name: string; note?: string }[] = [
+  { id: 'dark', name: '어두운', note: '기본 청록' }, { id: 'light', name: '밝은', note: '기본' },
+  { id: 'moon', name: '붉은 달밤' }, { id: 'ember', name: '촛불 어둠' }, { id: 'murim', name: '먹빛 강호' },
+  { id: 'deep', name: '심우주 청록' }, { id: 'rpg', name: '고전 RPG 파랑' }, { id: 'hanji', name: '한지와 먹' },
+];
 
 export function SettingsView() {
   const { settings, claudePath } = useApp();
@@ -50,10 +57,15 @@ export function SettingsView() {
 
       <section className="card settings-card" aria-labelledby="set-theme">
         <span id="set-theme" className="card-title">테마</span>
-        <div className="seg" role="radiogroup" aria-labelledby="set-theme">
-          {(['dark', 'light'] as const).map((t) => (
-            <button key={t} type="button" role="radio" aria-checked={settings.theme === t} className={settings.theme === t ? 'on' : ''}
-              onClick={() => void save({ theme: t })}>{t === 'dark' ? '어두운' : '밝은'}</button>
+        <div className="theme-grid" role="radiogroup" aria-labelledby="set-theme">
+          {THEME_CARDS.map(({ id, name, note }) => (
+            <button key={id} type="button" role="radio" aria-checked={settings.theme === id} aria-label={name}
+              className={`theme-card${settings.theme === id ? ' on' : ''}`} onClick={() => void save({ theme: id })}>
+              {/* The swatch carries the theme's own tokens, so it shows that theme while another is on. */}
+              <span className="theme-swatch" data-theme={id} aria-hidden="true"><i /><i /><i /><i /></span>
+              <span className="theme-name">{name}</span>
+              {note && <span className="mute small">{note}</span>}
+            </button>
           ))}
         </div>
       </section>
