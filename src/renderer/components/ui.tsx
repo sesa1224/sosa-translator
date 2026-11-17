@@ -3,6 +3,7 @@
 // dressing themselves up one by one, so a change here reaches all of them.
 import { TriangleAlertIcon, type LucideIcon } from 'lucide-react';
 import { useLayoutEffect, useRef, type InputHTMLAttributes, type ReactNode } from 'react';
+import { num } from '../format';
 import { ICON } from '../icons';
 
 /** Big title, an optional count badge beside it, one line under it, and the screen's own actions on the right. */
@@ -80,7 +81,7 @@ export function Callout({ children, action, tone = 'warn', icon: Icon = Triangle
 }
 
 /** A square of soft colour holding an icon, at the start of a list row or an empty state. */
-export function Tile({ icon: Icon, tone }: { icon: LucideIcon; tone?: 'warn' | 'err' | 'mute' }) {
+export function Tile({ icon: Icon, tone }: { icon: LucideIcon; tone?: 'warn' | 'err' | 'mute' | 'ok' | 'info' }) {
   return <span className={`tile${tone ? ` ${tone}` : ''}`} aria-hidden="true"><Icon {...ICON} /></span>;
 }
 
@@ -94,4 +95,10 @@ export function EmptyState({ art, title, children, actions }: { art: ReactNode; 
       {actions && <div className="es-actions">{actions}</div>}
     </div>
   );
+}
+
+/** A menu item's count, coloured by what it means (a count that wants a person is warn, plain progress is mute). Zero draws nothing. */
+export function NavCount({ n, tone, title }: { n: number; tone: 'mute' | 'warn' | 'err' | 'info'; title: string }) {
+  if (n <= 0) return null;
+  return <span className={`nb nb-${tone}`} title={title}>{num(n)}</span>;
 }

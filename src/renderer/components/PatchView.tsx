@@ -5,7 +5,7 @@ import { ICON } from '../icons';
 import { usePreviewState } from '../preview/usePreview';
 import { eventActions, useApp, type AttachedEvent } from '../state';
 import { Inkdrop } from './Inkdrop';
-import { EmptyState, ScreenHead, Switch, Tile } from './ui';
+import { EmptyState, NavCount, ScreenHead, Switch, Tile } from './ui';
 
 /** The tile at the start of a patch row says what kind of change it is. */
 const PATCH_ICON: Record<Patch['body']['kind'], LucideIcon> = { event: GitBranchIcon, json: BracesIcon, plugin: PuzzleIcon, font: TypeIcon, josa: SpellCheckIcon };
@@ -219,7 +219,7 @@ export function PatchNavButton() {
   useEffect(() => { void eventActions.loadPatches(); }, [app.snapshot?.meta.name]);
   return (
     <button type="button" className={`nav-btn${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => eventActions.openPatches()}>
-      <DiffIcon {...ICON} /><span>수정 내역</span>{count > 0 && <span className="mono sub small">{count}</span>}
+      <DiffIcon {...ICON} /><span>수정 내역</span><NavCount n={count} tone="mute" title="수정" />
     </button>
   );
 }

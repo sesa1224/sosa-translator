@@ -16,6 +16,7 @@
   --text: #E9E7E2; --sub: #A9ADB5; --mute: #8B909A;
   --accent: #5CC8B5; --accent-bg: #17342F; --accent-text: #8ADBCC; --on-accent: #0E1513;
   --warn: #E3AD55; --warn-bg: #3A2D14; --err: #F2A093; --err-bg: #3D1F1C;
+  --ok: #8FD47F; --ok-bg: #1D3320; --info: #82B6F4; --info-bg: #19293F;
   --raise: #252A32; --shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 8px 24px -12px rgba(0, 0, 0, .6);
   color-scheme: dark;
 }
@@ -24,13 +25,15 @@
   --text: #1B1D21; --sub: #555A63; --mute: #6B7079;
   --accent: #0F7A6B; --accent-bg: #DDF1ED; --accent-text: #0B5F53; --on-accent: #FFFFFF;
   --warn: #8A5A00; --warn-bg: #F8EBCB; --err: #A8322A; --err-bg: #F9DEDA;
+  --ok: #3B6F14; --ok-bg: #E2EFD6; --info: #1C5BAA; --info-bg: #DCE7F6;
   --raise: #FFFFFF; --shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 8px 24px -14px rgba(60, 50, 30, .35);
   color-scheme: light;
 }
 :root[data-theme="moon"], [data-theme="moon"] {
   --bg: #150B2E; --panel: #1C1140; --card: #281A55; --line: #3A2A6E; --hair: #2A1C58; --text: #F3ECFF;
   --sub: #C4B6E6; --mute: #9A8BC2; --accent: #E9C46A; --accent-bg: #3D3050; --accent-text: #F3D98F; --on-accent: #2A1848;
-  --warn: #FFB36B; --warn-bg: #4A2E22; --err: #FF8FA3; --err-bg: #4A1F35; --thumb: #4B3A85;
+  --warn: #FFB36B; --warn-bg: #4A2E22; --err: #FF8FA3; --err-bg: #4A1F35;
+  --ok: #8EE3A6; --ok-bg: #1C3B37; --info: #8FC6FF; --info-bg: #26306B; --thumb: #4B3A85;
   --r: 14px; --tfont: 'Rajdhani', var(--sans); --frame-line: rgba(233, 196, 106, .6);
   --art: radial-gradient(circle at 8% 96%, rgba(124, 108, 255, .45), transparent 32%);
   /* The red moon sits large and faint behind the right panel: in the title bar it ran into the window buttons. */
@@ -41,7 +44,8 @@
 :root[data-theme="ember"], [data-theme="ember"] {
   --bg: #0C0A08; --panel: #13100C; --card: #1D1812; --line: #3A2C18; --hair: #261E12; --text: #E9DFC9;
   --sub: #B5A88C; --mute: #8F836B; --accent: #D8A24A; --accent-bg: #3A2A12; --accent-text: #F3D9A4; --on-accent: #1A1206;
-  --warn: #E3AD55; --warn-bg: #3A2D14; --err: #F2A093; --err-bg: #3D1F1C; --thumb: #4A3A20;
+  --warn: #E3AD55; --warn-bg: #3A2D14; --err: #F2A093; --err-bg: #3D1F1C;
+  --ok: #A9CF78; --ok-bg: #232E19; --info: #8DB7E8; --info-bg: #1B2636; --thumb: #4A3A20;
   --r: 3px; --tfont: 'Cinzel', 'Noto Serif KR', serif; --tweight: 600; --frame-line: #5C4320;
   --art: radial-gradient(ellipse at 50% -12%, rgba(216, 120, 40, .3), transparent 45%);
   --raise: #251E15; --shadow: 0 1px 0 rgba(255, 220, 160, .05) inset, 0 8px 24px -12px rgba(0, 0, 0, .75);
@@ -50,7 +54,8 @@
 :root[data-theme="murim"], [data-theme="murim"] {
   --bg: #0E0F10; --panel: #151718; --card: #1E2122; --line: #2E3133; --hair: #232627; --text: #ECE7DC;
   --sub: #B8B2A5; --mute: #8E8A80; --accent: #C0392B; --accent-bg: #3A1A16; --accent-text: #F0A397; --on-accent: #FFFFFF;
-  --warn: #D9B45A; --warn-bg: #3A3018; --err: #F2A093; --err-bg: #3D1F1C; --thumb: #3A3D40;
+  --warn: #D9B45A; --warn-bg: #3A3018; --err: #F2A093; --err-bg: #3D1F1C;
+  --ok: #92CC8C; --ok-bg: #1C2D1E; --info: #8FB6E6; --info-bg: #1A2637; --thumb: #3A3D40;
   --r: 2px; --tfont: 'Nanum Brush Script', var(--sans); --tscale: 1.45; --tweight: 400;
   --art: radial-gradient(ellipse 14% 20% at 4% 104%, #26292B 0 60%, transparent 61%), radial-gradient(ellipse 12% 26% at 13% 108%, #1D2022 0 60%, transparent 61%);
   --raise: #24282A; --shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 8px 24px -12px rgba(0, 0, 0, .6);
@@ -59,7 +64,8 @@
 :root[data-theme="deep"], [data-theme="deep"] {
   --bg: #070B14; --panel: #0D1422; --card: #141F33; --line: #1F2E47; --hair: #16223A; --text: #E6F1F7;
   --sub: #A6B6C9; --mute: #7C8CA3; --accent: #4FD8E8; --accent-bg: #0F3540; --accent-text: #8DE8F2; --on-accent: #06222A;
-  --warn: #FFC24A; --warn-bg: #3A2E12; --err: #FF8FA3; --err-bg: #40202C; --thumb: #24364F;
+  --warn: #FFC24A; --warn-bg: #3A2E12; --err: #FF8FA3; --err-bg: #40202C;
+  --ok: #A9DF6F; --ok-bg: #1C3117; --info: #A9AEFF; --info-bg: #21245A; --thumb: #24364F;
   --art: radial-gradient(circle at 0 100%, rgba(47, 182, 201, .3), transparent 30%), radial-gradient(1.5px 1.5px at 5% 30%, #7FE6F2, transparent), radial-gradient(1px 1px at 11% 52%, #fff, transparent), radial-gradient(1.5px 1.5px at 3% 74%, #7FE6F2, transparent), radial-gradient(1px 1px at 40% 2%, #fff, transparent), radial-gradient(1px 1px at 72% 3%, #fff, transparent);
   --raise: #192740; --shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 8px 24px -12px rgba(0, 4, 12, .7);
   color-scheme: dark;
@@ -67,7 +73,8 @@
 :root[data-theme="rpg"], [data-theme="rpg"] {
   --bg: #0A1150; --panel: #101A6E; --card: #18248A; --line: #3A49B8; --hair: #1F2C90; --text: #FFFFFF;
   --sub: #C9D2FF; --mute: #9AA6E8; --accent: #FFE066; --accent-bg: #3A3F7A; --accent-text: #FFE98F; --on-accent: #0A1150;
-  --warn: #FFB36B; --warn-bg: #4A3560; --err: #FF9BAA; --err-bg: #4A2470; --thumb: #4A5AD0;
+  --warn: #FFB36B; --warn-bg: #4A3560; --err: #FF9BAA; --err-bg: #4A2470;
+  --ok: #A6F28A; --ok-bg: #164A2E; --info: #9EE6FF; --info-bg: #0D3F8C; --thumb: #4A5AD0;
   --r: 6px; --frame-line: #FFFFFF;
   --art: linear-gradient(#1A2CA0, #070E4A);
   --raise: #1F2C9C; --shadow: 0 1px 0 rgba(255, 255, 255, .14) inset, 0 8px 22px -12px rgba(0, 0, 25, .7);
@@ -76,7 +83,8 @@
 :root[data-theme="hanji"], [data-theme="hanji"] {
   --bg: #F3EEE2; --panel: #FBF8F0; --card: #EDE6D6; --line: #D9D0BD; --hair: #E6DECD; --text: #1F1B16;
   --sub: #5C5548; --mute: #7B7366; --accent: #B5332A; --accent-bg: #F3DAD5; --accent-text: #8C241D; --on-accent: #FBF8F0;
-  --warn: #8A5A00; --warn-bg: #F3E3BD; --err: #A8322A; --err-bg: #F6D8D3; --thumb: #C9BFA8;
+  --warn: #8A5A00; --warn-bg: #F3E3BD; --err: #A8322A; --err-bg: #F6D8D3;
+  --ok: #3A6A1E; --ok-bg: #DDE8CB; --info: #1D5590; --info-bg: #D7E2EE; --thumb: #C9BFA8;
   --r: 0px; --tfont: 'Song Myung', 'Noto Serif KR', serif; --tscale: 1.04; --tweight: 400;
   --art: radial-gradient(circle at 3% 104%, rgba(31, 27, 22, .2), transparent 22%);
   --raise: #FFFDF6; --shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 8px 22px -14px rgba(60, 45, 20, .35);
@@ -106,6 +114,10 @@ input, select, textarea { font-family: inherit; }
 .accent-text { color: var(--accent-text); }
 .warn-text { color: var(--warn); }
 .err-text { color: var(--err); }
+/* Meaning colours: --ok done, approved, passed; --info new or Claude's, not yet seen by a person; --warn wants a
+   person; --err blocked. The accent stays for the main button and for what is picked. */
+.ok-text { color: var(--ok); }
+.info-text { color: var(--info); }
 .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; flex: none; }
 /* Buttons sit a little off the page: a raised face, a faint shadow and one line of light along the top (--shadow). */
 .btn { height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--raise); color: var(--text); font-size: 14px;
@@ -170,6 +182,8 @@ select.input { padding: 0 12px; }
 .tile.warn { background: var(--warn-bg); color: var(--warn); }
 .tile.err { background: var(--err-bg); color: var(--err); }
 .tile.mute { background: var(--card); color: var(--sub); }
+.tile.ok { background: var(--ok-bg); color: var(--ok); }
+.tile.info { background: var(--info-bg); color: var(--info); }
 /* A note that holds up the screen, as one tinted line with the way to fix it on the right. */
 .call { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; border-radius: var(--r); background: var(--warn-bg); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); }
 .call > svg { flex: none; }
@@ -258,6 +272,12 @@ select.input { padding: 0 12px; }
 .nav-btn > span:first-of-type { flex: 1 1 auto; min-width: 0; }
 .nav-btn > svg { flex: none; }
 .nav-btn.on { background: var(--card); color: var(--text); }
+/* A menu item's count in its meaning colour: plain progress quiet, things that want a person tinted. */
+.nb { flex: none; font: 500 11.5px var(--mono); font-variant-numeric: tabular-nums; line-height: 18px; padding: 0 7px; border-radius: 99px; }
+.nb-mute { color: var(--mute); }
+.nb-warn { background: var(--warn-bg); color: var(--warn); }
+.nb-err { background: var(--err-bg); color: var(--err); }
+.nb-info { background: var(--info-bg); color: var(--info); }
 .scope { padding: 6px 10px; display: flex; flex-direction: column; gap: 5px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; font-size: 13px; }
 .scope.on { background: var(--card); outline: 1px solid var(--accent); }
 .scope-line { display: flex; justify-content: space-between; gap: 8px; }
@@ -287,8 +307,8 @@ select.input { padding: 0 12px; }
 .fg-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .tone-all { --tone: var(--sub); }
 .tone-none, .tone-plain { --tone: var(--mute); }
-.tone-done { --tone: color-mix(in srgb, var(--accent) 55%, var(--panel)); }
-.tone-ok { --tone: var(--accent); }
+.tone-done { --tone: var(--info); }
+.tone-ok { --tone: var(--ok); }
 .tone-warn { --tone: var(--warn); }
 .tone-err { --tone: var(--err); }
 .filter-groups .fchip { height: 32px; padding: 0 10px 0 9px; border-radius: 16px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--sub); }
@@ -323,9 +343,9 @@ select.input { padding: 0 12px; }
 .empty { padding: 24px 16px; }
 .st { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
 .st-none { background: var(--card); color: var(--sub); }
-.st-done { background: var(--card); color: var(--text); }
+.st-done { background: var(--info-bg); color: var(--info); }
 .st-warn { background: var(--warn-bg); color: var(--warn); }
-.st-ok { background: var(--accent-bg); color: var(--accent-text); }
+.st-ok { background: var(--ok-bg); color: var(--ok); }
 .st-err { background: var(--err-bg); color: var(--err); }
 
 /* ---- item tab ---- */
@@ -755,7 +775,7 @@ select.input { padding: 0 12px; }
 .bv-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--hair); }
 .bv-stat b { font-size: 26px; font-weight: 600; line-height: 1.1; }
 .bv-stat span { font-size: 12px; color: var(--sub); }
-.bv-stat.new b { color: var(--accent-text); }
+.bv-stat.new b { color: var(--info); }
 .bv-stat.gone b { color: var(--err); }
 .bv-stat.zero b { color: var(--mute); font-weight: 400; }
 .bv-scopes { display: flex; flex-direction: column; gap: 7px; }
@@ -763,7 +783,7 @@ select.input { padding: 0 12px; }
 .bv-scope-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bv-bar { display: flex; gap: 2px; height: 8px; border-radius: 99px; background: var(--hair); overflow: hidden; }
 .bv-bar i { display: block; height: 100%; min-width: 0; background: color-mix(in srgb, var(--sub) 55%, transparent); }
-.bv-bar i.new { background: var(--accent); }
+.bv-bar i.new { background: var(--info); }
 .bv-notes-box { display: flex; flex-direction: column; gap: 8px; }
 .bv-notes-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
 .bv-read { padding: 14px 16px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--hair); line-height: 1.7; }

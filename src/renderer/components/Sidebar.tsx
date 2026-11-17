@@ -4,6 +4,7 @@ import { num, pct } from '../format';
 import { ICON } from '../icons';
 import { eventActions, updateActions, useApp } from '../state';
 import { PatchNavButton } from './PatchView';
+import { NavCount } from './ui';
 
 /**
  * One highlight behind the picked menu item that slides to the next pick, instead of each item lighting up on its
@@ -44,11 +45,11 @@ export function Sidebar() {
       <span className="nav-head work-head">작업</span>
       <button type="button" className={`nav-btn${view === 'text' ? ' on' : ''}`} aria-current={view === 'text' ? 'page' : undefined}
         onClick={() => useApp.setView('text')}>
-        <TextIcon {...ICON} /><span>텍스트</span><span className="mono sub small">{num(snapshot.stats.untranslated)}</span>
+        <TextIcon {...ICON} /><span>텍스트</span><NavCount n={snapshot.stats.untranslated} tone="mute" title="미번역" />
       </button>
       <button type="button" className={`nav-btn${view === 'glossary' ? ' on' : ''}`} aria-current={view === 'glossary' ? 'page' : undefined}
         onClick={() => useApp.setView('glossary')}>
-        <BookOpenIcon {...ICON} /><span>용어집</span>{undecided > 0 && <span className="mono warn-text small" title="결정 필요">{num(undecided)}</span>}
+        <BookOpenIcon {...ICON} /><span>용어집</span><NavCount n={undecided} tone="warn" title="결정 필요" />
       </button>
       <button type="button" className={`nav-btn${view === 'guide' ? ' on' : ''}`} aria-current={view === 'guide' ? 'page' : undefined}
         onClick={() => useApp.setView('guide')}>
@@ -60,7 +61,7 @@ export function Sidebar() {
       </button>
       <button type="button" className={`nav-btn${view === 'decisions' ? ' on' : ''}`} aria-current={view === 'decisions' ? 'page' : undefined}
         onClick={() => useApp.openDecisions()}>
-        <CircleHelpIcon {...ICON} /><span>판단 필요</span>{(snapshot.stats.undecided ?? 0) > 0 && <span className="mono warn-text small" title="정할 묶음의 줄 수">{num(snapshot.stats.undecided ?? 0)}</span>}
+        <CircleHelpIcon {...ICON} /><span>판단 필요</span><NavCount n={snapshot.stats.undecided ?? 0} tone="warn" title="정할 묶음의 줄 수" />
       </button>
       <button type="button" className={`nav-btn${view === 'events' ? ' on' : ''}`} aria-current={view === 'events' ? 'page' : undefined}
         onClick={() => eventActions.openEvents()}>
@@ -103,7 +104,7 @@ function ImagesNavButton() {
   return (
     <button type="button" className={`nav-btn${view === 'images' ? ' on' : ''}`} aria-current={view === 'images' ? 'page' : undefined}
       onClick={() => useApp.setView('images')}>
-      <ImageIcon {...ICON} /><span>이미지</span>{todo > 0 && <span className="mono sub small" title="할 것">{num(todo)}</span>}
+      <ImageIcon {...ICON} /><span>이미지</span><NavCount n={todo} tone="warn" title="할 것" />
     </button>
   );
 }

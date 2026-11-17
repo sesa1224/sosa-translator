@@ -174,7 +174,7 @@ export function ItemPanel() {
         <span className="label">검사</span>
         {row.target === null && <span className="sub small">번역이 아직 없어요</span>}
         {row.target !== null && issues.length === 0 && (
-          <div className="row-between small"><span className="accent-text">통과 · 제어 코드 일치</span><span className="mono sub">{`${codeCount} / ${codeCount}`}</span></div>
+          <div className="row-between small"><span className="ok-text">통과 · 제어 코드 일치</span><span className="mono sub">{`${codeCount} / ${codeCount}`}</span></div>
         )}
         {issues.map((i, n) => (
           <div key={n} className="issue small">
