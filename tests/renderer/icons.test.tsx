@@ -33,7 +33,7 @@ test('왼쪽 메뉴의 모든 항목에 아이콘이 있고, 단추 이름은 �
   await within(nav).findByRole('button', { name: '업데이트 결과' });
   const items = [...nav.querySelectorAll<HTMLElement>('.nav-btn')];
   expect(items.map((b) => b.querySelector('span')!.textContent)).toEqual(
-    ['텍스트', '용어집', '번역 지침', '설정', '판단 필요', '이벤트', '수정 내역', '이미지', '빌드 기록', '작업 기록', '업데이트 결과']);
+    ['텍스트', '용어집', '번역 지침', '판단 필요', '이벤트', '수정 내역', '이미지', '빌드 기록', '작업 기록', '업데이트 결과', '설정']);
   const kinds = new Set(items.map((b) => icon(b).getAttribute('class')));
   // A different picture for each item.
   expect(kinds.size).toBe(items.length);

@@ -1,3 +1,5 @@
+import type { Row } from '../shared/api';
+
 const nf = new Intl.NumberFormat('ko-KR');
 
 export function num(n: number): string {
@@ -20,3 +22,10 @@ export const STATUS_LABEL = {
   error: '오류',
   declined: '거절됨',
 } as const;
+
+/** A line's status pill: its words and the class that gives it its meaning colour (theme.css .st-*). */
+export function statusChip(r: Row): { label: string; cls: string } {
+  if (r.status === 'untranslated' && r.needsDecision) return { label: '판단 필요', cls: 'st-warn' };
+  const cls = { untranslated: 'st-none', translated: 'st-done', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err', declined: 'st-err' }[r.status];
+  return { label: STATUS_LABEL[r.status], cls };
+}

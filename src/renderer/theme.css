@@ -282,7 +282,15 @@ select.input { padding: 0 12px; }
 .scope.on { background: var(--card); outline: 1px solid var(--accent); }
 .scope-line { display: flex; justify-content: space-between; gap: 8px; }
 .thin-bar { display: block; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.thin-bar > span { display: block; height: 100%; background: var(--accent); }
+.thin-bar > span { display: block; height: 100%; background: var(--info); }
+.scope.done .thin-bar > span { background: var(--ok); }
+.scope-pct { color: var(--sub); }
+.scope.done .scope-pct { color: var(--ok); }
+.scope-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-box { display: flex; flex-direction: column; gap: 2px; }
+.scope-more { align-self: flex-start; margin: 2px 0 0 4px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--sub); font-size: 12px; }
+.scope-more:hover { background: var(--card); color: var(--text); }
+.nav-settings { flex: none; margin-top: 8px; }
 .note-box { margin-top: 16px; padding: 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .main { flex: 1 1 auto; min-width: 0; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;
   background: var(--panel); border: 1px solid var(--frame-line); border-bottom: 0; border-radius: var(--r) var(--r) 0 0; }
@@ -292,8 +300,26 @@ select.input { padding: 0 12px; }
 .statusbar { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 8px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--sub); }
 
 /* ---- text table ---- */
-.text-view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
-.text-head { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+/* The table is what this screen is for, so everything above it is kept to two short lines and the filters. */
+.text-view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.text-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.text-head .page-title { line-height: 1; }
+.text-head .seg > button { height: 30px; padding: 0 12px; }
+.text-head .pill { height: 30px; }
+.text-head .exchange-actions { margin-left: 0; }
+.filter-extra { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filter-extra:empty { display: none; }
+.filter-extra .exchange-actions { margin-left: 0; }
+.filter-extra .btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.text-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.text-tools > .btn { height: 38px; }
+.text-tools > .search { height: 38px; flex: 1 1 150px; min-width: 150px; }
+/* Filter chips a little lower here than elsewhere, so the table starts higher. */
+.text-view .filter-groups { gap: 6px 22px; }
+.text-view .filter-groups .fchip { height: 28px; }
+.text-view .fg-other .fchip { height: 26px; }
+.text-view .fgroup { gap: 3px; }
+.text-view .fg-head { line-height: 12px; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pill { height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--line); background: transparent; color: var(--sub); font-size: 13px; }
 .pill.on { border-color: var(--accent); background: var(--accent-bg); color: var(--accent-text); }
@@ -329,7 +355,8 @@ select.input { padding: 0 12px; }
 .tr { display: grid; grid-template-columns: 120px 84px minmax(0, 1fr) minmax(0, 1fr) 96px; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); align-items: start; box-sizing: border-box; cursor: default; }
 .tr.th { font-size: 12px; color: var(--mute); padding: 10px 16px; flex: none; }
 .tr:not(.th):hover { background: var(--card); }
-.tr.sel { background: var(--card); box-shadow: inset 3px 0 0 var(--accent); }
+.tr.sel, .tr.sel:hover { background: color-mix(in srgb, var(--accent) 13%, var(--panel)); box-shadow: inset 4px 0 0 var(--accent); }
+.tr.sel .src { color: var(--text); }
 .tr .src { color: var(--sub); }
 .tr > span { overflow-wrap: anywhere; min-width: 0; }
 .tbody-wrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; position: relative; }
@@ -359,8 +386,19 @@ select.input { padding: 0 12px; }
 .textbox.edit { border-color: var(--accent); resize: vertical; min-height: 88px; font-family: inherit; }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .issue { display: flex; flex-direction: column; gap: 2px; }
-.item-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.item-actions > .btn { flex: 1 1 100px; font-size: 13px; white-space: nowrap; }
+/* The line's actions sit right under the translation box: approve (main) and save, then the quiet ones. */
+.item-edit { gap: 8px; }
+.item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.item-actions > .btn { white-space: nowrap; }
+.item-actions > .btn:not(.ghost) { margin-right: 2px; }
+.item-actions > .btn.ghost { height: 30px; padding: 0 6px; font-size: 12px; color: var(--sub); }
+.item-actions > .btn.ghost:hover:not(:disabled) { color: var(--text); background: var(--card); }
+/* One check per line, led by an icon in its meaning colour. */
+.ck { display: flex; align-items: flex-start; gap: 8px; }
+.ck > svg { flex: none; margin-top: 2px; }
+.ck-ok { color: var(--ok); }
+.ck-warn { color: var(--warn); }
+.ck-err { color: var(--err); }
 .attached { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .x { border: 0; background: transparent; color: var(--sub); font-size: 16px; width: 28px; height: 28px; border-radius: 6px; }
 .x:hover { background: var(--card); color: var(--text); }

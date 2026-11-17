@@ -1,9 +1,10 @@
-import { MousePointerClickIcon, SparklesIcon } from 'lucide-react';
+import { CheckIcon, CircleCheckIcon, CircleXIcon, MousePointerClickIcon, SparklesIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
 import { changedWords } from '../../core/update/carry';
 import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type LineDraft, type Row, type SimilarTranslation } from '../../shared/api';
+import { statusChip } from '../format';
 import { ICON } from '../icons';
 import { replay } from '../motion';
 import { jobActive, useApp } from '../state';
@@ -111,6 +112,7 @@ export function ItemPanel() {
   };
 
   const codeCount = controlCodes(row.source).length;
+  const chip = statusChip(row);
   const approveBlock = row.target === null ? '번역이 있어야 승인할 수 있어요' : hasError ? '오류를 고쳐야 승인할 수 있어요' : null;
   const approved = row.status === 'approved';
   const confirmed = glossary?.confirmedAt != null;
@@ -125,6 +127,7 @@ export function ItemPanel() {
   return (
     <div className="item">
       <div className="item-where">
+        <span className={`st ${chip.cls}`}>{chip.label}</span>
         <span className="mono sub small">{row.location}</span>
         {row.refCount >= 2 && <span className="tag">{`같은 문장 ${row.refCount}곳`}</span>}
         {row.speaker && <span className="small">{row.speaker}</span>}
@@ -148,7 +151,7 @@ export function ItemPanel() {
           <span className="small">{row.review.problem}</span>
           <div className="textbox src"><CodeText text={row.review.suggestion} /></div>
           <div className="row-gap">
-            <button type="button" className="btn primary small-btn" disabled={saving} onClick={() => void run(() => useApp.acceptReview(row.id))}>고친 안 받기</button>
+            <button type="button" className="btn soft small-btn" disabled={saving} onClick={() => void run(() => useApp.acceptReview(row.id))}>고친 안 받기</button>
             <button type="button" className="btn ghost small-btn" disabled={saving} onClick={() => void run(() => useApp.rejectReview(row.id))}>그대로 두기</button>
           </div>
         </section>
@@ -160,47 +163,58 @@ export function ItemPanel() {
           <button type="button" className="btn ghost small-btn" onClick={showChange}>바뀐 내용 보기</button>
         </div>
       )}
-      <div className="field">
-        <label htmlFor="item-target" className="label">번역</label>
+      <div className="field item-edit">
+        <div className="row-between">
+          <label htmlFor="item-target" className="label">번역</label>
+          <span className="hint">Ctrl+Enter 로 저장</span>
+        </div>
         <textarea id="item-target" ref={targetRef} className="textbox edit" rows={4} value={draft} disabled={saving}
           onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} />
-        <div className="row-between">
-          <span className="hint">Ctrl+Enter 로 저장</span>
+        {/* Right under the box it acts on: approve is the one main button, the rest stay quiet. */}
+        <div className="item-actions" role="group" aria-label="줄 동작">
+          {approved
+            ? <button type="button" className="btn small-btn" disabled={saving} onClick={() => void run(() => useApp.setStatus(row.id, 'translated'))}>승인 취소</button>
+            : <button type="button" className="btn primary small-btn" disabled={saving || approveBlock !== null}
+                onClick={() => void approve()}><CheckIcon {...ICON} />승인</button>}
           <button type="button" className="btn small-btn" disabled={saving || draft === (row.target ?? '')} onClick={() => void save()}>저장</button>
+          <span className="grow" />
+          {!row.needsDecision && (
+            <button type="button" className="btn ghost small-btn" disabled={saving || busy || !confirmed}
+              title={!confirmed ? '용어집을 먼저 확정하세요' : busy ? '다른 작업이 진행 중이에요' : undefined}
+              onClick={() => void run(() => useApp.translate([row.id]))}>다시 번역</button>
+          )}
+          <button type="button" className="btn ghost small-btn" onClick={() => useApp.talkAbout(row.id)}>채팅으로 말하기</button>
+          <button type="button" className="btn ghost small-btn" disabled={saving || row.target === null}
+            onClick={() => void run(() => useApp.clearTranslation(row.id))}>지우기</button>
         </div>
+        {approveBlock && <span className="sub small">{approveBlock}</span>}
+        {error && <span className="err-text small" role="alert">{error}</span>}
       </div>
-      <SimilarBox row={row} onTake={take} disabled={saving} />
       <div className="field" role="group" aria-label="검사" ref={checksRef}>
         <span className="label">검사</span>
         {row.target === null && <span className="sub small">번역이 아직 없어요</span>}
         {row.target !== null && issues.length === 0 && (
-          <div className="row-between small"><span className="ok-text">통과 · 제어 코드 일치</span><span className="mono sub">{`${codeCount} / ${codeCount}`}</span></div>
-        )}
-        {issues.map((i, n) => (
-          <div key={n} className="issue small">
-            <span className={i.severity === 'error' ? 'err-text' : 'warn-text'}>{`${i.severity === 'error' ? '오류' : '주의'} · ${RULE_LABEL[i.rule]}`}</span>
-            <span className="sub">{i.message}</span>
+          <div className="ck small">
+            <CircleCheckIcon {...ICON} className="ck-ok" aria-hidden="true" />
+            <span className="ok-text">통과 · 제어 코드 일치</span><span className="grow" /><span className="mono sub">{`${codeCount} / ${codeCount}`}</span>
           </div>
-        ))}
-      </div>
-      {hasGamePreview(row) && <ItemPreview row={row} draft={draft} onDraft={setDraft} onKey={onKey} saving={saving} />}
-      {error && <span className="err-text small" role="alert">{error}</span>}
-      <div className="grow" />
-      {approveBlock && <span className="sub small">{approveBlock}</span>}
-      <div className="item-actions">
-        <button type="button" className="btn ghost" onClick={() => useApp.talkAbout(row.id)}>채팅으로 말하기</button>
-        {!row.needsDecision && (
-          <button type="button" className="btn ghost" disabled={saving || busy || !confirmed}
-            title={!confirmed ? '용어집을 먼저 확정하세요' : busy ? '다른 작업이 진행 중이에요' : undefined}
-            onClick={() => void run(() => useApp.translate([row.id]))}>다시 번역</button>
         )}
-        <button type="button" className="btn ghost" disabled={saving || row.target === null}
-          onClick={() => void run(() => useApp.clearTranslation(row.id))}>지우기</button>
-        {approved
-          ? <button type="button" className="btn" disabled={saving} onClick={() => void run(() => useApp.setStatus(row.id, 'translated'))}>승인 취소</button>
-          : <button type="button" className="btn primary" disabled={saving || approveBlock !== null}
-              onClick={() => void approve()}>승인</button>}
+        {issues.map((i, n) => {
+          const err = i.severity === 'error';
+          const Icon = err ? CircleXIcon : TriangleAlertIcon;
+          return (
+            <div key={n} className="ck small">
+              <Icon {...ICON} className={err ? 'ck-err' : 'ck-warn'} aria-hidden="true" />
+              <div className="issue">
+                <span className={err ? 'err-text' : 'warn-text'}>{`${err ? '오류' : '주의'} · ${RULE_LABEL[i.rule]}`}</span>
+                <span className="sub">{i.message}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
+      <SimilarBox row={row} onTake={take} disabled={saving} />
+      {hasGamePreview(row) && <ItemPreview row={row} draft={draft} onDraft={setDraft} onKey={onKey} saving={saving} />}
     </div>
   );
 }

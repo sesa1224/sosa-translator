@@ -1,10 +1,10 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowRightIcon, BookOpenTextIcon, ScanSearchIcon, SparklesIcon, Table2Icon } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
 import { filterRows, scrollMarks } from '../../shared/rows';
 import { filterGroups, progressParts } from '../filterGroups';
-import { num, STATUS_LABEL } from '../format';
+import { num, statusChip } from '../format';
 import { ICON } from '../icons';
 import { motionClock, rowMotionStyle, type RowMotion } from '../motion';
 import { jobActive, orderedRows, shownRows, useApp } from '../state';
@@ -28,13 +28,7 @@ function decisionCell(r: Row): string | null {
 
 const SEARCH_DELAY = 200;
 
-function statusChip(r: Row): { label: string; cls: string } {
-  if (r.status === 'untranslated' && r.needsDecision) return { label: '판단 필요', cls: 'st-warn' };
-  const cls = { untranslated: 'st-none', translated: 'st-done', 'needs-review': 'st-warn', approved: 'st-ok', error: 'st-err', declined: 'st-err' }[r.status];
-  return { label: STATUS_LABEL[r.status], cls };
-}
-
-/** "Translate new lines" and "review everything" buttons above the table. */
+/** "Translate new lines" (the screen's main button) and "review everything", on the line with the search. */
 function JobActions() {
   const app = useApp();
   const [error, setError] = useState<string | null>(null);
@@ -54,20 +48,24 @@ function JobActions() {
   };
   return (
     <>
-      {!confirmed && (
-        <Callout action={<button type="button" className="btn" onClick={() => useApp.setView('glossary')}>용어집으로<ArrowRightIcon {...ICON} /></button>}>
-          <b>용어집을 먼저 확정하세요</b>{' '}확정해야 이름과 용어가 한결같이 번역돼요.
-        </Callout>
-      )}
-      <div className="job-actions">
-        <button type="button" className="btn primary" disabled={!confirmed || busy || fresh === 0} onClick={() => void translate()}>
-          <SparklesIcon {...ICON} />{`새 문장 ${num(fresh)}개 번역 맡기기`}
-        </button>
-        <button type="button" className="btn" disabled={busy} onClick={() => useApp.openReview()}><ScanSearchIcon {...ICON} />번역 전체 검수</button>
-        {error && <span className="err-text small" role="alert">{error}</span>}
-        {app.reviewOpen && <ReviewDialog onClose={() => useApp.closeReview()} />}
-      </div>
+      <button type="button" className="btn primary" disabled={!confirmed || busy || fresh === 0} onClick={() => void translate()}>
+        <SparklesIcon {...ICON} />{`새 문장 ${num(fresh)}개 번역 맡기기`}
+      </button>
+      <button type="button" className="btn" disabled={busy} onClick={() => useApp.openReview()}><ScanSearchIcon {...ICON} />번역 전체 검수</button>
+      {error && <span className="err-text small" role="alert">{error}</span>}
+      {app.reviewOpen && <ReviewDialog onClose={() => useApp.closeReview()} />}
     </>
+  );
+}
+
+/** The glossary has to be settled before lines are sent: this holds up the work, so it stays a full line. */
+function GlossaryCall() {
+  const confirmed = useApp().glossary?.confirmedAt != null;
+  if (confirmed) return null;
+  return (
+    <Callout action={<button type="button" className="btn" onClick={() => useApp.setView('glossary')}>용어집으로<ArrowRightIcon {...ICON} /></button>}>
+      <b>용어집을 먼저 확정하세요</b>{' '}확정해야 이름과 용어가 한결같이 번역돼요.
+    </Callout>
   );
 }
 
@@ -139,13 +137,12 @@ function RewrapVisible({ ids }: { ids: string[] }) {
   );
 }
 
-function FilterBar() {
-  const { snapshot, query } = useApp();
+/** The search box. It sends what was typed after a short pause, and follows a search put in from elsewhere (Ctrl+K). */
+function SearchBox() {
+  const { query } = useApp();
   const [text, setText] = useState(query.text ?? '');
   /** The search this box last sent; any other value arriving in the query was put there from elsewhere (Ctrl+K). */
   const sent = useRef(query.text ?? '');
-  const { rowsById } = useApp();
-  const skipped = useMemo(() => Object.values(rowsById).filter((r) => r.decision === 'skip').length, [rowsById]);
   useEffect(() => {
     const t = setTimeout(() => {
       sent.current = text;
@@ -159,6 +156,19 @@ function FilterBar() {
     sent.current = q;
     setText(q);
   }, [query.text]);
+  return (
+    <>
+      <label htmlFor="q" className="sr-only">문장 검색</label>
+      <input id="q" className="input search" type="search" placeholder="원문이나 번역에서 찾기" value={text} onChange={(e) => setText(e.target.value)} />
+    </>
+  );
+}
+
+/** The filter groups; `extra` (bulk actions on the lines shown) sits at the end of their last line, out of the way. */
+function FilterBar({ extra }: { extra?: ReactNode }) {
+  const { snapshot, query } = useApp();
+  const { rowsById } = useApp();
+  const skipped = useMemo(() => Object.values(rowsById).filter((r) => r.decision === 'skip').length, [rowsById]);
   if (!snapshot) return null;
   const current = query.status ?? 'all';
   const groups = filterGroups(snapshot.stats, skipped, current);
@@ -187,8 +197,7 @@ function FilterBar() {
             )}
           </div>
         ))}
-        <label htmlFor="q" className="sr-only">문장 검색</label>
-        <input id="q" className="input search" type="search" placeholder="원문이나 번역에서 찾기" value={text} onChange={(e) => setText(e.target.value)} />
+        <span className="filter-extra">{extra}</span>
       </div>
       {REVIEW_STATUSES.has(current) && <ReviewKindChips status={current} />}
     </>
@@ -284,12 +293,18 @@ export function TextTable() {
             {`묶음 ${query.decisionKey} ×`}
           </button>
         )}
+        <span className="grow" />
         <ExchangeActions ids={rows.map((r) => r.id)} />
+      </div>
+      <GlossaryCall />
+      <div className="text-tools">
+        <JobActions />
+        <SearchBox />
+      </div>
+      <FilterBar extra={<>
         <ReviewBulkActions ids={rows.filter((r) => r.review).map((r) => r.id)} />
         {query.status === 'overflow' && <RewrapVisible ids={rows.map((r) => r.id)} />}
-      </div>
-      <JobActions />
-      <FilterBar />
+      </>} />
       {app.textMode === 'story' ? <StoryView /> : (
       <div className="table card" role="table" aria-label="텍스트 표" aria-rowcount={rows.length + 1}>
         <div className="tr th" role="row">
