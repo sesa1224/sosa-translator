@@ -78,14 +78,24 @@ test('용어집 초안 → 확정 → 전체 번역 → 검수 → 빌드', asyn
   await expect(w.getByRole('button', { name: /확정됨/ })).toBeVisible();
 
   await nav.getByRole('button', { name: /^텍스트/ }).click();
+  // A Claude draft of one line, on request: it shows in the list and the line stays untranslated.
+  await w.getByText('月光草', { exact: true }).click();
+  await w.getByRole('button', { name: 'Claude 초안 받기' }).click();
+  await expect(w.getByRole('region', { name: '비슷한 번역' }).getByText('Claude 초안', { exact: true })).toBeVisible();
+  await expect(w.getByRole('row', { name: /月光草.*번역 전/ })).toBeVisible();
+  // The command search opens with Ctrl+K and closes with Esc.
+  await w.keyboard.press('Control+K');
+  await expect(w.getByRole('dialog', { name: '명령 검색' })).toBeVisible();
+  await w.keyboard.press('Escape');
   await w.getByRole('button', { name: /새 문장 \d+개 번역 맡기기/ }).click();
   await expect(w.getByText(/끝났어요 · \d+개 번역/)).toBeVisible();
+  await expect(w.getByRole('region', { name: '알림' }).getByText(/줄을 번역했습니다/)).toBeVisible();
   await expect(w.getByRole('row', { name: /【アーテル】.*【아텔】/ })).toBeVisible();
 
   await w.getByRole('button', { name: '번역 전체 검수' }).click();
   await w.getByRole('button', { name: '검수 시작' }).click();
   await expect(w.getByText(/검수 끝났어요/)).toBeVisible();
-  await w.getByText('月光草', { exact: true }).click();
+  await w.getByRole('table', { name: '텍스트 표' }).getByText('月光草', { exact: true }).click();
   await expect(w.getByText('용어가 어색함')).toBeVisible();
   await w.getByRole('button', { name: '고친 안 받기', exact: true }).click();   // "모두 고친 안 받기" stands above the table
   await expect(w.getByRole('row', { name: /月光草.*월광초\(검수\)/ })).toBeVisible();
