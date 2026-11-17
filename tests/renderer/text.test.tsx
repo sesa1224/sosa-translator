@@ -19,6 +19,13 @@ test('제어문자 칩', () => {
   const { container } = render(<CodeText text={'月光草を\\C[4]3本\\C[0]\n%1 G'} />);
   expect([...container.querySelectorAll('code.chip')].map(e => e.textContent)).toEqual(['\\C[4]', '\\C[0]', '%1']); expect(container.querySelectorAll('br')).toHaveLength(1);
 });
+test('표의 화자 칸도 제어문자를 칩으로 그린다', async () => {
+  const rows = manyRows(1).map((r) => ({ ...r, speaker: '\\N[1]の母' }));
+  await openFake({ rows });
+  const cell = screen.getAllByRole('row')[1].querySelectorAll('[role="cell"]')[1];
+  expect([...cell.querySelectorAll('code.chip')].map((e) => e.textContent)).toEqual(['\\N[1]']);
+  expect(cell).toHaveTextContent('\\N[1]の母');
+});
 test('7000줄이어도 보이는 줄만 그린다', async () => { await openFake({ rows: manyRows(7000) }); expect(screen.getAllByRole('row').length).toBeLessThan(80); });
 test('필터 칩과 검색', async () => {
   await openFake(); await user.click(screen.getByRole('button', { name: /미번역 7/ })); expect(useApp.get().query.status).toBe('untranslated');

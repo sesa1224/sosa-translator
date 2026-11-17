@@ -367,7 +367,7 @@ function TableRow({ r, index, start, measure, sel, busy, motion, onPick }: {
       style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${start}px)`, animationDelay: m.flash ? m.delay : undefined }}
       onClick={() => onPick(r.id)}>
       <span role="cell" className="mono sub small">{r.location}</span>
-      <span role="cell" className="small">{r.speaker ?? ''}</span>
+      <span role="cell" className="small">{r.speaker ? <CodeText text={r.speaker} /> : ''}</span>
       <span role="cell" className="src"><CodeText text={r.source} /></span>
       <span role="cell" className={r.target === null && !busy ? 'mute' : ''}>
         {busy ? <><span className="skel" aria-hidden="true" /><span className="sr-only">번역 중</span></>
