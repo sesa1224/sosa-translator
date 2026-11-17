@@ -95,6 +95,11 @@ export interface Snapshot { meta: ProjectMeta; gameTitle: string | null; rows: R
 export interface UnitDetail { row: Row; issues: Issue[]; refs: string[] }
 /** An earlier translation of a sentence like the selected one; score is the match in percent (0~100, whole). */
 export interface SimilarTranslation { id: string; source: string; target: string; score: number; location: string }
+/**
+ * A translation Claude suggests for one line, asked for by the user and never written to the project.
+ * text is null when the model declined or the call failed; reason then says why. usage is what the call cost.
+ */
+export interface LineDraft { text: string | null; reason?: string; usage: ChatUsage }
 export interface ProjectChanged { rows: Row[]; stats: Stats; scopes: Scope[]; origin: Origin }
 
 // Copy of core ProjectMeta (checked in src/main/ipc.ts).
@@ -327,6 +332,8 @@ export interface InvokeChannels {
   'unit:rejectReviews': (ids: string[]) => number;
   /** Translated sentences like this line's source, best first (the program measures it, no model call). */
   'similar:find': (id: string) => SimilarTranslation[];
+  /** One model call that translates this line with the translate job's material; nothing is saved. Refused while a job runs. */
+  'unit:claudeDraft': (id: string) => LineDraft;
 
   'glossary:get': () => Glossary;
   'glossary:upsertTerm': (t: Omit<Term, 'id'>) => Term;
@@ -476,6 +483,7 @@ export interface Api {
     setStatus: Call<'unit:setStatus'>; clear: Call<'unit:clear'>;
     acceptReview: Call<'unit:acceptReview'>; rejectReview: Call<'unit:rejectReview'>; switchPastReview: Call<'unit:switchPastReview'>;
     acceptReviews: Call<'unit:acceptReviews'>; rejectReviews: Call<'unit:rejectReviews'>;
+    claudeDraft: Call<'unit:claudeDraft'>;
   };
   similar: { find: Call<'similar:find'> };
   chat: {

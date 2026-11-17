@@ -12,7 +12,7 @@ import {
   DEFAULT_DECIDE_MODEL,
   type AppSettings, type ChatEvent, type ChatImage, type DecisionInput, type FontInfo, type InvokeChannel, type JobProgress,
   type PreviewState, type ProjectChanged, type ProjectListItem, type PushChannel, type PushEvents, type ReviewPlan,
-  type ReviewScopeArg, type Row, type SimilarTranslation, type Snapshot, type UnitDetail,
+  type LineDraft, type ReviewScopeArg, type Row, type SimilarTranslation, type Snapshot, type UnitDetail,
 } from '../shared/api.js';
 import type * as glossaryTypes from '../core/glossary/types.js';
 import { PROMPT_KINDS } from '../core/glossary/prompts.js';
@@ -37,6 +37,7 @@ import { DraftJob, planDraft, type DraftMode, type DraftOptions } from './transl
 import { TranslateJob, type JobLike, type JobOptions } from './translate/job.js';
 import { planReview, ReviewJob } from './translate/review.js';
 import { DecideJob } from './translate/decide.js';
+import { draftLine } from './translate/lineDraft.js';
 import { ProjectService } from './projectService.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { listFonts, systemFontDirs } from './fonts/catalog.js';
@@ -206,6 +207,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   let chat: ChatLike | null = null;
   let gameTitle: string | null = null;
   let job: JobLike | null = null;
+  /** A one-line Claude draft in flight. It counts as the one job that may run (see busy()). */
+  let lineDraft: AbortController | null = null;
 
   const settings = () => loadSettings(deps.settingsDir, deps.documentsDir);
   const svc = (): ProjectService => {
@@ -230,6 +233,8 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
     disposeChat();
     job?.stop();
     job = null;
+    lineDraft?.abort();
+    lineDraft = null;
     const s = deps.holder.svc;
     deps.holder.svc = null;
     rows = new Map();
@@ -439,7 +444,7 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
 
   // ---- jobs (one at a time) ----
   function busy(): boolean {
-    return job !== null && ACTIVE_STATES.has(job.progress.state);
+    return lineDraft !== null || (job !== null && ACTIVE_STATES.has(job.progress.state));
   }
 
   async function jobOptions(stage: 'glossary' | 'translate' | 'review'): Promise<JobOptions> {
@@ -503,6 +508,23 @@ export function registerIpc(deps: IpcDeps): { dispose(): Promise<void> } {
   handle('job:pause', () => { job?.pause(); });
   handle('job:resume', () => { job?.resume(); });
   handle('job:stop', () => { job?.stop(); });
+  handle('unit:claudeDraft', async (id: string): Promise<LineDraft> => {
+    const s = svc();
+    const unitId = String(id);
+    if (!s.unit(unitId)) throw new Error(`없는 항목입니다: ${unitId}`);
+    if (busy()) throw new Error(JOB_BUSY);
+    if (s.glossary().confirmedAt === null) throw new Error(CONFIRM_FIRST);
+    const o = await jobOptions('translate');
+    // Checked again: another call may have started while the settings were read.
+    if (busy()) throw new Error(JOB_BUSY);
+    const ctl = new AbortController();
+    lineDraft = ctl;
+    try {
+      return await draftLine(o, unitId, ctl.signal);
+    } finally {
+      if (lineDraft === ctl) lineDraft = null;
+    }
+  });
 
   handle('app:claudePath', async () => deps.claudePath((await settings()).claudePath));
   handle('app:showItemInFolder', (file: string) => { deps.showItemInFolder(file); });

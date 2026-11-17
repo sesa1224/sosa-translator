@@ -14,7 +14,7 @@ import { buildTranslatePrompt, fixLiteralBreaks, isTranslateAnswer, planBatches,
 
 export const REFUSED_REASON = '모델이 번역을 거절했습니다';
 export const NO_REASON = '이유 없음';
-const ALL_STATUSES: TranslationStatus[] = ['untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined'];
+export const ALL_STATUSES: TranslationStatus[] = ['untranslated', 'translated', 'needs-review', 'approved', 'error', 'declined'];
 
 export interface JobOptions {
   svc: ProjectService;
@@ -191,6 +191,29 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
   }
 }
 
+function speakerTarget(speaker: string, g: Glossary): string {
+  const term = g.terms.find((t) => t.category === 'name' && t.source === speaker && t.target !== '');
+  if (term) return term.target;
+  const card = g.characters.find((c) => c.source === speaker && c.target !== '');
+  return card ? card.target : speaker;
+}
+
+/**
+ * The full translation of one item from the model's answer for its body: literal breaks fixed, half-width marks,
+ * the translated speaker line put back, and breaks moved for the game window. Shared by the translate job and the
+ * one-line Claude draft so both give the same text for the same answer.
+ */
+export function finishTranslation(item: BatchItem, t: string, g: Glossary, svc: Pick<ProjectService, 'autoWrap'>): string {
+  const broken = fixLiteralBreaks(t, item.text);
+  // The model mixes ？ and ? within one game; a value with kept pieces is left as it came.
+  const body = g.rules.halfWidth && !item.keep ? toHalfWidth(broken, { brackets: g.rules.halfWidthBrackets }) : broken;
+  const full = item.speakerLine !== null && item.speaker !== null
+    ? composeSpeaker(item.speakerLine, item.speaker, speakerTarget(item.speaker, g), body)
+    : body;
+  // Lines too wide for the game window get their breaks moved (the project's rule; the user's own edits never).
+  return svc.autoWrap(item.id, full);
+}
+
 interface RetryInfo { previous: string; problems: string[] }
 
 /** Translates every untranslated unit (or the given ids) in batches. */
@@ -257,13 +280,6 @@ export class TranslateJob extends BatchJob<Batch> {
     return this.call({ system: prompt.system, user, schema: TRANSLATE_SCHEMA, validate: isTranslateAnswer, signal });
   }
 
-  private speakerTarget(speaker: string, g: Glossary): string {
-    const term = g.terms.find((t) => t.category === 'name' && t.source === speaker && t.target !== '');
-    if (term) return term.target;
-    const card = g.characters.find((c) => c.source === speaker && c.target !== '');
-    return card ? card.target : speaker;
-  }
-
   /** Writes one answer. Returns how many items were written and those whose translation failed the format check. */
   private async write(batch: Batch, answer: TranslateAnswer, g: Glossary): Promise<{ written: number; bad: { item: BatchItem; info: RetryInfo }[] }> {
     const svc = this.o.svc;
@@ -281,14 +297,7 @@ export class TranslateJob extends BatchJob<Batch> {
         this.p.declined++;
         continue;
       }
-      const broken = fixLiteralBreaks(a.t, item.text);
-      // The model mixes ？ and ? within one game; a value with kept pieces is left as it came.
-      const body = g.rules.halfWidth && !item.keep ? toHalfWidth(broken, { brackets: g.rules.halfWidthBrackets }) : broken;
-      const full = item.speakerLine !== null && item.speaker !== null
-        ? composeSpeaker(item.speakerLine, item.speaker, this.speakerTarget(item.speaker, g), body)
-        : body;
-      // Lines too wide for the game window get their breaks moved (the project's rule; the user's own edits never).
-      const issues = await svc.setTranslation(item.id, svc.autoWrap(item.id, full), 'batch');
+      const issues = await svc.setTranslation(item.id, finishTranslation(item, a.t, g, svc), 'batch');
       const errors = issues.filter((i) => i.severity === 'error').map((i) => i.message);
       if (errors.length > 0) bad.push({ item, info: { previous: a.t, problems: errors } });
     }

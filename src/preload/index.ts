@@ -42,6 +42,7 @@ const api: Api = {
     switchPastReview: (id) => call('unit:switchPastReview', id),
     acceptReviews: (ids) => call('unit:acceptReviews', ids),
     rejectReviews: (ids) => call('unit:rejectReviews', ids),
+    claudeDraft: (id) => call('unit:claudeDraft', id),
   },
   similar: {
     find: (id) => call('similar:find', id),
