@@ -28,6 +28,7 @@ src/core/              화면도 Electron도 모르는 순수 라이브러리. �
   events/ patches/     이벤트 풀어쓰기·사용처, 원본 대비 수정
   images/ preview/     그림 목록·지시서, 대사창 미리보기
   exchange/ update/    외부 번역 꾸러미, 게임 업데이트
+  similar/             비슷한 번역 찾기(일치율)
 src/cli.ts             core 를 명령줄로 쓰는 얇은 껍데기 (mvmz import / export / apply / check / build / status)
 src/main/              Electron 메인 프로세스
   projectService.ts    열린 프로젝트의 유일한 소유자. 모든 쓰기가 여기를 거친다
