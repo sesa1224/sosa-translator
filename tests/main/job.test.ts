@@ -127,3 +127,20 @@ test('괄호 규칙이 켜져 있으면 （ ） 도 반각으로 적힌다', asy
   await svc.setRules({ halfWidthBrackets: false }); await mk(call, { ids: [idOf('月光草')] }).start();
   expect(svc.entry(idOf('月光草')).target).toBe('（번역!）');
 });
+
+test('보내는 동안 그 묶음의 줄 id 를 진행에 싣고, 끝나면 비운다', async () => {
+  const first = firstBatchIds();
+  const seen: (string[] | undefined)[] = [];
+  const job: TranslateJob = mk(async (o: any) => { seen.push(job.progress.pending); return okAll(o); });
+  await job.start();
+  expect(seen[0]).toEqual(first);
+  expect(seen.every((p) => p !== undefined && p.length > 0)).toBe(true);
+  expect(job.progress.pending).toBeUndefined();
+});
+test('멈추면 번역 중인 줄을 비운다', async () => {
+  const job = mk(slow(okAll)); const p = job.start();
+  expect(job.progress.pending?.length).toBeGreaterThan(0);
+  job.stop(); await p;
+  expect(job.progress).toMatchObject({ state: 'stopped' });
+  expect(job.progress.pending).toBeUndefined();
+});

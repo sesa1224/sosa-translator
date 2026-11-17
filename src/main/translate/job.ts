@@ -81,6 +81,8 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
 
   protected update(patch: Partial<JobProgress>): void {
     this.p = { ...this.p, ...patch };
+    // Lines are only "being translated" while a call is out; a pause, stop or end leaves none.
+    if (this.p.state !== 'running') delete this.p.pending;
     this.emit('progress', this.progress);
   }
 
@@ -154,7 +156,7 @@ export abstract class BatchJob<B> extends EventEmitter implements JobLike {
       }
       if (outcome === 'next') {
         if (this.queue[0] === b) this.queue.shift();
-        this.update({});
+        this.update({ pending: undefined });
         continue;
       }
       if (outcome === 'stopped' || this.stopRequested) return this.update({ state: 'stopped' });
@@ -213,7 +215,7 @@ export class TranslateJob extends BatchJob<Batch> {
   }
 
   protected async runBatch(batch: Batch, signal: AbortSignal): Promise<'next' | 'limit' | 'failed' | 'stopped'> {
-    this.update({ label: batch.label });
+    this.update({ label: batch.label, pending: batch.items.map((it) => it.id) });
     const glossary = this.o.svc.glossary();
     let retried = false;
     for (;;) {

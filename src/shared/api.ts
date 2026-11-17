@@ -143,7 +143,8 @@ export const DEFAULT_MODELS: ModelOption[] = [
 export type JobKind = 'draft' | 'translate' | 'review' | 'decide' | 'notes' | 'images';
 /** paused-limit: paused because the Claude usage limit was hit; it can be resumed later. */
 export type JobState = 'idle' | 'running' | 'paused' | 'paused-limit' | 'done' | 'failed' | 'stopped';
-export interface JobProgress { kind: JobKind; state: JobState; done: number; total: number; label: string; usage: ChatUsage; declined: number; errors: number; message?: string }
+/** pending: ids of the lines a translate job has sent and is waiting on (the screen marks them as being translated). */
+export interface JobProgress { kind: JobKind; state: JobState; done: number; total: number; label: string; usage: ChatUsage; declined: number; errors: number; message?: string; pending?: string[] }
 /** How a glossary draft reads the script: chosen excerpts, all of it, or not at all (the draft works from samples only). */
 export type DraftMode = 'balanced' | 'full' | 'sample';
 export interface DraftChoice { budgetChars?: number; readModel?: string; mergeModel?: string }
