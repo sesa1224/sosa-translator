@@ -570,7 +570,9 @@ select.input { padding: 0 12px; }
 .tw-row .set-c .input::placeholder { color: var(--mute); }
 .set-row .fp-metrics { flex: 1 1 auto; min-width: 0; }
 .set-toc .toc-item.on { background: var(--accent-bg); color: var(--accent-text); }
-@media (max-width: 1350px) { .set-toc { display: none; } }
+/* Hidden when the middle is narrow, not the window: with the right panel folded a narrow window has room for it. */
+.settings { container: settings / inline-size; }
+@container settings (max-width: 700px) { .set-toc { display: none; } }
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .theme-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
 .theme-card:hover { border-color: var(--mute); }

@@ -525,6 +525,9 @@ test('좁은 창: 오른쪽 패널이 접혀 가운데가 넓고, 줄을 누르�
     await expect(w.getByRole('row', { name: /月光草.*월광초.*번역 완료/ })).toBeVisible();
     await w.keyboard.press('Escape');
     await w.waitForFunction(() => document.querySelector('.right.collapsed') !== null);
+    // The settings' group list follows the middle's width: with the panel folded it has room again.
+    await w.getByRole('button', { name: '설정', exact: true }).click();
+    await expect(w.getByRole('navigation', { name: '설정 차례' })).toBeVisible();
   } finally {
     await app.close();
   }
