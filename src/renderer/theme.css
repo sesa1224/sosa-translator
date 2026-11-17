@@ -338,7 +338,7 @@ select.input { padding: 0 12px; }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .issue { display: flex; flex-direction: column; gap: 2px; }
 .item-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.item-actions > .btn { flex: 1 1 100px; font-size: 13px; }
+.item-actions > .btn { flex: 1 1 100px; font-size: 13px; white-space: nowrap; }
 .attached { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .x { border: 0; background: transparent; color: var(--sub); font-size: 16px; width: 28px; height: 28px; border-radius: 6px; }
 .x:hover { background: var(--card); color: var(--text); }
@@ -454,7 +454,9 @@ select.input { padding: 0 12px; }
 .cand.on { border-color: var(--accent); background: var(--accent-bg); }
 .cand.dashed { border-style: dashed; color: var(--sub); }
 .notice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: var(--r); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: var(--accent-bg); color: var(--accent-text); font-size: 13px; }
-.glossary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+/* The term rows need about 520px; narrower, the list takes the whole width and the cards go under it. */
+.glossary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 14px; align-items: start; }
+.term-list { overflow-x: auto; }
 .term-list { display: flex; flex-direction: column; }
 .term-row { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(100px, 1.2fr) 92px 132px 56px auto; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--line); }
 .term-row .input { height: 36px; }
@@ -593,7 +595,7 @@ select.input { padding: 0 12px; }
 .decision-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .decision-card { align-items: flex-start; flex-wrap: wrap; }
 .decision-main { flex: 1 1 320px; gap: 8px; }
-.decision-card { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.decision-card { gap: 10px 14px; }
 .decision-card.focus { box-shadow: inset 3px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .decision-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .decision-label { font-size: 14px; }
