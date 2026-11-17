@@ -3,7 +3,8 @@ import { useState, type DragEvent } from 'react';
 import type { GameDirCheck, PackedGameInfo } from '../../shared/api';
 import { ICON } from '../icons';
 import { useApp } from '../state';
-import { Tile } from './ui';
+import { Inkdrop } from './Inkdrop';
+import { EmptyState, Tile } from './ui';
 import { WindowControls } from './WindowControls';
 
 function hasFiles(e: DragEvent): boolean {
@@ -142,6 +143,11 @@ export function ProjectPicker() {
         {error && <span className="err-text" role="alert">{error}</span>}
       </section>
 
+      {projects.length === 0 && !game && !packed && (
+        <EmptyState art={<Inkdrop size={64} />} title="첫 프로젝트를 만들어 볼까요?">
+          게임 폴더를 고르면 원본은 그대로 두고 사본에서 문장을 뽑아요. 번역은 프로젝트 폴더에만 쌓여요.
+        </EmptyState>
+      )}
       {projects.length > 0 && (
         <section className="card picker-section" aria-label="기존 프로젝트">
           <span className="card-title">기존 프로젝트</span>
