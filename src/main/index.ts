@@ -3,7 +3,7 @@
 // MVMZ_ are test hooks used by the end-to-end tests.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, shell, type WebContents } from 'electron';
 import { startBridge, writeMcpConfig, type Bridge } from './bridge.js';
 import { ClaudeChat, findClaude } from './claude/chat.js';
 import { registerIpc } from './ipc.js';
@@ -13,6 +13,7 @@ import type { PushChannel, PushEvents } from '../shared/api.js';
 import { RenderService } from './render/renderService.js';
 import { createRenderWindow, renderWindows } from './render/renderWindow.js';
 import { registerWindowControls, reportMaximize } from './windowControls.js';
+import { loadWindowState, placeWindow, WindowStateSaver } from './windowState.js';
 
 if (process.env.MVMZ_USER_DATA) app.setPath('userData', process.env.MVMZ_USER_DATA);
 
@@ -57,10 +58,16 @@ function broadcast<C extends PushChannel>(channel: C, payload: PushEvents[C]): v
   for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload);
 }
 
-function createWindow(): BrowserWindow {
+async function createWindow(): Promise<BrowserWindow> {
+  const userData = app.getPath('userData');
+  const place = placeWindow(await loadWindowState(userData), screen.getAllDisplays().map((d) => d.workArea), screen.getPrimaryDisplay().workArea);
   const win = new BrowserWindow({
-    width: 1360,
-    height: 900,
+    x: place.x,
+    y: place.y,
+    width: place.width,
+    height: place.height,
+    // A window that reopens maximized is shown by maximize() below, so it never flashes at its normal size first.
+    show: !place.maximized,
     minWidth: 1100,
     minHeight: 700,
     title: 'MV/MZ 번역 작업실',
@@ -77,7 +84,20 @@ function createWindow(): BrowserWindow {
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(path.join(here, '../renderer/index.html'));
   reportMaximize(win);
+  if (place.maximized) { win.maximize(); win.show(); }
+  rememberPlace(win, new WindowStateSaver(userData));
   return win;
+}
+
+/** Saves the window's restored size and place and whether it is maximized, so the next start opens the same. */
+function rememberPlace(win: BrowserWindow, saver: WindowStateSaver): void {
+  const now = () => ({ ...win.getNormalBounds(), maximized: win.isMaximized() });
+  const changed = () => saver.update(now());
+  win.on('resize', changed);
+  win.on('move', changed);
+  win.on('maximize', changed);
+  win.on('unmaximize', changed);
+  win.on('close', () => { saver.update(now()); saver.flush(); });
 }
 
 app.whenReady().then(async () => {
@@ -159,8 +179,8 @@ app.whenReady().then(async () => {
   });
 
   registerWindowControls(ipcMain, (sender) => BrowserWindow.fromWebContents(sender as WebContents));
-  createWindow();
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  await createWindow();
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
 });
 
 app.on('window-all-closed', () => { app.quit(); });

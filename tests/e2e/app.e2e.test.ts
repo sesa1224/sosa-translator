@@ -407,6 +407,52 @@ test('틀 없는 창: 창 단추, 최대화해도 화면 안, 기본 단축키',
   await app.close();
 });
 
+test('창 자리: 넓은 창과 최대화에서 화면이 창 안에 있고, 다시 열면 크기와 최대화가 그대로', async () => {
+  let app = await launch({ MVMZ_PICK_DIR: game });
+  let w = await app.firstWindow();
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('창 자리'); await w.getByRole('button', { name: '만들기' }).click();
+  await expect(w.getByRole('heading', { name: '텍스트' })).toBeVisible();
+  const work = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().workArea);
+  const size = { width: Math.min(1650, work.width), height: Math.min(1075, work.height) };
+  await app.evaluate(({ BrowserWindow }, s) => { BrowserWindow.getAllWindows().find((x) => x.isVisible())!.setBounds(s); }, { x: work.x, y: work.y, ...size });
+  // The whole shell, the window buttons at its right end included, must lie inside the page (nothing cut off).
+  const fits = () => w.evaluate(() => {
+    const shell = document.querySelector('.shell')!.getBoundingClientRect();
+    const close = document.querySelector('[aria-label="창 닫기"]')!.getBoundingClientRect();
+    return { inner: [innerWidth, innerHeight], shell: [shell.right, shell.bottom], close: close.right, scroll: document.documentElement.scrollWidth };
+  });
+  await w.waitForFunction((width) => innerWidth === width, size.width);
+  let f = await fits();
+  expect(f.shell).toEqual(f.inner);
+  expect(f.close).toBeLessThanOrEqual(f.inner[0]);
+  expect(f.scroll).toBeLessThanOrEqual(f.inner[0]);
+
+  await w.getByRole('button', { name: '창 최대화' }).click();
+  await expect(w.getByRole('button', { name: '창 이전 크기로' })).toBeVisible();
+  const content = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((x) => x.isVisible())!.getContentBounds());
+  expect(content.x + content.width).toBeLessThanOrEqual(work.x + work.width);
+  expect(content.y + content.height).toBeLessThanOrEqual(work.y + work.height);
+  f = await fits();
+  expect(f.inner).toEqual([content.width, content.height]);
+  expect(f.shell).toEqual(f.inner);
+  expect(f.close).toBeLessThanOrEqual(f.inner[0]);
+  await app.close();
+
+  app = await launch({ MVMZ_PICK_DIR: game });
+  w = await app.firstWindow();
+  await w.waitForLoadState();
+  const reopened = await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows().find((x) => x.isVisible())!;
+    return { maximized: win.isMaximized(), normal: win.getNormalBounds() };
+  });
+  expect(reopened.maximized).toBe(true);
+  expect(reopened.normal).toMatchObject(size);
+  await expect(w.getByRole('button', { name: '창 이전 크기로' })).toBeVisible();
+  await w.getByRole('button', { name: '창 이전 크기로' }).click();
+  await expect(w.getByRole('button', { name: '창 최대화' })).toBeVisible();
+  await app.close();
+});
+
 test('움직임: 승인한 줄이 한 번 밝아지고, 설정에서 끄면 애니메이션이 멈춘다', async () => {
   const app = await launch({ MVMZ_PICK_DIR: game });
   try {
