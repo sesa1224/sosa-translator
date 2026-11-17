@@ -1,4 +1,4 @@
-import { ArrowRightIcon, CircleHelpIcon, DiffIcon, ImageIcon, SparklesIcon, TriangleAlertIcon, Undo2Icon, type LucideIcon } from 'lucide-react';
+import { ArrowRightIcon, ChevronDownIcon, CircleHelpIcon, DiffIcon, ImageIcon, SparklesIcon, TriangleAlertIcon, Undo2Icon, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { num } from '../format';
 import { ICON } from '../icons';
@@ -114,7 +114,7 @@ export function UpdateView() {
       {s.warnings.length > 0 && (
         <section className="update-fold" aria-label="경고">
           <details>
-            <summary className="small"><TriangleAlertIcon {...ICON} className="warn-text" />{`경고 ${num(s.warnings.length)}개`}</summary>
+            <summary className="small"><TriangleAlertIcon {...ICON} className="warn-text" />{`경고 ${num(s.warnings.length)}개`}<ChevronDownIcon {...ICON} className="update-chev" /></summary>
             <ul className="update-list">
               {s.warnings.map((w, i) => <li key={i}><span className="mono small">{w.file}</span><span className="small">{w.message}</span></li>)}
             </ul>
@@ -123,7 +123,7 @@ export function UpdateView() {
       )}
       <section className="update-fold" aria-label="그 밖의 수">
         <details>
-          <summary className="small">그 밖의 수</summary>
+          <summary className="small">그 밖의 수<ChevronDownIcon {...ICON} className="update-chev" /></summary>
           <ul className="update-list plain">
             <li><span className="small">{`수정: 그대로 ${num(unchanged)} · 자리를 옮김 ${num(moved)} · 충돌 ${num(conflicts.length)}`}</span></li>
             <li><span className="small">{`새 그림 ${num(s.images.added)}장`}</span></li>

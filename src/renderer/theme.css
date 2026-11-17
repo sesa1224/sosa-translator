@@ -1016,6 +1016,9 @@ select.input { padding: 0 12px; }
 .update-fold { flex: none; }
 .update-fold summary { cursor: pointer; color: var(--sub); display: inline-flex; align-items: center; gap: 6px; padding: 4px 4px; }
 .update-fold details[open] > summary { margin-bottom: 6px; }
+.update-fold summary:hover { color: var(--text); }
+.update-chev { transition: transform .2s; }
+.update-fold details[open] .update-chev { transform: rotate(180deg); }
 .update-list.plain { list-style: none; padding-left: 4px; color: var(--sub); }
 /* A tile's own button sits in its corner, so the number keeps the same place as in the tiles without one. */
 .stat.has-action { position: relative; }
