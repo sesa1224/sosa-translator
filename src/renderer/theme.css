@@ -195,14 +195,14 @@ select.input { padding: 0 12px; }
 .filter-groups { align-items: flex-end; gap: 10px 24px; }
 .fgroup { display: flex; flex-direction: column; gap: 5px; min-width: 0; max-width: 100%; }
 .fg-head { font-size: 11px; line-height: 14px; color: var(--mute); padding-left: 4px; }
-.fg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fg-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .tone-all { --tone: var(--sub); }
 .tone-none, .tone-plain { --tone: var(--mute); }
 .tone-done { --tone: color-mix(in srgb, var(--accent) 55%, var(--panel)); }
 .tone-ok { --tone: var(--accent); }
 .tone-warn { --tone: var(--warn); }
 .tone-err { --tone: var(--err); }
-.filter-groups .fchip { height: 32px; padding: 0 12px 0 10px; border-radius: 16px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--sub); }
+.filter-groups .fchip { height: 32px; padding: 0 10px 0 9px; border-radius: 16px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--sub); }
 .fc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); flex: none; }
 .fc-num { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
 .filter-groups .fchip.zero { opacity: .5; }
