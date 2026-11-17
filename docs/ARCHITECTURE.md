@@ -88,6 +88,8 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 3. `src/renderer/components/Sidebar.tsx` 에 메뉴 버튼을 둔다. 명령 검색창(Ctrl+K)에서도 가게 하려면 `src/renderer/commands.ts` 의 `COMMANDS` 에 "…로 가기" 한 줄을 더한다(시험이 왼쪽 메뉴의 화면이 모두 있는지 본다).
 4. 화면이 쓸 상태와 액션을 `state.ts` 에 더한다. 메인의 새 데이터가 필요하면 아래 "IPC 채널 더하기"를 한다.
 5. 모양은 `src/renderer/theme.css` 에 더한다. 색은 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 테마는 `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음, `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 배치와 문구의 기준은 `docs/mockup/Main.dc.html` 과 `docs/mockup/2026-11-17-새단장-시안.html`. 움직임은 `theme.css` 끝의 "motion" 묶음에 CSS 로만 두고, 코드는 클래스를 붙이는 순간만 정한다(`src/renderer/motion.ts` 의 `replay`, 표의 줄은 `state.ts` 의 `rowMotion`). keyframes 는 시작 모습에서 원래 모습으로 가게 써서 `data-motion="off"`(설정의 움직임 끄기)나 `prefers-reduced-motion` 으로 애니메이션을 통째로 끄면 그냥 원래 모습이 보이게 한다. 아이콘은 `lucide-react` 에서 이름으로 하나씩 가져오고 `src/renderer/icons.ts` 의 `ICON`(16px, `aria-hidden`)을 붙인다.
+   - 화면을 따로 꾸미지 말고 `src/renderer/components/ui.tsx` 의 공통 부품을 쓴다: 화면 머리 `ScreenHead`(큰 제목, 수 배지, 한 줄 설명, 오른쪽 동작), 바탕이 미끄러지는 고르기 `Seg`, 켜고 끄는 설정 `Switch`(`role="switch"` 체크박스), 색 띠 안내 `Callout`, 아이콘 타일 `Tile`, 빈 화면 `EmptyState`. 그 밖에 붙은 단추 묶음 `.grp`, 한 판 목록 `.list`/`.li`, 둘 중 하나 `.choice`, 진행 막대 `.prog` 는 `theme.css` 의 "shared parts" 클래스다. 단추 그림자와 올린 판 색은 테마마다 `--shadow`, `--raise` 로 둔다. 게임 제목은 `--gfont`(일본어 글꼴이 먼저), 화면 제목은 `--tfont` 에 `--tscale` 로 크기를 맞춘다.
+   - 도우미 캐릭터 먹물이는 `src/renderer/components/Inkdrop.tsx` 의 SVG 컴포넌트(상태 `idle`/`work`/`done`, `useInkState(busy)`)다. 채팅 머리줄·답 옆·처음 연 모습과 몇몇 빈 화면이 같이 쓴다. 모양은 `theme.css` 의 "the helper".
 6. 시험은 `tests/renderer/` 에 두고, 가짜 `window.api` 인 `tests/renderer/fakeApi.tsx` 를 쓴다.
 
 ### IPC 채널 더하기
