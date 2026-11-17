@@ -1,6 +1,6 @@
 /* Themes. Each sets the same tokens; selectors without :root also let a settings swatch carry its own theme.
    --art is the frame's decoration (title bar, left menu, right panel); the table and the middle screen stay a
-   flat --panel so text reads the same in every theme. Values come from docs/mockup/2026-11-17-새단장-시안.html. */
+   flat --panel so text reads the same in every theme. */
 :root {
   --sans: 'IBM Plex Sans KR', system-ui, sans-serif; --mono: 'IBM Plex Mono', monospace;
   --r: 10px; --tfont: var(--sans); --art: none; --art-right: none; --frame-line: var(--line);
