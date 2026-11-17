@@ -35,13 +35,13 @@ src/main/              Electron 메인 프로세스
   ipc.ts               window.api 처리기. 작업(한 번에 하나), 채팅, 미리보기, 그림, 게임 실행을 붙든다
   toolHandlers.ts      채팅 도구(TOOL_DEFS, HANDLERS)
   claude/              CLI 인자, 채팅 프로세스, 한 번 호출로 JSON 받기, 시스템 프롬프트
-  translate/           번역·검수·판단 추천·용어집 초안 작업
+  translate/           번역·검수·판단 추천·용어집 초안 작업, 항목 탭의 한 줄 Claude 초안(lineDraft.ts)
   images.ts render/    그림 서비스와 보이지 않는 렌더 작업 창
   preview.ts fonts/    미리보기, 폰트 목록, 폰트 넣기(fontEmbed.ts)
   buildNotes.ts gameRun.ts bridge.ts settings.ts story.ts
 src/mcp/               Claude CLI 가 띄우는 stdio MCP 서버. 도구 호출을 로컬 브리지로 메인에 넘긴다
 src/preload/           렌더러에 window.api 를(index.ts), 렌더 작업 창에 그 통로를(render.ts) 내준다
-src/renderer/          React 화면. 상태와 액션은 state.ts, 화면 전환은 App.tsx 의 SCREENS, 그림 찍기는 render-worker/
+src/renderer/          React 화면. 상태와 액션은 state.ts, 화면 전환은 App.tsx 의 SCREENS, Ctrl+K 명령 표는 commands.ts, 그림 찍기는 render-worker/
 src/shared/            메인과 렌더러가 같이 쓰는 것. api.ts(채널 목록과 window.api 모양), rows.ts(행·필터·통계)
 tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다. 가짜 window.api 는 tests/renderer/fakeApi.tsx
 ```
