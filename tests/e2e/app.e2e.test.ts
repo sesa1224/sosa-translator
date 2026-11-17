@@ -286,7 +286,7 @@ test('이미지: 영역 만들기 → 문장 → 기본 폰트 → 끝남 → �
 
   await w.getByRole('button', { name: '패치노트 보기' }).click();
   await expect(w.getByRole('heading', { name: '빌드 기록' })).toBeVisible();
-  await expect(w.getByText(/^빌드 1 · /)).toBeVisible();
+  await expect(w.getByRole('article', { name: '빌드 1' })).toBeVisible();
   await app.close();
 });
 

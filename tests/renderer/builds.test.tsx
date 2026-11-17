@@ -38,26 +38,56 @@ test('카드는 최신순, 노트를 고쳐 저장하고 다듬기를 맡긴다'
   const user = await openBuilds();
   const cards = await screen.findAllByRole('article');
   expect(cards).toHaveLength(2);
-  expect(within(cards[0]).getByText(/^빌드 4 · 2026-11-13 \d\d:40 · 파일 24개$/)).toBeVisible();
-  expect(within(cards[1]).getByText(/^빌드 3 · /)).toBeVisible();
 
-  const box = within(cards[0]).getByLabelText('빌드 4 패치노트');
+  // The newest build is the large one: its numbers and scopes are readable without opening anything.
+  const latest = cards[0];
+  expect(latest).toHaveAccessibleName('빌드 4');
+  expect(within(latest).getByText('최신 패치')).toBeVisible();
+  expect(within(latest).getByRole('heading', { name: '빌드 4' })).toBeVisible();
+  expect(within(latest).getByText(/2026-11-13 \d\d:40/)).toBeVisible();
+  const stat = (label: string) => within(latest).getByText(label).closest('.bv-stat') as HTMLElement;
+  expect(within(stat('새 번역')).getByText('137')).toBeVisible();
+  expect(within(stat('고친 번역')).getByText('12')).toBeVisible();
+  expect(within(stat('그림')).getByText('1')).toBeVisible();
+  expect(within(stat('파일')).getByText('24')).toBeVisible();
+  expect(within(latest).getByText('맵2')).toBeVisible();
+
+  // The notes are read first; the edit box appears only after asking for it.
+  expect(within(latest).getByText('약초원 한국어 패치 빌드 4')).toBeVisible();
+  expect(within(latest).queryByLabelText('빌드 4 패치노트')).toBeNull();
+  await user.click(within(latest).getByRole('button', { name: '패치노트 고치기' }));
+  const box = within(latest).getByLabelText('빌드 4 패치노트');
   await user.clear(box);
   await user.type(box, '고친 노트');
-  await user.click(within(cards[0]).getByRole('button', { name: '저장' }));
-  expect(api.calls).toContainEqual(['builds.setNotes', 4, '고친 노트']);
-
-  await user.click(within(cards[0]).getByRole('button', { name: /Claude에게 다듬기 맡기기/ }));
+  await user.click(within(latest).getByRole('button', { name: /Claude에게 다듬기 맡기기/ }));
   expect(api.calls).toContainEqual(['builds.polishNotes', 4]);
-  expect(within(cards[0]).getByText(/claude-haiku-5-5|Claude Haiku 5\.5/)).toBeVisible();
+  expect(within(latest).getByText(/claude-haiku-5-5|Claude Haiku 5\.5/)).toBeVisible();
+  await user.click(within(latest).getByRole('button', { name: '저장' }));
+  expect(api.calls).toContainEqual(['builds.setNotes', 4, '고친 노트']);
+  await waitFor(() => expect(within(latest).queryByLabelText('빌드 4 패치노트')).toBeNull());
+  expect(within(latest).getByText('고친 노트')).toBeVisible();
 
-  await user.click(within(cards[0]).getByRole('button', { name: '폴더 열기' }));
+  await user.click(within(latest).getByRole('button', { name: '폴더 열기' }));
   expect(api.calls).toContainEqual(['builds.openFolder', 4]);
 
-  await user.click(within(cards[0]).getByText('바뀐 점 자세히'));
-  await waitFor(() => expect(within(cards[0]).getByText('새 번역 137')).toBeVisible());
-  expect(within(cards[0]).getByText('고친 번역 12')).toBeVisible();
-  expect(within(cards[0]).getByText('맵2')).toBeVisible();
-  expect(within(cards[0]).getByText('img/pictures/menu.png')).toBeVisible();
-  expect(within(cards[0]).getByText('data/Map002.json')).toBeVisible();
+  await user.click(within(latest).getByText('바뀐 파일 2개'));
+  await waitFor(() => expect(within(latest).getByText('img/pictures/menu.png')).toBeVisible());
+  expect(within(latest).getByText('data/Map002.json')).toBeVisible();
+
+  // Older builds are one line each until opened.
+  const older = cards[1];
+  expect(older).toHaveAccessibleName('빌드 3');
+  expect(within(older).queryByRole('button', { name: '폴더 열기' })).toBeNull();
+  await user.click(within(older).getByRole('button', { name: /빌드 3/ }));
+  await user.click(within(older).getByRole('button', { name: '폴더 열기' }));
+  expect(api.calls).toContainEqual(['builds.openFolder', 3]);
+  expect(within(older).getByRole('button', { name: '패치노트 고치기' })).toBeVisible();
+});
+
+test('빌드가 하나뿐이면 이전 빌드 묶음이 없다', async () => {
+  imagesFake(api).builds = [record(1)];
+  await openBuilds();
+  expect(await screen.findAllByRole('article')).toHaveLength(1);
+  expect(screen.queryByRole('heading', { name: '이전 빌드' })).toBeNull();
+  expect(screen.getByText('이 빌드는 바뀐 점 기록이 없어요')).toBeVisible();
 });

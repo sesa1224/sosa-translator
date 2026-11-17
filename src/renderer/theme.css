@@ -207,6 +207,8 @@ select.input { padding: 0 12px; }
 .picker-packed { display: flex; flex-direction: column; gap: 6px; }
 .picker-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .picker-list > li .picker-item { flex: 1 1 auto; }
+/* A long project path must wrap inside its own column instead of squeezing the button. */
+.picker-list > li .btn { flex: none; white-space: nowrap; }
 .picker-item { display: flex; flex-direction: column; min-width: 0; }
 .picker-head .ph-text { flex: 1 1 auto; }
 .picker-item .mono { font-size: 12px; overflow-wrap: anywhere; }
@@ -743,8 +745,39 @@ select.input { padding: 0 12px; }
 
 /* ---- build history ---- */
 .builds-view { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
-.bv-card { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px; }
-.bv-head { display: flex; align-items: center; gap: 12px; }
+/* The newest build is the one people come for, so it is large and open; earlier builds are a one-line log. */
+.bv-latest { flex: none; display: flex; flex-direction: column; gap: 18px; padding: 22px 24px; border-radius: calc(var(--r) + 4px); background: var(--bg); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: var(--shadow); }
+.bv-latest-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.bv-latest-title { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.bv-latest-title h3 { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.1; letter-spacing: -.01em; }
+.bv-kicker { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; background: var(--accent-bg); color: var(--accent-text); }
+.bv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.bv-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--hair); }
+.bv-stat b { font-size: 26px; font-weight: 600; line-height: 1.1; }
+.bv-stat span { font-size: 12px; color: var(--sub); }
+.bv-stat.new b { color: var(--accent-text); }
+.bv-stat.gone b { color: var(--err); }
+.bv-stat.zero b { color: var(--mute); font-weight: 400; }
+.bv-scopes { display: flex; flex-direction: column; gap: 7px; }
+.bv-scope { display: grid; grid-template-columns: minmax(80px, 180px) minmax(60px, 1fr) minmax(110px, auto); gap: 12px; align-items: center; }
+.bv-scope-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bv-bar { display: flex; gap: 2px; height: 8px; border-radius: 99px; background: var(--hair); overflow: hidden; }
+.bv-bar i { display: block; height: 100%; min-width: 0; background: color-mix(in srgb, var(--sub) 55%, transparent); }
+.bv-bar i.new { background: var(--accent); }
+.bv-notes-box { display: flex; flex-direction: column; gap: 8px; }
+.bv-notes-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.bv-read { padding: 14px 16px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--hair); line-height: 1.7; }
+.bv-read strong { display: block; font-size: 15px; }
+.bv-read p { margin: 6px 0 0; white-space: pre-wrap; color: var(--sub); }
+.bv-sec { margin: 8px 0 8px 4px; font-size: 13px; font-weight: 600; color: var(--sub); }
+.bv-row { flex-direction: column; align-items: stretch; gap: 0; padding: 0; }
+.bv-row-head { display: grid; grid-template-columns: 76px 150px minmax(0, 1fr) 16px; gap: 14px; align-items: center; width: 100%; padding: 12px 16px; border: 0; background: transparent; color: var(--text); text-align: left; }
+.bv-row-head:hover { background: var(--panel); }
+.bv-row-num { font-weight: 600; }
+.bv-row-sum { color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bv-chev { color: var(--mute); transition: transform .2s; }
+.bv-row.open .bv-chev { transform: rotate(180deg); }
+.bv-row-body { display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 18px; }
 .bv-notes { height: auto; min-height: 96px; resize: vertical; padding: 8px 10px; line-height: 1.6; }
 .bv-more summary { cursor: pointer; color: var(--sub); }
 .bv-details { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
