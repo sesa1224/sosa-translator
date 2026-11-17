@@ -53,6 +53,8 @@ export interface AppState {
   attachedId: string | null;
   chat: ChatState;
   claudePath: string | null;
+  /** The window is maximized (the title bar's maximize button shows "restore"). */
+  windowMaximized: boolean;
   lastSaved: Date | null;
   build: BuildState;
   /** Bumped when something asks to show the game font picker (it scrolls into view). */
@@ -105,7 +107,7 @@ function initial(): AppState {
     ready: false, settings: null, projects: [], snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null,
     query: { status: 'all' }, view: 'text', rightTab: 'item', attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
-    claudePath: null, lastSaved: null, build: { kind: 'idle' },
+    claudePath: null, windowMaximized: false, lastSaved: null, build: { kind: 'idle' },
     fontPickerRequest: 0,
     textMode: 'table',
     decisionGroups: [], decisionFocus: null,
@@ -247,12 +249,14 @@ async function start(a: Api): Promise<void> {
     a.on('job:progress', reloadBuildsAfterNotes),
     a.on('project:reloaded', onReloaded),
     a.on('history:changed', (list) => set({ history: list })),
+    a.on('window:maximized', (m) => set({ windowMaximized: m })),
   ];
-  const [settings, projects, snap, claudePath] = await Promise.all([
+  const [settings, projects, snap, claudePath, windowMaximized] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
+    a.windowControls.isMaximized().catch(() => false),
   ]);
   applyTheme(settings);
-  set({ settings, projects, claudePath });
+  set({ settings, projects, claudePath, windowMaximized });
   adoptSnapshot(snap);
   if (snap) await loadGlossary();
   const job = snap ? await a.job.current().catch(() => null) : null;
@@ -376,6 +380,9 @@ const actions = {
     set({ build: { kind: 'idle' } });
   },
   showInFolder: (file: string): Promise<void> => need().app.showItemInFolder(file),
+  minimizeWindow: (): Promise<void> => need().windowControls.minimize(),
+  toggleMaximizeWindow: (): Promise<void> => need().windowControls.toggleMaximize(),
+  closeWindow: (): Promise<void> => need().windowControls.close(),
 
   async sendChat(text: string, images: ChatImage[]): Promise<void> {
     const attached = state.attachedId;

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { beforeEach, expect, test } from 'vitest';
 import { App } from '../../src/renderer/App';
@@ -47,4 +47,27 @@ test('빌드 실패는 오류 글자', async () => {
   api.project.build = async () => { throw new Error('바뀐 파일이 없습니다'); };
   await openFake(); await user.click(screen.getByRole('button', { name: '패치 빌드' }));
   expect(await screen.findByText('바뀐 파일이 없습니다')).toBeVisible();
+});
+
+test('타이틀바의 창 단추', async () => {
+  await openFake();
+  const bar = screen.getByRole('banner');
+  await user.click(within(bar).getByRole('button', { name: '창 최소화' }));
+  await user.click(within(bar).getByRole('button', { name: '창 최대화' }));
+  await user.click(within(bar).getByRole('button', { name: '창 닫기' }));
+  expect(api.calls).toEqual(expect.arrayContaining([['windowControls.minimize'], ['windowControls.toggleMaximize'], ['windowControls.close']]));
+  // The main process reports the new state; the button's picture and name follow it.
+  act(() => { api.emit('window:maximized', true); });
+  expect(within(bar).getByRole('button', { name: '창 이전 크기로' })).toBeVisible();
+  act(() => { api.emit('window:maximized', false); });
+  expect(within(bar).getByRole('button', { name: '창 최대화' })).toBeVisible();
+  // The title bar keeps the progress text and the four actions.
+  expect(within(bar).getByText('1 / 8줄 · 13%')).toBeVisible();
+  for (const name of ['프로젝트 닫기', '새 버전 가져오기', '게임 실행', '패치 빌드']) expect(within(bar).getByRole('button', { name })).toBeVisible();
+});
+test('프로젝트 고르기 화면에도 창 단추', async () => {
+  render(<App />); await screen.findByRole('heading', { name: '프로젝트' });
+  await user.click(screen.getByRole('button', { name: '창 닫기' }));
+  expect(api.calls).toContainEqual(['windowControls.close']);
+  expect(screen.getByRole('button', { name: '창 최소화' })).toBeVisible();
 });

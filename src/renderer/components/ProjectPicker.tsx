@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import type { GameDirCheck, PackedGameInfo } from '../../shared/api';
 import { useApp } from '../state';
+import { WindowControls } from './WindowControls';
 
 function hasFiles(e: DragEvent): boolean {
   return Array.from(e.dataTransfer?.types ?? []).includes('Files');
@@ -87,6 +88,11 @@ export function ProjectPicker() {
   return (
     <div className={`picker-page${over ? ' drop-on' : ''}`} onDragOver={onDragOver} onDragEnter={onDragOver}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setOver(false); }} onDrop={onDrop} data-testid="picker">
+      <div className="picker-titlebar">
+        <span className="small mute">MV/MZ 번역 작업실</span>
+        <div className="grow" />
+        <WindowControls />
+      </div>
       {over && <div className="drop-hint" aria-hidden="true">여기에 게임 폴더를 놓으세요</div>}
       <div className="picker">
       <div className="picker-head">

@@ -353,3 +353,46 @@ test('게임 업데이트: 번역과 수정 → 빌드 → 새 버전 가져오�
   expect(JSON.parse(await readFile(path.join(game9, 'data/Map001.json'), 'utf8')).events[1].pages[0].list).toHaveLength(14);
   await app.close();
 });
+
+test('틀 없는 창: 창 단추, 최대화해도 화면 안, 기본 단축키', async () => {
+  const app = await launch({ MVMZ_PICK_DIR: game });
+  const w = await app.firstWindow();
+  await expect(w.getByRole('heading', { name: '프로젝트' })).toBeVisible();
+  const state = () => app.evaluate(({ BrowserWindow, screen }) => {
+    const win = BrowserWindow.getAllWindows().find((x) => x.isVisible())!;
+    const b = win.getContentBounds();
+    return { maximized: win.isMaximized(), resizable: win.isResizable(), maximizable: win.isMaximizable(), bounds: b, work: screen.getDisplayMatching(b).workArea };
+  });
+  const before = await state();
+  expect(before).toMatchObject({ maximized: false, resizable: true, maximizable: true });
+
+  await w.getByRole('button', { name: '창 최대화' }).click();
+  await expect(w.getByRole('button', { name: '창 이전 크기로' })).toBeVisible();
+  const max = await state();
+  expect(max.maximized).toBe(true);
+  // The content must stay inside the screen's work area (a frameless window can spill past the edges).
+  expect(max.bounds.x).toBeGreaterThanOrEqual(max.work.x);
+  expect(max.bounds.y).toBeGreaterThanOrEqual(max.work.y);
+  expect(max.bounds.x + max.bounds.width).toBeLessThanOrEqual(max.work.x + max.work.width);
+  expect(max.bounds.y + max.bounds.height).toBeLessThanOrEqual(max.work.y + max.work.height);
+  const inner = await w.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  expect(inner.h).toBeLessThanOrEqual(max.work.height);
+  expect(await w.getByRole('button', { name: '창 닫기' }).isVisible()).toBe(true);
+  await w.getByRole('button', { name: '창 이전 크기로' }).click();
+  await expect(w.getByRole('button', { name: '창 최대화' })).toBeVisible();
+  expect((await state()).maximized).toBe(false);
+
+  // Without a menu bar, the editing shortcuts must still work in text fields.
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click();
+  const name = w.getByLabel('프로젝트 이름');
+  await name.fill('');
+  await name.pressSequentially('abc');
+  await name.press('Control+A'); await name.press('Control+C');
+  await name.press('End'); await name.press('Control+V');
+  expect(await name.inputValue()).toBe('abcabc');
+  await name.press('Control+Z');
+  expect(await name.inputValue()).toBe('abc');
+  await name.press('Control+A'); await name.press('Control+X');
+  expect(await name.inputValue()).toBe('');
+  await app.close();
+});

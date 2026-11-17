@@ -269,7 +269,7 @@ export function GameRunButton() {
           <button type="button" className="btn small-btn" onClick={() => void eventActions.stopGame()}>끝내기</button>
         </span>
       )}
-      {app.gameError && <span className="err-text small" role="alert">{app.gameError}</span>}
+      {app.gameError && <span className="err-text small" role="alert" title={app.gameError}>{app.gameError}</span>}
     </div>
   );
 }

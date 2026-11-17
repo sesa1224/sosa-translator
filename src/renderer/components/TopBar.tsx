@@ -2,6 +2,7 @@ import { num, pct } from '../format';
 import { updateActions, useApp } from '../state';
 import { GameRunButton } from './PatchView';
 import { TitleField } from './TitleField';
+import { WindowControls } from './WindowControls';
 
 export function TopBar() {
   const { snapshot, build } = useApp();
@@ -11,27 +12,27 @@ export function TopBar() {
   const good = (stats.translated ?? 0) + stats.needsReview + stats.approved;
   const p = pct(done, stats.total);
   return (
+    // The whole bar drags the window (and double-click maximizes); buttons and inputs opt out in theme.css.
     <header className="topbar">
+      <div className="logo" aria-hidden="true">譯</div>
       <div className="brand">
-        <div className="logo" aria-hidden="true">譯</div>
-        <div className="brand-text">
-          <span className="brand-title">{snapshot.gameTitle ?? meta.name}</span>
-          <TitleField />
-          <span className="mono sub small">{meta.engine} · {meta.current} · 일본어 → 한국어 · {meta.name}</span>
-        </div>
+        <span className="brand-title">{snapshot.gameTitle ?? meta.name}</span>
+        <TitleField />
+        <span className="mono mute small nowrap" title={`${meta.engine} · ${meta.current} · 일본어 → 한국어 · ${meta.name}`}>{`${meta.engine} · ${meta.current}`}</span>
       </div>
-      <div className="progress">
-        <span className="mono sub small nowrap">{`${num(done)} / ${num(stats.total)}줄 · ${p}%`}</span>
-        <div className="bar" aria-hidden="true">
-          <div style={{ width: `${(good / Math.max(1, stats.total)) * 100}%`, background: 'var(--accent)' }} />
-          <div style={{ width: `${(stats.error / Math.max(1, stats.total)) * 100}%`, background: 'var(--warn)' }} />
-        </div>
-      </div>
+      {/* Room for the command search in the middle of the bar. */}
+      <div className="grow" />
+      <span className="mono sub small nowrap">{`${num(done)} / ${num(stats.total)}줄 · ${p}%`}</span>
       <div className="top-actions">
         <button type="button" className="btn" onClick={() => void useApp.closeProject()}>프로젝트 닫기</button>
         <button type="button" className="btn" onClick={() => updateActions.open()}>새 버전 가져오기</button>
         <GameRunButton />
         <button type="button" className="btn primary" disabled={build.kind === 'running'} onClick={() => void useApp.build()}>패치 빌드</button>
+      </div>
+      <WindowControls />
+      <div className="tb-progress" aria-hidden="true">
+        <i style={{ width: `${(good / Math.max(1, stats.total)) * 100}%`, background: 'var(--accent)' }} />
+        <i style={{ width: `${(stats.error / Math.max(1, stats.total)) * 100}%`, background: 'var(--warn)' }} />
       </div>
     </header>
   );

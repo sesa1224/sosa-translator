@@ -44,3 +44,13 @@ test('프로젝트를 열고 그림까지 본 뒤 창을 닫으면 앱이 완전
   if (!done) proc.kill();
   expect(done).toBe(true);
 });
+
+test('타이틀바의 창 닫기 단추로도 앱이 완전히 꺼진다', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MVMZ_USER_DATA: userData } as Record<string, string> });
+  const proc = app.process();
+  const w = await app.firstWindow();
+  await w.getByRole('button', { name: '창 닫기' }).click();
+  const done = await exited(proc, 15000);
+  if (!done) proc.kill();
+  expect(done).toBe(true);
+});
