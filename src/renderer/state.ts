@@ -3,7 +3,7 @@ import { filterRows } from '../shared/rows';
 import { motionClock, ROW_FLASH_MS, type RowMotion } from './motion';
 import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
-  JobProgress, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
+  JobProgress, LineDraft, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type {
   ActionDetail, ActionSummary, BuildRecord, CancelResult, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
@@ -109,6 +109,10 @@ export interface AttachedEvent { file: string; listPath: PathSeg[]; label: strin
 export interface EventFocus { file: string; listPath: PathSeg[]; line: number | null; seq: number }
 
 const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+
+function addUsage(a: ChatUsage, b: ChatUsage): ChatUsage {
+  return { input: a.input + b.input, output: a.output + b.output, cacheRead: a.cacheRead + b.cacheRead, cacheCreate: a.cacheCreate + b.cacheCreate };
+}
 
 function initial(): AppState {
   return {
@@ -247,10 +251,7 @@ export function reduceChat(c: ChatState, ev: ChatEvent): ChatState {
     case 'tool-end':
       return { ...c, messages: msgs.map((m) => (m.kind === 'tool' && m.id === ev.id ? { ...m, done: true, isError: ev.isError } : m)) };
     case 'turn-end': {
-      const usage = {
-        input: c.usage.input + ev.usage.input, output: c.usage.output + ev.usage.output,
-        cacheRead: c.usage.cacheRead + ev.usage.cacheRead, cacheCreate: c.usage.cacheCreate + ev.usage.cacheCreate,
-      };
+      const usage = addUsage(c.usage, ev.usage);
       const messages = finalizeStreaming(msgs);
       return { ...c, busy: false, usage, messages: ev.ok ? messages : [...messages, { kind: 'error', text: ev.error ?? '오류가 났습니다' }] };
     }
@@ -416,6 +417,12 @@ const actions = {
     set((s) => ({ rowMotion: withRowMotion(s.rowMotion, [[id, { flash: true, pop: true }]]) }));
   },
   clearTranslation: (id: string): Promise<void> => need().unit.clear(id),
+  /** One line translated by Claude on request (nothing is saved). What it cost goes on the status bar's usage. */
+  async claudeDraft(id: string): Promise<LineDraft> {
+    const d = await need().unit.claudeDraft(id);
+    set((s) => ({ chat: { ...s.chat, usage: addUsage(s.chat.usage, d.usage) } }));
+    return d;
+  },
   undo: (): Promise<string[]> => need().project.undo(),
 
   async build(): Promise<void> {

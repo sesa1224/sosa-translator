@@ -597,6 +597,8 @@ select.input { padding: 0 12px; }
 .diff-add { background: var(--accent-bg); color: var(--accent-text); text-decoration: none; }
 .tm { padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--hair); display: flex; flex-direction: column; gap: 3px; }
 .tm-top { display: flex; gap: 8px; align-items: center; }
+.tm-claude { border-color: color-mix(in srgb, var(--accent) 45%, var(--hair)); }
+.tm-claude .skel { width: 85%; margin: 4px 0; }
 .pct { font: 500 11px var(--mono); padding: 0 6px; border-radius: 99px; background: var(--accent-bg); color: var(--accent-text); }
 .cli-guide { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; background: var(--warn-bg); }
 .cli-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
@@ -652,6 +654,9 @@ select.input { padding: 0 12px; }
 .st.pop { animation: pop .45s cubic-bezier(.34, 1.56, .64, 1); }
 .tr.busy, .tr.busy:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .skel { display: inline-block; width: 70%; height: 10px; border-radius: 5px; vertical-align: middle; background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%); background-size: 200% 100%; animation: sk 1.2s linear infinite; }
+
+/* A Claude draft that just came in rises into the list. */
+.tm-claude { animation: fadein .22s ease-out; }
 
 /* Item tab: a draft filled from elsewhere flashes; the checks shake when an error appears or approving fails. */
 .flash { animation: flash .7s ease-out; }

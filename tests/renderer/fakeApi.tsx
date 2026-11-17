@@ -11,7 +11,7 @@ import { computeScopes, computeStats } from '../../src/shared/rows';
 import type { ActionLine, ActionSummary, CancelResult, DecisionGroup, ImportPlan } from '../../src/shared/api';
 import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } from '../../src/shared/api';
 import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
-import type { SimilarTranslation } from '../../src/shared/api';
+import type { LineDraft, SimilarTranslation } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS }, reviewSkipPassed: true, motion: true };
@@ -61,6 +61,8 @@ export type FakeApi = Api & {
   historyLines: Record<string, ActionLine[]>;
   /** What similar.find answers, per line id (none when missing). */
   similarValue: Record<string, SimilarTranslation[]>;
+  /** What unit.claudeDraft answers (a function so a test can hold the answer back or throw). */
+  claudeDraft: (id: string) => LineDraft | Promise<LineDraft>;
 };
 
 export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
@@ -95,6 +97,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     historyResult: { restored: 0, skipped: 0 },
     historyLines: {},
     similarValue: {},
+    claudeDraft: () => ({ text: 'Claude가 옮긴 줄', usage: { input: 1200, output: 80, cacheRead: 300, cacheCreate: 0 } }),
     inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
@@ -126,6 +129,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       switchPastReview: rec('unit.switchPastReview', () => []),
       acceptReviews: rec('unit.acceptReviews', (ids: string[]) => ids.length),
       rejectReviews: rec('unit.rejectReviews', (ids: string[]) => ids.length),
+      claudeDraft: async (id: string) => { calls.push(['unit.claudeDraft', id]); return fake.claudeDraft(id); },
     },
     similar: {
       find: rec('similar.find', (id: string) => fake.similarValue[id] ?? []),

@@ -1,8 +1,10 @@
+import { SparklesIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
 import { changedWords } from '../../core/update/carry';
-import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row, type SimilarTranslation } from '../../shared/api';
+import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type LineDraft, type Row, type SimilarTranslation } from '../../shared/api';
+import { ICON } from '../icons';
 import { replay } from '../motion';
 import { jobActive, useApp } from '../state';
 import { hasGamePreview, ItemPreview } from './BigPreview';
@@ -245,25 +247,59 @@ function DecisionBox({ row }: { row: Row }) {
   );
 }
 
-// ---- earlier translations of similar sentences ----
+// ---- earlier translations of similar sentences, and a Claude draft on request ----
+
+type ClaudeDraftState = { state: 'idle' } | { state: 'loading' } | { state: 'done'; draft: LineDraft } | { state: 'failed'; message: string };
 
 /**
- * Translated sentences that read like this one, asked for each time a line is picked. Taking one only fills the
- * draft: the user still reads it against this line's source and saves it themselves.
+ * Translated sentences that read like this one, asked for each time a line is picked, and below them a Claude draft
+ * of this line. The draft costs tokens, so it is only asked for when the button is pressed, and it is kept only
+ * while this line stays picked. Taking either only fills the draft: the user still reads it and saves it themselves.
  */
 function SimilarBox({ row, onTake, disabled }: { row: Row; onTake: (target: string) => void; disabled: boolean }) {
+  const app = useApp();
   const [hits, setHits] = useState<SimilarTranslation[]>([]);
+  const [claude, setClaude] = useState<ClaudeDraftState>({ state: 'idle' });
+  const picked = useRef(row.id);
+  picked.current = row.id;
   useEffect(() => {
     let live = true;
     setHits([]);
+    setClaude({ state: 'idle' });
     window.api.similar.find(row.id).then((h) => { if (live) setHits(h); }, () => undefined);
     // A late answer for a line picked earlier must not show under the new one.
     return () => { live = false; };
   }, [row.id]);
-  if (hits.length === 0) return null;
+
+  // Lines waiting on a decision are not translated yet, by the job or here.
+  const canDraft = !row.needsDecision;
+  const confirmed = app.glossary?.confirmedAt != null;
+  const busy = jobActive(app);
+  const loading = claude.state === 'loading';
+  const ask = async () => {
+    const id = row.id;
+    setClaude({ state: 'loading' });
+    try {
+      const draft = await useApp.claudeDraft(id);
+      if (picked.current === id) setClaude({ state: 'done', draft });
+    } catch (e) {
+      if (picked.current === id) setClaude({ state: 'failed', message: e instanceof Error ? e.message : String(e) });
+    }
+  };
+  const why = !confirmed ? '용어집을 먼저 확정하세요' : busy ? '다른 작업이 진행 중이에요' : null;
+  const listed = hits.length > 0 || claude.state !== 'idle';
+  if (!listed && !canDraft) return null;
   return (
-    <section className="field" aria-label="비슷한 번역">
-      <span className="label">비슷한 번역 <span className="mute">전에 번역한 비슷한 문장</span></span>
+    <div className="field" role={listed ? 'region' : undefined} aria-label={listed ? '비슷한 번역' : undefined}>
+      <div className="row-between">
+        <span className="label">비슷한 번역 <span className="mute">{hits.length > 0 ? '전에 번역한 비슷한 문장' : '전에 번역한 비슷한 문장 없음'}</span></span>
+        {canDraft && (
+          <button type="button" className="btn ghost small-btn" disabled={disabled || loading || why !== null}
+            title={why ?? '이 줄만 Claude에게 번역시켜 봐요. 토큰을 쓰고, 저장하지 않아요.'} onClick={() => void ask()}>
+            <SparklesIcon {...ICON} />Claude 초안 받기
+          </button>
+        )}
+      </div>
       {hits.map((h) => (
         <div key={h.id} className="tm">
           <div className="tm-top">
@@ -276,7 +312,28 @@ function SimilarBox({ row, onTake, disabled }: { row: Row; onTake: (target: stri
           <span className="small pre">{h.target}</span>
         </div>
       ))}
-    </section>
+      {claude.state === 'loading' && (
+        <div className="tm tm-claude">
+          <div className="tm-top"><span className="pct">Claude 초안</span><span className="sub small" role="status">받는 중…</span></div>
+          <span className="skel" aria-hidden="true" />
+        </div>
+      )}
+      {claude.state === 'done' && (
+        <div className="tm tm-claude">
+          <div className="tm-top">
+            <span className="pct">Claude 초안</span>
+            <span className="grow" />
+            {claude.draft.text !== null && (
+              <button type="button" className="btn ghost small-btn" disabled={disabled} onClick={() => onTake(claude.draft.text!)}>가져오기</button>
+            )}
+          </div>
+          {claude.draft.text !== null
+            ? <span className="small pre">{claude.draft.text}</span>
+            : <span className="warn-text small">{`초안을 받지 못했어요 · ${claude.draft.reason ?? '이유 없음'}`}</span>}
+        </div>
+      )}
+      {claude.state === 'failed' && <span className="err-text small" role="alert">{claude.message}</span>}
+    </div>
   );
 }
 
