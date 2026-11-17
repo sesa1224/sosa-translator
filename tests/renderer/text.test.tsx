@@ -97,6 +97,34 @@ test('거르기 단추는 상태, 살펴볼 것, 그 밖으로 묶이고 색과 
   expect(screen.getByRole('button', { name: '오류 3' })).toHaveClass('on');
   expect(screen.getByLabelText('문장 검색')).toHaveAttribute('placeholder', '원문이나 번역에서 찾기');
 });
+test('그 밖 묶음은 좁은 창에서 더 보기 하나로 접히고, 그 안의 거르기가 켜져 있으면 접지 않는다', async () => {
+  const ext = (id: string): Row => ({ ...manyRows(1)[0], id, external: true, status: 'translated', target: 'z' });
+  await openFake({ rows: [...manyRows(3), ext('e1'), { ...ext('s1'), external: false, decision: 'skip' }] });
+  const other = screen.getByRole('group', { name: '그 밖' });
+  // Folded: one button standing for the group's buttons (the stylesheet shows it only when the screen is narrow).
+  const more = screen.getByRole('button', { name: '더 보기 2' });
+  expect(other).toContainElement(more);
+  expect(more).toHaveAttribute('aria-expanded', 'false');
+  expect(other).toHaveClass('folded');
+  await user.click(more);
+  expect(screen.getByRole('button', { name: '접기' })).toHaveAttribute('aria-expanded', 'true');
+  expect(other).not.toHaveClass('folded');
+  await user.click(screen.getByRole('button', { name: '접기' }));
+  expect(other).toHaveClass('folded');
+  // A filter in use inside the group keeps it open, with no fold button to hide it.
+  await user.click(screen.getByRole('button', { name: '외부 번역 1' }));
+  expect(screen.getByRole('group', { name: '그 밖' })).not.toHaveClass('folded');
+  expect(screen.queryByRole('button', { name: /^더 보기/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: '접기' })).toBeNull();
+});
+test('거르기 묶음의 머리글은 단추 줄과 같은 줄에 붙일 수 있게 단추 줄 앞에 있다', async () => {
+  await openFake();
+  for (const name of ['상태', '살펴볼 것']) {
+    const g = screen.getByRole('group', { name });
+    expect(g.firstElementChild).toHaveClass('fg-head');
+    expect(g.firstElementChild!.nextElementSibling).toHaveClass('fg-chips');
+  }
+});
 test('표 오른쪽 띠에 오류와 검수 필요 줄의 위치', async () => {
   const rows = manyRows(400).map((r, i) => (i === 0 ? { ...r, status: 'error' as const, target: 'x' } : i === 399 ? { ...r, status: 'needs-review' as const, target: 'y' } : r));
   await openFake({ rows });

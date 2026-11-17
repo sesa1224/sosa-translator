@@ -348,6 +348,20 @@ select.input { padding: 0 12px; }
 .text-view .fg-other .fchip { height: 26px; }
 .text-view .fgroup { gap: 3px; }
 .text-view .fg-head { line-height: 12px; }
+/* "그 밖" folds into "더 보기 n" only on a narrow screen; on a wide one every button shows and the fold button hides. */
+.text-view { container: textview / inline-size; }
+.filter-groups .fchip.fg-more { display: none; border-color: var(--line); }
+@container textview (max-width: 820px) {
+  /* Narrow: the group heading goes small in front of its buttons instead of taking a line over them, and the
+     progress bar stays under the buttons. */
+  .text-view .fgroup { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 7px; row-gap: 3px; align-items: center; }
+  .text-view .fg-head { grid-column: 1; grid-row: 1; padding-left: 2px; font-size: 11px; line-height: 28px; }
+  .text-view .fg-chips { grid-column: 2; grid-row: 1; }
+  .text-view .fg-bar { grid-column: 2; grid-row: 2; margin-top: 0; }
+  .text-view .filter-groups { gap: 6px 18px; align-items: flex-start; }
+  .text-view .filter-groups .fchip.fg-more { display: inline-flex; }
+  .text-view .fg-other.folded .fchip:not(.fg-more) { display: none; }
+}
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pill { height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--line); background: transparent; color: var(--sub); font-size: 13px; }
 .pill.on { border-color: var(--accent); background: var(--accent-bg); color: var(--accent-text); }

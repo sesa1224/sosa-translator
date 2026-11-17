@@ -169,6 +169,7 @@ function FilterBar({ extra }: { extra?: ReactNode }) {
   const { snapshot, query } = useApp();
   const { rowsById } = useApp();
   const skipped = useMemo(() => Object.values(rowsById).filter((r) => r.decision === 'skip').length, [rowsById]);
+  const [moreOpen, setMoreOpen] = useState(false);
   if (!snapshot) return null;
   const current = query.status ?? 'all';
   const groups = filterGroups(snapshot.stats, skipped, current);
@@ -176,10 +177,20 @@ function FilterBar({ extra }: { extra?: ReactNode }) {
   return (
     <>
       <div className="filters filter-groups">
-        {groups.map((g) => (
-          <div key={g.id} className={`fgroup fg-${g.id}`} role="group" aria-labelledby={`fg-head-${g.id}`}>
+        {groups.map((g) => {
+          // "그 밖" folds into one button, but only the stylesheet decides when (a narrow screen); a filter in use
+          // inside it keeps it open, so the pressed button never hides.
+          const pinned = g.id === 'other' && g.chips.some((c) => c.key === current);
+          const folded = g.id === 'other' && !pinned && !moreOpen;
+          return (
+          <div key={g.id} className={`fgroup fg-${g.id}${folded ? ' folded' : ''}`} role="group" aria-labelledby={`fg-head-${g.id}`}>
             <span id={`fg-head-${g.id}`} className="fg-head">{g.title}</span>
             <div className="fg-chips">
+              {g.id === 'other' && !pinned && (
+                <button type="button" className="pill fchip tone-plain fg-more" aria-expanded={!folded} onClick={() => setMoreOpen(!moreOpen)}>
+                  {folded ? <><span className="fc-label">더 보기</span>{' '}<span className="fc-num">{num(g.chips.length)}</span></> : <span className="fc-label">접기</span>}
+                </button>
+              )}
               {g.chips.map((c) => {
                 const on = current === c.key;
                 const cls = `pill fchip tone-${c.tone}${on ? ' on' : ''}${c.n === 0 ? ' zero' : g.id === 'attention' ? ' hot' : ''}`;
@@ -196,7 +207,8 @@ function FilterBar({ extra }: { extra?: ReactNode }) {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
         <span className="filter-extra">{extra}</span>
       </div>
       {REVIEW_STATUSES.has(current) && <ReviewKindChips status={current} />}
