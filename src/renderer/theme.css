@@ -603,6 +603,37 @@ select.input { padding: 0 12px; }
 .cli-guide { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; background: var(--warn-bg); }
 .cli-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 
+/* Notes in the lower right (the mockup's .toast): they rise in, stack upward, and slide out to the right.
+   A thin line along the bottom runs down over the three seconds the note stays. */
+.toasts { position: fixed; right: 14px; bottom: 38px; z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+.toast { padding: 9px 12px; border-radius: 10px; background: var(--card); color: var(--text); border: 1px solid var(--line); box-shadow: 0 14px 30px -14px #000; display: flex; gap: 9px; align-items: center; position: relative; overflow: hidden; font-size: 13px; max-width: 420px; }
+.toast svg { color: var(--accent); flex: none; }
+.toast::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--accent); transform-origin: left; }
+
+/* Command search (Ctrl+K): the button in the middle of the title bar and the list over a dimmed window. */
+.top-search-slot { flex: 1 1 0; min-width: 34px; display: flex; justify-content: center; container-type: inline-size; }
+.top-search { display: flex; align-items: center; gap: 8px; width: 290px; max-width: 100%; height: 26px; box-sizing: border-box; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--mute); font: inherit; font-size: 12.5px; cursor: pointer; overflow: hidden; white-space: nowrap; }
+.top-search:hover { border-color: var(--accent); color: var(--sub); }
+.top-search svg { flex: none; }
+.top-search-text { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+.kbd { flex: none; font: 500 10.5px var(--mono); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--mute); }
+/* Too little room: only the magnifier stays. */
+@container (max-width: 150px) {
+  .top-search { width: 30px; padding: 0; justify-content: center; }
+  .top-search-text, .top-search .kbd { display: none; }
+}
+.veil { position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, .5); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: flex-start; padding: 90px 16px 16px; }
+.pal { width: 480px; max-width: 100%; max-height: calc(100vh - 140px); display: flex; flex-direction: column; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 30px 70px -20px #000; overflow: hidden; }
+.pal-input { width: 100%; box-sizing: border-box; height: 46px; flex: none; padding: 0 16px; border: 0; border-bottom: 1px solid var(--hair); background: transparent; color: var(--text); font: inherit; font-size: 15px; outline: none; }
+.pal-list { margin: 0; padding: 6px 0; list-style: none; overflow-y: auto; }
+.pal-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; color: var(--sub); cursor: pointer; }
+.pal-item.on { background: var(--accent-bg); color: var(--accent-text); }
+.pal-item[aria-disabled="true"] { opacity: .5; cursor: default; }
+.pal-item .pal-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-item .pal-note { flex: none; font-size: 11.5px; color: var(--mute); }
+.pal-empty { padding: 12px 16px; color: var(--mute); }
+.pal-error { padding: 8px 16px; border-top: 1px solid var(--hair); }
+
 /* ---- theme touches beyond the tokens (still only on the frame and titles) ---- */
 :root[data-theme="murim"] .brand-title { font-size: 21px; font-weight: 400; }
 :root[data-theme="murim"] .page-title, :root[data-theme="murim"] .picker-head h1 { font-weight: 400; line-height: 1; }
@@ -680,6 +711,18 @@ select.input { padding: 0 12px; }
 .main > * { animation: fadein .22s ease-out; }
 .dialog-backdrop { animation: fd .18s ease-out; }
 .dialog-backdrop > * { animation: fadein .22s ease-out; }
+
+/* Notes rise in with a little overshoot and slide away; the line along the bottom runs down while one stays.
+   The command search fades the window and its list rises a little. */
+.toast { animation: tin .4s cubic-bezier(.34, 1.56, .64, 1); }
+.toast.out { animation: tout .25s ease-in forwards; }
+.toast::after { animation: shrink 3s linear forwards; }
+@keyframes tin { from { transform: translateY(18px) scale(.95); opacity: 0; } }
+@keyframes tout { to { transform: translateX(26px); opacity: 0; } }
+@keyframes shrink { to { transform: scaleX(0); } }
+.veil { animation: fd .18s ease-out; }
+.pal { animation: rise .28s cubic-bezier(.34, 1.4, .64, 1); }
+@keyframes rise { from { transform: translateY(-12px) scale(.96); opacity: 0; } }
 
 /* Theme moods, on the frame only: a layer under everything in the window, so the flat middle sheet covers it. */
 .shell, .picker-page { isolation: isolate; }

@@ -16,6 +16,7 @@ import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
 import { TextTable } from './components/TextTable';
+import { Toasts } from './components/Toasts';
 import { BuildBanner, TopBar } from './components/TopBar';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdateView } from './components/UpdateView';
@@ -78,6 +79,7 @@ function Workspace() {
       </div>
       <StatusBar />
       {updateOpen && <UpdateDialog />}
+      <Toasts />
     </div>
   );
 }

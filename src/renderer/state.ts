@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { filterRows } from '../shared/rows';
+import { num } from './format';
 import { motionClock, ROW_FLASH_MS, type RowMotion } from './motion';
 import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
@@ -101,7 +102,20 @@ export interface AppState {
   fontEmbed?: FontEmbedInfo | null;
   /** The action log, newest first (null until the log screen opens, then pushed on change). */
   history?: ActionSummary[] | null;
+  /** Short notes in the window's lower right (a job ended, an undo, an import or export); each leaves after TOAST_MS. */
+  toasts: Toast[];
+  /** The command search (Ctrl+K) is open. */
+  paletteOpen: boolean;
+  /** The "번역 전체 검수" dialog is open (from the button above the table or the command search). */
+  reviewOpen: boolean;
 }
+
+/** One note; out is set shortly before it leaves so it can slide away. */
+export interface Toast { id: number; text: string; out: boolean }
+
+/** How long a note stays, and the part at its end in which it slides away (the mockup's .toast). */
+export const TOAST_MS = 3000;
+const TOAST_OUT_MS = 250;
 
 /** An event the chat message will carry. */
 export interface AttachedEvent { file: string; listPath: PathSeg[]; label: string }
@@ -124,10 +138,13 @@ function initial(): AppState {
     textMode: 'table',
     decisionGroups: [], decisionFocus: null,
     images: null, imageFile: null, attachedImage: null, builds: null,
+    toasts: [], paletteOpen: false, reviewOpen: false,
   };
 }
 
 let state: AppState = initial();
+let toastSeq = 0;
+let toastTimers: ReturnType<typeof setTimeout>[] = [];
 let api: Api | null = null;
 const listeners = new Set<() => void>();
 
@@ -262,6 +279,36 @@ export function reduceChat(c: ChatState, ev: ChatEvent): ChatState {
   }
 }
 
+/** Shows a short note. Errors are not shown this way: they stay where they happened until dealt with. */
+function notify(text: string): void {
+  const id = ++toastSeq;
+  set((s) => ({ toasts: [...s.toasts, { id, text, out: false }] }));
+  toastTimers.push(
+    setTimeout(() => set((s) => ({ toasts: s.toasts.map((t) => (t.id === id ? { ...t, out: true } : t)) })), TOAST_MS - TOAST_OUT_MS),
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), TOAST_MS),
+  );
+}
+
+/** What a job's end says, for the jobs whose end the user waits on (null = no note). */
+function jobDoneText(p: JobProgress): string | null {
+  if (p.kind === 'translate') return `${num(p.done)}줄을 번역했습니다`;
+  if (p.kind === 'review') return `${num(p.done)}줄을 검수했습니다`;
+  if (p.kind === 'draft') return '용어집 초안을 만들었습니다';
+  return null;
+}
+
+function onJobProgress(p: JobProgress): void {
+  // Only the moment a job ends: the same end reported again, or a finished job read at start, says nothing.
+  const ended = p.state === 'done' && state.job !== null && state.job.state !== 'done';
+  set({ job: p, jobDismissed: false });
+  const text = ended ? jobDoneText(p) : null;
+  if (text) notify(text);
+}
+
+function undoneText(restored: number, skipped = 0): string {
+  return `${num(restored)}줄을 되돌렸습니다${skipped > 0 ? ` · 건너뜀 ${num(skipped)}줄` : ''}`;
+}
+
 async function refreshDetail(id: string): Promise<void> {
   try {
     const d = await need().unit.get(id);
@@ -276,6 +323,8 @@ let unsubscribe: (() => void)[] = [];
 /** Connects the store to window.api and loads the first state. Resets everything; stop() disconnects. */
 async function start(a: Api): Promise<void> {
   for (const u of unsubscribe) u();
+  for (const t of toastTimers) clearTimeout(t);
+  toastTimers = [];
   api = a;
   state = initial();
   unsubscribe = [
@@ -283,7 +332,7 @@ async function start(a: Api): Promise<void> {
     a.on('chat:event', (ev) => set((s) => ({ chat: reduceChat(s.chat, ev) }))),
     a.on('settings:changed', (s) => { applyTheme(s); set({ settings: s }); }),
     a.on('glossary:changed', onGlossaryChanged),
-    a.on('job:progress', (p) => set({ job: p, jobDismissed: false })),
+    a.on('job:progress', onJobProgress),
     a.on('decisions:changed', (g) => set({ decisionGroups: g })),
     a.on('patches:changed', (l) => set({ patchList: l })),
     a.on('game:state', (g) => set({ game: g })),
@@ -308,6 +357,8 @@ async function start(a: Api): Promise<void> {
 function stop(): void {
   for (const u of unsubscribe) u();
   unsubscribe = [];
+  for (const t of toastTimers) clearTimeout(t);
+  toastTimers = [];
 }
 
 const actions = {
@@ -423,7 +474,12 @@ const actions = {
     set((s) => ({ chat: { ...s.chat, usage: addUsage(s.chat.usage, d.usage) } }));
     return d;
   },
-  undo: (): Promise<string[]> => need().project.undo(),
+  async undo(): Promise<string[]> {
+    const ids = await need().project.undo();
+    if (ids.length > 0) notify(undoneText(ids.length));
+    return ids;
+  },
+  notify,
 
   async build(): Promise<void> {
     set({ build: { kind: 'running' } });
@@ -461,7 +517,11 @@ const actions = {
     await need().chat.reset();
     set({ chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null } });
   },
-  undoChat: (): Promise<string[]> => need().chat.undo(),
+  async undoChat(): Promise<string[]> {
+    const ids = await need().chat.undo();
+    if (ids.length > 0) notify(undoneText(ids.length));
+    return ids;
+  },
   async setChatModel(id: string): Promise<void> {
     await need().chat.setModel(id);
   },
@@ -503,9 +563,17 @@ const actions = {
     set((s) => ({ view: 'text', idFilter: null, query: { ...s.query, status: 'all', decisionKey: key } }));
   },
   setGameTitle: (target: string): Promise<void> => need().project.setGameTitle(target),
-  exportRows: (ids: string[]): Promise<string | null> => need().exchange.export(ids),
+  async exportRows(ids: string[]): Promise<string | null> {
+    const file = await need().exchange.export(ids);
+    if (file) notify(`내보냈습니다 · ${file.split(/[\\/]/).pop()}`);
+    return file;
+  },
   planImport: (): Promise<ImportPlan | null> => need().exchange.planImport(),
-  applyImport: (overwrite: boolean): Promise<{ written: number }> => need().exchange.applyImport(overwrite),
+  async applyImport(overwrite: boolean): Promise<{ written: number }> {
+    const r = await need().exchange.applyImport(overwrite);
+    notify(`번역 ${num(r.written)}개를 가져왔습니다`);
+    return r;
+  },
 
   // ---- pictures and build history ----
   async loadImages(): Promise<void> {
@@ -558,6 +626,7 @@ const actions = {
   /** The list follows from the 'history:changed' push; it is read again here so the screen does not wait on it. */
   async cancelAction(id: string): Promise<CancelResult> {
     const r = await need().history.cancel(id);
+    notify(undoneText(r.restored, r.skipped));
     await actions.loadHistory();
     return r;
   },
@@ -565,6 +634,7 @@ const actions = {
   loadActionDetail: (id: string, offset: number): Promise<ActionDetail> => need().history.detail(id, offset, 100),
   async rollbackTo(id: string): Promise<CancelResult> {
     const r = await need().history.rollback(id);
+    notify(undoneText(r.restored, r.skipped));
     await actions.loadHistory();
     return r;
   },
