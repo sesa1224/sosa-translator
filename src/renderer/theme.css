@@ -798,6 +798,8 @@ select.input { padding: 0 12px; }
 .ev-kw { font-size: 11.5px; color: var(--mute); margin-right: 8px; }
 .ev-who { display: inline-block; font-size: 11.5px; line-height: 18px; padding: 0 8px; margin-right: 8px; border-radius: 99px; background: var(--card); color: var(--sub); border: 1px solid var(--line); }
 .ev-k-talk .ev-say { color: var(--text); }
+/* A code as the speaker (\N[1]) sits inside the small pill, so its chip loses the padding that would burst it. */
+.ev-who code.chip { padding: 0 3px; background: transparent; }
 .ev-k-flow .ev-text { color: var(--info); }
 .ev-k-plugin .ev-text { color: var(--warn); font-family: var(--mono); font-size: 12.5px; }
 .ev-k-misc .ev-text { color: var(--mute); }

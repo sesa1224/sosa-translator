@@ -78,6 +78,29 @@ test('명령은 종류별로 구별된다: 대사(화자 알약), 선택지와 �
   expect(rowOf(5).querySelector('.ev-body')).toHaveStyle({ '--ind': '1' });
 });
 
+test('대사와 선택지 안의 제어문자는 텍스트 표처럼 칩으로, 플러그인 커맨드는 글자 그대로', async () => {
+  eventsFake(api).read = () => ({ ...EV1, lines: [
+    line(0, '대사 [\\N[1]] あれ？\\C[2]月光草\\C[0] / こんな夜に', 101, { count: 3 }),
+    line(3, '선택지: \\C[4]いいよ\\C[0] / また今度', 102),
+    line(4, '└ "\\C[4]いいよ\\C[0]" 를 고르면', 402),
+    line(11, '스위치 45 [기록1 완료] = 켬', 121),
+    line(12, '플러그인 커맨드: Show \\C[2]', 356),
+  ] });
+  const user = await openFakeWith(api);
+  await user.click(screen.getByRole('button', { name: /^이벤트/ }));
+  await user.click(await screen.findByRole('button', { name: /맵1 \[MAP001\]/ }));
+  await user.click(await screen.findByRole('button', { name: /^이벤트 1 · 1페이지/ }));
+  await waitFor(() => expect(rowOf(0)).not.toBeNull());
+  const chips = (n: number) => [...rowOf(n).querySelectorAll('code.chip')].map((c) => c.textContent);
+  expect(chips(0)).toEqual(['\\N[1]', '\\C[2]', '\\C[0]']);
+  expect(rowOf(0).querySelector('.ev-who code.chip')).not.toBeNull();
+  expect(chips(3)).toEqual(['\\C[4]', '\\C[0]']);
+  expect(chips(4)).toEqual(['\\C[4]', '\\C[0]']);
+  expect(chips(12)).toEqual([]);
+  // The switch name is still a button that looks up where it is used.
+  expect(within(rowOf(11)).getByRole('button', { name: '스위치 45 [기록1 완료]' })).toBeInTheDocument();
+});
+
 test('수정이 걸린 이벤트: 끼워 넣은 줄에 + 와 강조, 지운 줄에 취소선', async () => {
   const p: Patch = {
     id: 'p1', title: '스위치 켜기', note: '', enabled: true, originalBug: true, createdBy: 'user', createdAt: '',

@@ -4,6 +4,7 @@ import { describeCommand } from '../../core/events/describe';
 import { emptyNames } from '../../core/events/nameFormat';
 import type { EventCommand, EventDetail, EventFileInfo, EventLine, EventListInfo, EventRef, ListOp, Patch, PathSeg, UsageTarget } from '../../shared/api';
 import { eventActions, useApp } from '../state';
+import { CodeText } from './CodeText';
 import { EmptyState, ScreenHead, Tile } from './ui';
 
 const NO_NAMES = emptyNames();
@@ -71,19 +72,24 @@ function overlay(lines: EventLine[], ops: ListOp[] | null): DisplayRow[] {
 const NAME_RE = /(스위치|변수|커먼이벤트) (\d+)( \[[^\]]*\])?/g;
 const TARGET_TYPE: Record<string, UsageTarget['type']> = { 스위치: 'switch', 변수: 'variable', 커먼이벤트: 'commonEvent' };
 
-/** A line's text with switch, variable and common event names as buttons that look up where they are used. */
-function LineText({ text, onName }: { text: string; onName(t: UsageTarget, title: string): void }) {
+/**
+ * A line's text with switch, variable and common event names as buttons that look up where they are used.
+ * With `codes`, control codes in the words are drawn as chips the way the text table draws them; only words the
+ * player reads get this, since a plugin command's backslashes are not codes.
+ */
+function LineText({ text, onName, codes = false }: { text: string; onName(t: UsageTarget, title: string): void; codes?: boolean }) {
   const parts: ReactNode[] = [];
   let last = 0;
+  const plain = (s: string, key: string) => parts.push(codes ? <CodeText key={key} text={s} /> : s);
   for (const m of text.matchAll(NAME_RE)) {
-    if (m.index! > last) parts.push(text.slice(last, m.index));
+    if (m.index! > last) plain(text.slice(last, m.index), `t${last}`);
     const title = m[0];
     parts.push(
       <button key={m.index} type="button" className="ev-name" onClick={() => onName({ type: TARGET_TYPE[m[1]], id: Number(m[2]) }, title)}>{title}</button>,
     );
     last = m.index! + m[0].length;
   }
-  if (last < text.length) parts.push(text.slice(last));
+  if (last < text.length) plain(text.slice(last), `t${last}`);
   return <>{parts}</>;
 }
 
@@ -91,6 +97,8 @@ function LineText({ text, onName }: { text: string; onName(t: UsageTarget, title
 const TALK = new Set([101, 401, 105, 405]);
 const FLOW = new Set([102, 402, 403, 404, 111, 411, 412, 112, 413, 113, 115, 117, 118, 119]);
 const PLUGIN = new Set([356, 357, 657]);
+/** Choice heads and branches: their words are what the player picks, so they may hold codes worth showing as chips. */
+const CHOICE = new Set([102, 402]);
 function lineKind(code: number): 'talk' | 'flow' | 'plugin' | 'misc' {
   if (TALK.has(code)) return 'talk';
   if (FLOW.has(code)) return 'flow';
@@ -100,13 +108,14 @@ function lineKind(code: number): 'talk' | 'flow' | 'plugin' | 'misc' {
 
 /** A line's words; dialogue has its speaker taken out into a small pill so the spoken words stand alone. */
 function LineBody({ text, code, onName }: { text: string; code: number; onName(t: UsageTarget, title: string): void }) {
-  const talk = lineKind(code) === 'talk' ? /^(대사|스크롤 글)(?: \[([^\]]+)\])? ([\s\S]*)$/.exec(text) : null;
-  if (!talk) return <span className="ev-text"><LineText text={text} onName={onName} /></span>;
+  // The speaker may itself be a code with brackets (\N[1]), so a bracketed code counts as one piece of the name.
+  const talk = lineKind(code) === 'talk' ? /^(대사|스크롤 글)(?: \[((?:\\[A-Za-z]+\[[^\]]*\]|[^\]])+)\])? ([\s\S]*)$/.exec(text) : null;
+  if (!talk) return <span className="ev-text"><LineText text={text} onName={onName} codes={CHOICE.has(code)} /></span>;
   return (
     <span className="ev-text">
       <span className="ev-kw">{talk[1]}</span>
-      {talk[2] && <span className="ev-who">{talk[2]}</span>}
-      <span className="ev-say"><LineText text={talk[3]} onName={onName} /></span>
+      {talk[2] && <span className="ev-who"><CodeText text={talk[2]} /></span>}
+      <span className="ev-say"><LineText text={talk[3]} onName={onName} codes /></span>
     </span>
   );
 }
