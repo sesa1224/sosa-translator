@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { NO_REVIEW_KIND_LABEL, REVIEW_KIND_LABEL, REVIEW_KINDS, type ReviewKind, type Row, type StatusFilter } from '../../shared/api';
 import { filterRows, scrollMarks } from '../../shared/rows';
 import { num, STATUS_LABEL } from '../format';
+import { motionClock, rowMotionStyle, type RowMotion } from '../motion';
 import { jobActive, orderedRows, shownRows, useApp } from '../state';
 import { StageSlot, useRevealRow } from './BigPreview';
 import { CodeText } from './CodeText';
@@ -235,6 +236,10 @@ export function TextTable() {
   };
 
   const scopeLabel = query.file ? snapshot?.scopes.find((s) => s.file === query.file)?.label : null;
+  // Lines a translate job has sent and waits on.
+  const job = app.job;
+  const pending = useMemo(() => new Set(job?.state === 'running' && job.kind === 'translate' ? job.pending ?? [] : []), [job]);
+  const pick = (id: string) => { void useApp.selectRow(id); scrollRef.current?.focus({ preventScroll: true }); };
 
   return (
     <div className="text-view">
@@ -274,27 +279,10 @@ export function TextTable() {
           <div className="tbody" ref={scrollRef} tabIndex={0} onKeyDown={onKey} role="rowgroup">
             {rows.length === 0 && <div className="empty sub">맞는 줄이 없어요</div>}
             <div style={{ height: v.getTotalSize(), position: 'relative' }}>
-              {v.getVirtualItems().map((item) => {
-                const r = rows[item.index];
-                const chip = statusChip(r);
-                const sel = r.id === selectedId;
-                return (
-                  <div key={item.key} data-index={item.index} ref={v.measureElement} role="row" aria-rowindex={item.index + 2}
-                    aria-selected={sel} className={`tr${sel ? ' sel' : ''}`}
-                    style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start}px)` }}
-                    onClick={() => { void useApp.selectRow(r.id); scrollRef.current?.focus({ preventScroll: true }); }}>
-                    <span role="cell" className="mono sub small">{r.location}</span>
-                    <span role="cell" className="small">{r.speaker ?? ''}</span>
-                    <span role="cell" className="src"><CodeText text={r.source} /></span>
-                    <span role="cell" className={r.target === null ? 'mute' : ''}>
-                      {decisionCell(r) !== null ? decisionCell(r) : <>
-                      {r.target === null ? (r.needsDecision ? '판단 대기' : '번역 전') : <CodeText text={r.target} />}
-                      </>}
-                    </span>
-                    <span role="cell"><span className={`st ${chip.cls}`}>{chip.label}</span></span>
-                  </div>
-                );
-              })}
+              {v.getVirtualItems().map((item) => (
+                <TableRow key={item.key} r={rows[item.index]} index={item.index} start={item.start} measure={v.measureElement}
+                  sel={rows[item.index].id === selectedId} busy={pending.has(rows[item.index].id)} motion={app.rowMotion[rows[item.index].id]} onPick={pick} />
+              ))}
             </div>
           </div>
           {/* Over the scrollbar: where the errors and lines waiting for review are. Shows only, no clicking. */}
@@ -304,6 +292,36 @@ export function TextTable() {
         </div>
       </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One table line. It never animates on scroll or selection: only a change marked in rowMotion (a translation that
+ * came in, an approval, a new status) plays, once, measured from the moment of the change. The time it mounted is
+ * kept so a line scrolled out and back in carries on (or stays still) instead of starting over.
+ */
+function TableRow({ r, index, start, measure, sel, busy, motion, onPick }: {
+  r: Row; index: number; start: number; measure: (el: Element | null) => void; sel: boolean; busy: boolean; motion: RowMotion | undefined; onPick: (id: string) => void;
+}) {
+  const [mountedAt] = useState(() => motionClock.now());
+  const chip = statusChip(r);
+  const m = rowMotionStyle(motion, mountedAt, motionClock.now());
+  const cls = `tr${sel ? ' sel' : ''}${busy ? ' busy' : ''}${m.flash ? ' rowflash' : ''}`;
+  return (
+    <div data-index={index} ref={measure} role="row" aria-rowindex={index + 2} aria-selected={sel} className={cls}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${start}px)`, animationDelay: m.flash ? m.delay : undefined }}
+      onClick={() => onPick(r.id)}>
+      <span role="cell" className="mono sub small">{r.location}</span>
+      <span role="cell" className="small">{r.speaker ?? ''}</span>
+      <span role="cell" className="src"><CodeText text={r.source} /></span>
+      <span role="cell" className={r.target === null && !busy ? 'mute' : ''}>
+        {busy ? <><span className="skel" aria-hidden="true" /><span className="sr-only">번역 중</span></>
+          : decisionCell(r) !== null ? decisionCell(r) : <>
+          {r.target === null ? (r.needsDecision ? '판단 대기' : '번역 전') : <CodeText text={r.target} />}
+          </>}
+      </span>
+      <span role="cell"><span className={`st ${chip.cls}${m.pop ? ' pop' : ''}`} style={m.pop ? { animationDelay: m.delay } : undefined}>{chip.label}</span></span>
     </div>
   );
 }

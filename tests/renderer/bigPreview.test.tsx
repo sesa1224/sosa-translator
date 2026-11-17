@@ -96,3 +96,21 @@ test('텍스트 화면이 아니거나 고른 줄에 미리보기가 없으면 �
   await act(async () => { await useApp.selectRow(row1.id); });
   expect(stage()).toBeNull();
 });
+
+test('무대는 연 순간에만 펼쳐지는 움직임을 탄다. 미리보기가 없는 줄을 거쳐 돌아오면 그냥 보인다', async () => {
+  const user = await openBig();
+  expect(stage()).toHaveClass('open');
+  await act(async () => { await useApp.selectRow(row1.id); });
+  expect(stage()).toBeNull();
+  const { motionClock } = await import('../../src/renderer/motion');
+  const real = motionClock.now;
+  motionClock.now = () => real() + 2000;
+  try {
+    await act(async () => { await useApp.selectRow(row2.id); });
+    expect(stage()).not.toBeNull();
+    expect(stage()).not.toHaveClass('open');
+  } finally {
+    motionClock.now = real;
+  }
+  void user;
+});

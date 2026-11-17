@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { filterRows } from '../shared/rows';
+import { motionClock, ROW_FLASH_MS, type RowMotion } from './motion';
 import type {
   Api, AppSettings, BuildResult, CharacterCard, GameDirCheck, DraftChoice, DraftMode, DraftPlan, ChatEvent, ChatImage, ChatUsage, ChooseResult, Glossary, Issue, ProjectChanged,
   JobProgress, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
@@ -53,6 +54,10 @@ export interface AppState {
   rightTab: 'item' | 'chat';
   /** The selected line's game preview is drawn large over the text table ("크게 보며 고치기"). */
   bigPreview: boolean;
+  /** When the stage was last opened (motionClock time): only a stage opened just now unfolds. */
+  bigPreviewOpenedAt?: number;
+  /** Table rows that just changed, for their one-off animation (kept a little longer than it plays). */
+  rowMotion: Record<string, RowMotion>;
   attachedId: string | null;
   chat: ChatState;
   claudePath: string | null;
@@ -108,7 +113,7 @@ const ZERO: ChatUsage = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
 function initial(): AppState {
   return {
     ready: false, settings: null, projects: [], snapshot: null, rowOrder: [], rowsById: {}, selectedId: null, detail: null,
-    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
+    query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, rowMotion: {}, attachedId: null, glossary: null, glossaryDirty: false, idFilter: null, job: null, jobDismissed: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
     claudePath: null, windowMaximized: false, lastSaved: null, build: { kind: 'idle' },
     fontPickerRequest: 0,
@@ -157,18 +162,44 @@ function adoptSnapshot(snap: Snapshot | null): void {
   for (const r of snap.rows) rowsById[r.id] = r;
   set({
     snapshot: { meta: snap.meta, gameTitle: snap.gameTitle, stats: snap.stats, scopes: snap.scopes },
-    rowOrder: snap.rows.map((r) => r.id), rowsById, selectedId: null, detail: null, attachedId: null,
+    rowOrder: snap.rows.map((r) => r.id), rowsById, selectedId: null, detail: null, attachedId: null, rowMotion: {},
     query: { status: 'all' }, view: 'text', rightTab: 'item', bigPreview: false, build: { kind: 'idle' }, idFilter: null, glossaryDirty: false,
     chat: { messages: [], busy: false, usage: { ...ZERO }, sessionModel: null },
   });
+}
+
+/** rowMotion with these rows marked as changed now, dropping marks whose animation is long over. */
+function withRowMotion(prev: Record<string, RowMotion>, marks: [string, Omit<RowMotion, 'at'>][]): Record<string, RowMotion> {
+  if (marks.length === 0) return prev;
+  const at = motionClock.now();
+  const next: Record<string, RowMotion> = {};
+  for (const [id, m] of Object.entries(prev)) if (at - m.at < ROW_FLASH_MS * 2) next[id] = m;
+  for (const [id, m] of marks) {
+    // The same change often arrives twice (an approval marks at once, then the main process reports it): while the
+    // first is still playing they merge, since a new start time would cut the running animation short.
+    const old = next[id];
+    next[id] = old && at - old.at < ROW_FLASH_MS ? { at: old.at, flash: old.flash || m.flash, pop: old.pop || m.pop } : { at, ...m };
+  }
+  return next;
 }
 
 function onProjectChanged(e: ProjectChanged): void {
   set((s) => {
     if (!s.snapshot) return {};
     const rowsById = { ...s.rowsById };
-    for (const r of e.rows) rowsById[r.id] = r;
-    return { rowsById, snapshot: { ...s.snapshot, stats: e.stats, scopes: e.scopes }, lastSaved: new Date() };
+    // A translation a job just wrote flashes its row once; a status that changed (any way) pops its pill.
+    // Only real changes are marked, so rows never animate because they scrolled back into view or got picked.
+    const working = jobActive(s);
+    const marks: [string, Omit<RowMotion, 'at'>][] = [];
+    for (const r of e.rows) {
+      const before = s.rowsById[r.id];
+      rowsById[r.id] = r;
+      if (!before) continue;
+      const flash = working && r.target !== null && r.target !== before.target;
+      const pop = r.status !== before.status || r.needsDecision !== before.needsDecision;
+      if (flash || pop) marks.push([r.id, { flash, pop }]);
+    }
+    return { rowsById, snapshot: { ...s.snapshot, stats: e.stats, scopes: e.scopes }, lastSaved: new Date(), rowMotion: withRowMotion(s.rowMotion, marks) };
   });
   const sel = state.selectedId;
   if (sel && e.rows.some((r) => r.id === sel)) void refreshDetail(sel);
@@ -364,7 +395,7 @@ const actions = {
   },
   /** Opens or closes the large preview; opening brings the item tab back, whose draft the stage edits. */
   setBigPreview(on: boolean): void {
-    set(on ? { bigPreview: true, rightTab: 'item' } : { bigPreview: false });
+    set(on ? { bigPreview: true, rightTab: 'item', bigPreviewOpenedAt: motionClock.now() } : { bigPreview: false });
   },
   async selectRow(id: string | null): Promise<void> {
     set({ selectedId: id, detail: null, ...(id ? { rightTab: 'item' as const, view: 'text' as const } : {}) });
@@ -379,6 +410,11 @@ const actions = {
 
   saveTranslation: (id: string, target: string): Promise<Issue[]> => need().unit.setTranslation(id, target),
   setStatus: (id: string, status: TranslationStatus): Promise<void> => need().unit.setStatus(id, status),
+  /** Approves a line; its table row flashes and its pill pops right away, before the change comes back. */
+  async approve(id: string): Promise<void> {
+    await need().unit.setStatus(id, 'approved');
+    set((s) => ({ rowMotion: withRowMotion(s.rowMotion, [[id, { flash: true, pop: true }]]) }));
+  },
   clearTranslation: (id: string): Promise<void> => need().unit.clear(id),
   undo: (): Promise<string[]> => need().project.undo(),
 

@@ -1,19 +1,46 @@
 import { BookOpenIcon, CircleHelpIcon, GitBranchIcon, HistoryIcon, ImageIcon, PackageIcon, PenLineIcon, RefreshCwIcon, SlidersHorizontalIcon, TextIcon } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { num, pct } from '../format';
 import { ICON } from '../icons';
 import { eventActions, updateActions, useApp } from '../state';
 import { PatchNavButton } from './PatchView';
 
+/**
+ * One highlight behind the picked menu item that slides to the next pick, instead of each item lighting up on its
+ * own. Placed after every render from where the picked item really is (items come and go, e.g. 업데이트 결과).
+ */
+function useNavPill() {
+  const navRef = useRef<HTMLElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const pill = pillRef.current;
+    if (!nav || !pill) return;
+    const on = nav.querySelector<HTMLElement>('.nav-btn.on');
+    pill.hidden = !on;
+    if (!on) return;
+    pill.style.height = `${on.offsetHeight}px`;
+    pill.style.transform = `translateY(${on.offsetTop}px)`;
+    if (!pill.dataset.placed) {
+      // The first place is taken without sliding there from the top: the slide is switched on only after it.
+      void pill.offsetWidth;
+      pill.dataset.placed = '1';
+    }
+  });
+  return { navRef, pillRef };
+}
+
 export function Sidebar() {
   const { snapshot, view, query, glossary } = useApp();
+  const { navRef, pillRef } = useNavPill();
   if (!snapshot) return null;
   const undecided = glossary ? glossary.terms.filter((t) => t.status === 'provisional').length : 0;
   // The picture list is read once per opened project (for the count below).
   const meta = snapshot?.meta;
   useEffect(() => { if (meta) void useApp.loadImages(); }, [meta]);
   return (
-    <nav className="sidebar" aria-label="작업 메뉴">
+    <nav className="sidebar" aria-label="작업 메뉴" ref={navRef}>
+      <span className="nav-pill" ref={pillRef} aria-hidden="true" />
       <span className="nav-head work-head">작업</span>
       <button type="button" className={`nav-btn${view === 'text' ? ' on' : ''}`} aria-current={view === 'text' ? 'page' : undefined}
         onClick={() => useApp.setView('text')}>

@@ -1,8 +1,9 @@
 import { ChevronLeftIcon, ChevronRightIcon, Minimize2Icon } from 'lucide-react';
-import { useEffect, useMemo, useSyncExternalStore, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Layout, Row, WindowMetrics } from '../../shared/api';
 import { ICON } from '../icons';
+import { motionClock } from '../motion';
 import { orderedRows, shownRows, useApp } from '../state';
 import { GamePreview, MessageWindow, MIMIC_NOTE, previewProblem, usePreviewLayout, windowDrawWidth, type PreviewLayout } from './GamePreview';
 
@@ -84,6 +85,8 @@ function BigStage({ row, preview, draft, onDraft, onKey, saving }: {
   row: Row; preview: PreviewLayout; draft: string; onDraft: (text: string) => void; onKey: (e: KeyboardEvent) => void; saving: boolean;
 }) {
   const app = useApp();
+  // Unfolds only when it was opened just now; coming back after picking a line without a window just shows it.
+  const [opening] = useState(() => motionClock.now() - (useApp.get().bigPreviewOpenedAt ?? -Infinity) < 500);
   const shown = useMemo(() => shownRows(orderedRows(app), app.query, app.idFilter), [app.rowOrder, app.rowsById, app.query, app.idFilter]);
   const at = shown.findIndex((r) => r.id === row.id);
   // Lines without a message window (choices, database names) would close the stage, so they are stepped over.
@@ -98,7 +101,7 @@ function BigStage({ row, preview, draft, onDraft, onKey, saving }: {
   const fit = state && layout ? fitLabel(layout, state.metrics) : null;
   const problem = previewProblem(preview);
   return (
-    <section className="stage" aria-label="크게 보며 고치기">
+    <section className={`stage${opening ? ' open' : ''}`} aria-label="크게 보며 고치기">
       <div className="stage-tools">
         {fit && <span className={`fit${fit.over ? ' over' : ''}`}>{fit.text}</span>}
         <span className="stage-where">{row.location}{row.speaker ? ` · ${row.speaker}` : ''}</span>

@@ -1,8 +1,9 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { controlCodes } from '../../core/text/controlCodes';
 import { keyLabel } from '../../core/decisions/keys';
 import { changedWords } from '../../core/update/carry';
 import { REVIEW_KIND_LABEL, type Issue, type KeepRule, type PastReview, type Row, type SimilarTranslation } from '../../shared/api';
+import { replay } from '../motion';
 import { jobActive, useApp } from '../state';
 import { hasGamePreview, ItemPreview } from './BigPreview';
 import { CodeText } from './CodeText';
@@ -31,13 +32,27 @@ export function ItemPanel() {
   const [conflict, setConflict] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const targetRef = useRef<HTMLTextAreaElement>(null);
+  const checksRef = useRef<HTMLDivElement>(null);
+  const issues = row && detail && detail.row.id === row.id ? detail.issues : [];
+  const hasError = !!row && (row.status === 'error' || issues.some((i) => i.severity === 'error'));
+  /** The line and whether it had an error, as last drawn: an error appearing on the same line shakes the checks. */
+  const seen = useRef<{ id: string | undefined; hasError: boolean }>({ id: undefined, hasError: false });
 
   useEffect(() => {
     setDraft(row?.target ?? '');
     setBase(row?.target ?? '');
     setConflict(null);
     setError(null);
+    // A flash or shake still on from the line before must not carry over to this one.
+    targetRef.current?.classList.remove('flash');
+    checksRef.current?.classList.remove('shake');
   }, [row?.id]);
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = { id: row?.id, hasError };
+    if (before.id === row?.id && !before.hasError && hasError) replay(checksRef.current, 'shake');
+  }, [row?.id, hasError]);
   useEffect(() => {
     const saved = row?.target ?? '';
     if (saved === base) return;
@@ -63,6 +78,20 @@ export function ItemPanel() {
     }
   };
   const save = () => run(() => useApp.saveTranslation(row.id, draft));
+  /** Fills the draft from elsewhere (an earlier translation, a similar one); the input flashes so the change is seen. */
+  const take = (text: string) => {
+    setDraft(text);
+    replay(targetRef.current, 'flash');
+    replay(document.getElementById('stage-target'), 'flash');
+  };
+  const approve = () => run(async () => {
+    try {
+      await useApp.approve(row.id);
+    } catch (e) {
+      replay(checksRef.current, 'shake');
+      throw e;
+    }
+  });
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
@@ -70,8 +99,6 @@ export function ItemPanel() {
     }
   };
 
-  const issues = detail && detail.row.id === row.id ? detail.issues : [];
-  const hasError = row.status === 'error' || issues.some((i) => i.severity === 'error');
   const codeCount = controlCodes(row.source).length;
   const approveBlock = row.target === null ? '번역이 있어야 승인할 수 있어요' : hasError ? '오류를 고쳐야 승인할 수 있어요' : null;
   const approved = row.status === 'approved';
@@ -95,7 +122,7 @@ export function ItemPanel() {
         <span className="label">원문</span>
         <div className="textbox src"><CodeText text={row.source} /></div>
       </div>
-      {row.previous && <PreviousBox row={row} onTake={(t) => setDraft(t)} disabled={saving} />}
+      {row.previous && <PreviousBox row={row} onTake={take} disabled={saving} />}
       {row.needsDecision && <DecisionBox row={row} />}
       {row.external && <span className="tag">외부에서 가져온 번역</span>}
       {row.status === 'declined' && (
@@ -124,15 +151,15 @@ export function ItemPanel() {
       )}
       <div className="field">
         <label htmlFor="item-target" className="label">번역</label>
-        <textarea id="item-target" className="textbox edit" rows={4} value={draft} disabled={saving}
+        <textarea id="item-target" ref={targetRef} className="textbox edit" rows={4} value={draft} disabled={saving}
           onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} />
         <div className="row-between">
           <span className="hint">Ctrl+Enter 로 저장</span>
           <button type="button" className="btn small-btn" disabled={saving || draft === (row.target ?? '')} onClick={() => void save()}>저장</button>
         </div>
       </div>
-      <SimilarBox row={row} onTake={(t) => setDraft(t)} disabled={saving} />
-      <div className="field">
+      <SimilarBox row={row} onTake={take} disabled={saving} />
+      <div className="field" role="group" aria-label="검사" ref={checksRef}>
         <span className="label">검사</span>
         {row.target === null && <span className="sub small">번역이 아직 없어요</span>}
         {row.target !== null && issues.length === 0 && (
@@ -161,7 +188,7 @@ export function ItemPanel() {
         {approved
           ? <button type="button" className="btn" disabled={saving} onClick={() => void run(() => useApp.setStatus(row.id, 'translated'))}>승인 취소</button>
           : <button type="button" className="btn primary" disabled={saving || approveBlock !== null}
-              onClick={() => void run(() => useApp.setStatus(row.id, 'approved'))}>승인</button>}
+              onClick={() => void approve()}>승인</button>}
       </div>
     </div>
   );

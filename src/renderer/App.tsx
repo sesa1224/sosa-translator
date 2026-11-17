@@ -30,7 +30,9 @@ function RightPanel() {
   return (
     <aside className="right" aria-label="항목과 채팅">
       <div className="right-head">
-        <div className="seg" role="tablist" aria-label="오른쪽 탭">
+        <div className="seg tabs" role="tablist" aria-label="오른쪽 탭">
+          {/* One background under the picked tab that slides across. */}
+          <span className="seg-pill" aria-hidden="true" style={{ transform: rightTab === 'chat' ? 'translateX(100%)' : 'none' }} />
           <button type="button" role="tab" id="tab-item" aria-selected={rightTab === 'item'} aria-controls="panel-right"
             className={rightTab === 'item' ? 'on' : ''} onClick={() => useApp.setRightTab('item')}>항목</button>
           <button type="button" role="tab" id="tab-chat" aria-selected={rightTab === 'chat'} aria-controls="panel-right"
