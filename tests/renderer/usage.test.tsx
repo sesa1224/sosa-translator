@@ -169,6 +169,7 @@ test('번역 지침: ## 제목으로 만든 차례를 누르면 편집칸이 그
   act(() => { useApp.setView('guide'); });
   await screen.findByRole('heading', { name: '번역 지침' });
   const box = () => screen.getByLabelText(/에 보내는 글$/) as HTMLTextAreaElement;
+  await user.click(screen.getByRole('button', { name: '통째로 고치기' }));
   await vi.waitFor(() => expect(box().value).toContain('## 기본 태도'));
   const toc = screen.getByRole('navigation', { name: '차례' });
   await user.click(within(toc).getByRole('button', { name: '기본 태도' }));

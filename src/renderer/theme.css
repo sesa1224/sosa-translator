@@ -580,6 +580,31 @@ select.input { padding: 0 12px; }
 .guide-toc .label { padding: 0 10px 6px; }
 .toc-item { border: 0; border-radius: 7px; background: transparent; color: var(--sub); text-align: left; padding: 6px 10px; font-size: 13px; line-height: 1.35; }
 .toc-item:hover { background: var(--card); color: var(--text); }
+.toc-item { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; }
+.toc-item .mono { font-size: 11px; flex: none; }
+.toc-item.quiet { color: var(--mute); }
+/* The guide cut at its headings: each block reads as a short list of rules, and only the block being changed is an edit box. */
+.g-blocks { display: flex; flex-direction: column; gap: 12px; }
+.g-block { border-radius: var(--r); border: 1px solid var(--hair); background: var(--panel); padding: 4px 18px 16px; scroll-margin-top: 12px; }
+.g-block.editing { border-color: var(--accent); }
+.g-block.quiet { background: transparent; border-style: dashed; }
+.g-head { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.g-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.g-block.quiet .g-head h3 { font-size: 13px; font-weight: 600; color: var(--sub); }
+.g-read { display: flex; flex-direction: column; gap: 6px; max-width: 78ch; line-height: 1.7; }
+.g-read p { margin: 0; }
+.g-gap { height: 6px; }
+.g-rule { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 4px; row-gap: 0; }
+.g-rule::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--mute); margin-top: .72em; }
+.g-rule > * { grid-column: 2; }
+.g-rule.sub-rule { margin-left: 22px; color: var(--sub); }
+.g-rule.sub-rule::before { width: 4px; height: 4px; background: transparent; border: 1px solid var(--mute); }
+.g-key { display: block; font-weight: 700; color: var(--text); }
+.g-code { font-family: var(--mono); font-size: 12.5px; padding: 1px 5px; border-radius: 4px; background: var(--info-bg); color: var(--info); }
+.g-tag { align-self: flex-start; font-family: var(--mono); font-size: 12px; color: var(--mute); }
+.g-note { margin: 0 0 8px; }
+.g-empty { margin: 0; }
+.g-box { width: 100%; box-sizing: border-box; font-size: 14px; line-height: 1.75; padding: 12px 14px; }
 .guide-card { flex: 1 1 auto; min-width: 0; max-width: 92ch; background: var(--bg); }
 .guide-body { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
 .guide-help summary { cursor: pointer; color: var(--sub); }

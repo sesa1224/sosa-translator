@@ -1,5 +1,8 @@
+import { CheckIcon, PencilIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { PromptKind } from '../../shared/api';
+import { codeSpans, guideLines, splitGuide, type GuideBlock } from '../guideBlocks';
+import { ICON } from '../icons';
 import { useApp } from '../state';
 import { ScreenHead, Seg } from './ui';
 
@@ -11,16 +14,59 @@ const KINDS: { kind: PromptKind; label: string; what: string; sent: string }[] =
   { kind: 'export', label: '내보내기', what: '내보내기 파일의 instructions 에 그대로 들어가는 글이에요.', sent: '내보내기 파일에 들어가요' },
 ];
 
-/** The "## " headings of the text with where each starts, for the table of contents. */
-function headings(text: string): { title: string; at: number; line: number }[] {
-  const out: { title: string; at: number; line: number }[] = [];
-  let at = 0;
-  text.split('\n').forEach((l, line) => {
-    const m = /^##\s+(.+?)\s*$/.exec(l);
-    if (m) out.push({ title: m[1], at, line });
-    at += l.length + 1;
-  });
-  return out;
+const count = (n: number) => n.toLocaleString('ko-KR');
+
+function Inline({ text }: { text: string }) {
+  return <>{codeSpans(text).map((p, i) => (p.code ? <code key={i} className="g-code">{p.text}</code> : <span key={i}>{p.text}</span>))}</>;
+}
+
+/** One block as text to read: rules as a list with their labels standing out, instead of a wall of lines. */
+function BlockBody({ block }: { block: GuideBlock }) {
+  const lines = guideLines(block);
+  if (lines.length === 0) return <p className="mute small g-empty">비어 있어요</p>;
+  return (
+    <div className="g-read">
+      {lines.map((l, i) => {
+        if (l.type === 'gap') return <span key={i} className="g-gap" aria-hidden="true" />;
+        if (l.type === 'tag') return <code key={i} className="g-tag">{l.text}</code>;
+        if (l.type === 'para') return <p key={i}><Inline text={l.text} /></p>;
+        return (
+          <p key={i} className={`g-rule${l.depth === 1 ? ' sub-rule' : ''}`}>
+            {l.key !== null && <b className="g-key">{l.key}</b>}
+            <span><Inline text={l.text} /></span>
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A block of the text: read by default, turned into an edit box of just that block on request. */
+function Block({ block, index, editing, onEdit, onDone, onChange }: {
+  block: GuideBlock; index: number; editing: boolean; onEdit: () => void; onDone: () => void; onChange: (text: string) => void;
+}) {
+  const quiet = block.kind !== 'section';
+  // What is typed lives here while the box is open. The whole text is cut again on every keystroke, and a box fed
+  // from that cut would lose a line break typed at its end (it reads as the gap between blocks).
+  const [draft, setDraft] = useState('');
+  useEffect(() => { if (editing) setDraft(block.text.replace(/\s+$/, '')); }, [editing]);
+  return (
+    <section id={`guide-block-${index}`} className={`g-block${quiet ? ' quiet' : ''}${editing ? ' editing' : ''}`} aria-label={block.title}>
+      <header className="g-head">
+        <h3>{block.title}</h3>
+        <span className="mono small mute">{`${count(block.text.trim().length)}자`}</span>
+        <span className="grow" />
+        {editing
+          ? <button type="button" className="btn soft small-btn" onClick={onDone}><CheckIcon {...ICON} />다 고쳤어요</button>
+          : <button type="button" className="btn ghost small-btn" aria-label={`${block.title} 고치기`} onClick={onEdit}><PencilIcon {...ICON} />고치기</button>}
+      </header>
+      {block.kind === 'outro' && !editing && <p className="hint g-note">모델이 받을 것과 돌려줄 것을 설명하는 부분이에요. 크게 바꾸면 답을 읽지 못할 수 있어요.</p>}
+      {editing
+        ? <textarea className="textbox edit g-box" aria-label={`${block.title} 본문`} autoFocus spellCheck={false}
+            rows={Math.min(28, Math.max(4, draft.split('\n').length + 1))} value={draft} onChange={(e) => { setDraft(e.target.value); onChange(e.target.value); }} />
+        : <BlockBody block={block} />}
+    </section>
+  );
 }
 
 /** Saving trims the text here and there; a reload that differs only in blank space must not replace what is being typed. */
@@ -32,6 +78,14 @@ export function GuideView() {
   const [kind, setKind] = useState<PromptKind>('translate');
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** split: the text cut at its headings and drawn to read. whole: the one edit box, for changes across blocks. */
+  const [mode, setMode] = useState<'split' | 'whole'>('split');
+  /**
+   * The block being edited, with the text around it as it was when the box opened. Typing rebuilds the whole text
+   * as before + box + after, so what is typed can never run into the next block's heading or the closing tag,
+   * whatever the new cut of the text looks like.
+   */
+  const [editing, setEditing] = useState<{ index: number; before: string; after: string } | null>(null);
   const pending = useRef(false);
   const latest = useRef({ kind, value });
   latest.current = { kind, value };
@@ -72,6 +126,7 @@ export function GuideView() {
     if (next === kind) return;
     await flush();
     setValue('');
+    setEditing(null);
     setKind(next);
   };
   const resetText = async () => {
@@ -97,7 +152,23 @@ export function GuideView() {
     const lh = parseFloat(getComputedStyle(box).lineHeight) || 24;
     box.scrollTop = Math.max(0, line * lh - lh);
   };
-  const toc = headings(value);
+  const blocks = splitGuide(value);
+  const edit = (text: string) => { pending.current = true; setValue(text); };
+  const startEdit = (i: number) => {
+    const b = blocks[i];
+    const end = b.at + b.text.length;
+    const tail = /\s*$/.exec(b.text)![0];
+    // A block that ends the text has no line break after it; any other keeps at least one.
+    setEditing({ index: i, before: value.slice(0, b.at), after: (tail || (end < value.length ? '\n' : '')) + value.slice(end) });
+  };
+  /** Headings typed into the open box make new blocks; those are still inside the box, so they are not drawn twice. */
+  const inOpenBox = (b: GuideBlock, i: number) =>
+    editing !== null && i !== editing.index && b.at > editing.before.length && b.at < value.length - editing.after.length;
+  /** In the split view the way to a block is to bring it into view; in the whole box, to put the caret on it. */
+  const visit = (i: number) => {
+    if (mode === 'whole') goTo(blocks[i].at, blocks[i].line);
+    else document.getElementById(`guide-block-${i}`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  };
   const info = KINDS.find((k) => k.kind === kind)!;
   const edited = glossary?.prompts?.[kind] !== undefined;
   const title = `${info.label}에 보내는 글`;
@@ -112,26 +183,44 @@ export function GuideView() {
           ))}
         </Seg>
         <span className="sub small">{info.what}</span>
+        <span className="grow" />
+        <Seg label="보기 방식">
+          <button type="button" aria-pressed={mode === 'split'} className={mode === 'split' ? 'on' : ''} onClick={() => setMode('split')}>나눠 보기</button>
+          <button type="button" aria-pressed={mode === 'whole'} className={mode === 'whole' ? 'on' : ''} onClick={() => { setEditing(null); setMode('whole'); }}>통째로 고치기</button>
+        </Seg>
       </div>
       {error && <span className="err-text" role="alert">{error}</span>}
       <div className="guide-cols">
         {/* The text is long and read by section: its own headings make the way around it. */}
         <nav className="guide-toc" aria-label="차례">
           <span className="label">차례</span>
-          {toc.length === 0 && <span className="mute small">## 제목이 없어요</span>}
-          {toc.map((h) => (
-            <button key={`${h.line}-${h.title}`} type="button" className="toc-item" onClick={() => goTo(h.at, h.line)}>{h.title}</button>
+          {blocks.every((b) => b.kind !== 'section') && <span className="mute small">## 제목이 없어요</span>}
+          {blocks.map((b, i) => (
+            <button key={`${b.line}-${b.title}`} type="button" className={`toc-item${b.kind !== 'section' ? ' quiet' : ''}`} aria-label={b.title} onClick={() => visit(i)}>
+              <span>{b.title}</span><span className="mono mute">{count(b.text.trim().length)}</span>
+            </button>
           ))}
         </nav>
         <section className="card guide-card">
           <div className="card-head row-between">
             <span className="card-title">{title}{edited && <span className="tag">고친 문구 사용 중</span>}</span>
-            <span className="mono small sub">{`약 ${value.length.toLocaleString('ko-KR')}자 · ${info.sent}`}</span>
+            <span className="mono small sub">{`약 ${count(value.length)}자 · ${info.sent}`}</span>
           </div>
           <div className="guide-body">
-            <label htmlFor="guide-text" className="sr-only">{title}</label>
-            <textarea id="guide-text" ref={boxRef} className="textbox edit guide" rows={30} value={value} spellCheck={false}
-              onChange={(e) => { pending.current = true; setValue(e.target.value); }} />
+            {mode === 'whole' ? (
+              <>
+                <label htmlFor="guide-text" className="sr-only">{title}</label>
+                <textarea id="guide-text" ref={boxRef} className="textbox edit guide" rows={30} value={value} spellCheck={false}
+                  onChange={(e) => edit(e.target.value)} />
+              </>
+            ) : (
+              <div className="g-blocks">
+                {blocks.map((b, i) => !inOpenBox(b, i) && (
+                  <Block key={i} block={b} index={i} editing={editing?.index === i}
+                    onEdit={() => startEdit(i)} onDone={() => setEditing(null)} onChange={(t) => editing && edit(editing.before + t + editing.after)} />
+                ))}
+              </div>
+            )}
             <div className="row-gap">
               <span className="hint">고치면 잠시 뒤 저장돼요.</span>
               <span className="grow" />
