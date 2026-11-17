@@ -8,7 +8,7 @@
 
 | 프로세스 | 코드 | 하는 일 |
 |---|---|---|
-| 메인 | `src/main/index.ts` (빌드 결과 `out/main/index.js`) | 창 만들기, 열린 프로젝트의 데이터 소유(`ProjectService`), IPC 처리, Claude CLI 띄우기, 작업 돌리기 |
+| 메인 | `src/main/index.ts` (빌드 결과 `out/main/index.js`) | 창 만들기(지난번 크기·자리·최대화는 `windowState.ts` 의 `placeWindow`), 열린 프로젝트의 데이터 소유(`ProjectService`), IPC 처리, Claude CLI 띄우기, 작업 돌리기 |
 | 렌더러 | `src/renderer/` (React), `src/preload/index.ts` | 화면. 파일과 Node 에 손대지 않고 `window.api` 로만 메인에 부탁한다 |
 | 렌더 작업 창 | `src/renderer/render-worker/worker.ts`, `src/preload/render.ts`, `src/main/render/` | 보이지 않는 창. 캔버스로 그림 속 글자를 찍고, 모음판과 썸네일을 만든다. 처음 쓸 때 만들어진다 |
 | MCP 서버 | `src/mcp/server.ts` (빌드 결과 `out/main/mcp-server.js`) | Claude CLI 가 띄우는 stdio MCP 서버. 데이터를 갖지 않고 모든 도구 호출을 메인의 브리지로 넘긴다 |
@@ -27,6 +27,15 @@
 | Claude CLI → MCP 서버 | CLI 가 `mcp.json`(앱 설정 폴더)을 읽고 Electron 을 Node 로(`ELECTRON_RUN_AS_NODE`) 띄운다 | `src/main/bridge.ts` 의 `writeMcpConfig` |
 | MCP 서버 → 메인 | `127.0.0.1` 임의 포트의 HTTP 브리지, 실행마다 새 Bearer 토큰 | `src/main/bridge.ts`, `src/mcp/server.ts` |
 | 메인 → 채팅 도구 | 브리지가 `callTool` 을 부르고, 도구는 `ProjectService` 메서드를 부른다 | `src/main/toolHandlers.ts` |
+
+앱 설정은 Electron 의 userData 폴더에 둔다(시험은 `MVMZ_USER_DATA` 로 바꾼다).
+
+| 파일 | 코드 | 담는 것 |
+|---|---|---|
+| `settings.json` | `src/main/settings.ts`, 모양은 `src/shared/api.ts` 의 `AppSettings` | 테마(`THEME_NAMES` 여덟 가지, 모르는 값은 `dark`), 움직임 켜기 `motion`, 오른쪽 패널을 직접 접었는지 `rightPanelCollapsed`(좁은 창 `narrow`·넓은 창 `wide` 따로, 정한 적 없으면 비어 있고 그때는 `state.ts` 의 `NARROW_WINDOW`(1440) 미만이면 접힘), 모델 목록, 채팅 모델, 단계별 모델, CLI 경로, 프로젝트 폴더 위치, 검수 설정. 깨진 필드는 그 필드만 기본값 |
+| `window.json` | `src/main/windowState.ts` | 주 창의 크기, 자리, 최대화 여부. 설정 화면이 `settings.json` 을 통째로 다시 쓰므로 따로 둔다. 처음에는 1600x1000(화면의 90% 안), 기억한 자리가 지금 화면들에서 잡을 수 없으면 보이는 화면 안으로 옮긴다 |
+| `fonts-cache.json` | `src/main/fonts/catalog.ts`(`ipc.ts` 의 `fonts:list` 가 경로를 줌) | 폰트 목록 캐시 |
+| `mcp.json` | `src/main/bridge.ts` | 채팅용 Claude CLI 가 읽는 MCP 서버 설정 |
 
 Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tools ""`) 앱의 MCP 도구만 허용하며(`--allowedTools`), 사용자 전역 설정과 기본 시스템 프롬프트를 뺀다(`--setting-sources project`, `--system-prompt`). 호출마다 수천 토큰이 걸린 문제라서 되돌리지 않는다(`src/main/claude/args.ts`, `json.ts`).
 
@@ -49,6 +58,10 @@ Claude CLI 인자는 일부러 좁힌다: 내장 도구를 모두 끄고(`--tool
 
 | 기능 | 화면 | 메인 | core |
 |---|---|---|---|
+| 화면 틀 | `App.tsx`(`Workspace` 배치, `RightPanel`: 접기 단추와 접힌 띠, 좁은 창에서는 서랍), `TopBar.tsx`·`WindowControls.tsx`(타이틀바와 창 단추), `Sidebar.tsx`(번역/게임/결과 묶음, 범위별 진행률 접기), `StatusBar.tsx`, `JobBar.tsx`. 접힘 상태는 `state.ts` 의 `narrowWindow`·`rightCollapsed`(창 폭이 `NARROW_WINDOW` 를 넘나들면 그 폭의 기억값으로 다시 정함, 직접 접거나 펴면 `rightPanelCollapsed` 에 저장) | `windowControls.ts`, `windowState.ts`, `settings.ts` | — |
+| 프로젝트 고르기 | `ProjectPicker.tsx`("이어서 하기"는 `project:list` 의 `touchedAt` 이 가장 큰 것) | `ipc.ts` 의 `project:list`(`project.json` 만 읽는다. `touchedAt` 은 프로젝트 폴더의 수정 시각으로, 저장이 파일을 바꿔 쓰므로 마지막 작업 시각을 따른다) | `project/project.ts`(`openProject`) |
+| 텍스트 표 | `TextTable.tsx`(거르기 묶음은 `src/renderer/filterGroups.ts` 의 `filterGroups`: 상태 / 살펴볼 것 / 그 밖, 단추마다 뜻 색 `tone`), 행과 통계는 `src/shared/rows.ts` | `ipc.ts` 가 행을 만듦 | — |
+| 번역 지침 | `GuideView.tsx`(나눠 보기는 `src/renderer/guideBlocks.ts` 의 `splitGuide` 가 글을 `## ` 제목에서 자른 묶음. 묶음을 이어 붙이면 원래 글이 그대로 나오므로 한 묶음만 고쳐도 앞뒤를 붙여 글 전체로 저장한다) | `glossary:promptText`/`glossary:setPromptText` | `glossary/prompts.ts` |
 | 용어집 초안 | `GlossaryView.tsx`, `DraftDialog.tsx` | `translate/draft.ts`(`DraftJob`), `translate/read.ts`(대본 조각 고르기), `translate/material.ts`(표본 자료) | `glossary/`, `text/speaker.ts` |
 | 전체 번역 | `TextTable.tsx`, `ItemPanel.tsx`, `StoryView.tsx` | `translate/job.ts`(`BatchJob`, `TranslateJob`), `translate/batches.ts`(묶기와 프롬프트), `claude/json.ts` | `check/format.ts`, `glossary/match.ts`, `decisions/keys.ts`(그대로 둘 조각) |
 | 검수 | `ReviewDialog.tsx`, `ItemPanel.tsx` | `translate/review.ts`(`ReviewJob`) | `glossary/match.ts` |
@@ -85,17 +98,22 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 
 1. `src/renderer/components/` 에 컴포넌트를 만든다.
 2. `src/renderer/state.ts` 의 `AppState.view` 유니온에 화면 이름을 더하고, `src/renderer/App.tsx` 의 `SCREENS` 표에 이름 → 컴포넌트를 더한다(빠뜨리면 타입 검사가 잡는다).
-3. `src/renderer/components/Sidebar.tsx` 에 메뉴 버튼을 둔다. 명령 검색창(Ctrl+K)에서도 가게 하려면 `src/renderer/commands.ts` 의 `COMMANDS` 에 "…로 가기" 한 줄을 더한다(시험이 왼쪽 메뉴의 화면이 모두 있는지 본다).
+3. `src/renderer/components/Sidebar.tsx` 의 맞는 묶음(번역 / 게임 / 결과)에 메뉴 버튼을 둔다. 명령 검색창(Ctrl+K)에서도 가게 하려면 `src/renderer/commands.ts` 의 `COMMANDS` 에 "…로 가기" 한 줄을 더한다(시험이 왼쪽 메뉴의 화면이 모두 있는지 본다).
 4. 화면이 쓸 상태와 액션을 `state.ts` 에 더한다. 메인의 새 데이터가 필요하면 아래 "IPC 채널 더하기"를 한다.
-5. 모양은 `src/renderer/theme.css` 에 더한다. 색은 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 상태는 뜻 색으로 말한다: `--ok`/`--ok-bg`(끝남·승인·통과), `--info`/`--info-bg`(새로 생김·Claude 가 함·아직 사람이 안 봄), `--warn`/`--warn-bg`(사람이 봐야 함), `--err`/`--err-bg`(막힘). `--accent` 는 주 단추와 지금 고른 것에만 쓴다. 테마를 더하면 이 넷도 정하고, 대비와 강조색과의 색상 거리는 `tests/shared/themeColors.test.ts` 가 확인한다. 판단에 쓰는 수는 `components/ui.tsx` 의 `Stat`(0 은 흐리게)으로 꺼낸다. 테마는 `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음, `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 배치와 문구의 처음 기준은 `docs/mockup/Main.dc.html` 이고, 지금의 모양은 앱의 화면 자체가 기준이다. 움직임은 `theme.css` 끝의 "motion" 묶음에 CSS 로만 두고, 코드는 클래스를 붙이는 순간만 정한다(`src/renderer/motion.ts` 의 `replay`, 표의 줄은 `state.ts` 의 `rowMotion`). keyframes 는 시작 모습에서 원래 모습으로 가게 써서 `data-motion="off"`(설정의 움직임 끄기)나 `prefers-reduced-motion` 으로 애니메이션을 통째로 끄면 그냥 원래 모습이 보이게 한다. 아이콘은 `lucide-react` 에서 이름으로 하나씩 가져오고 `src/renderer/icons.ts` 의 `ICON`(16px, `aria-hidden`)을 붙인다.
-   - 화면을 따로 꾸미지 말고 `src/renderer/components/ui.tsx` 의 공통 부품을 쓴다: 화면 머리 `ScreenHead`(큰 제목, 수 배지, 한 줄 설명, 오른쪽 동작), 바탕이 미끄러지는 고르기 `Seg`, 켜고 끄는 설정 `Switch`(`role="switch"` 체크박스), 색 띠 안내 `Callout`, 아이콘 타일 `Tile`, 빈 화면 `EmptyState`. 그 밖에 붙은 단추 묶음 `.grp`, 한 판 목록 `.list`/`.li`, 둘 중 하나 `.choice`, 진행 막대 `.prog` 는 `theme.css` 의 "shared parts" 클래스다. 단추 그림자와 올린 판 색은 테마마다 `--shadow`, `--raise` 로 둔다. 게임 제목은 `--gfont`(일본어 글꼴이 먼저), 화면 제목은 `--tfont` 에 `--tscale` 로 크기를 맞춘다.
+5. 모양은 `src/renderer/theme.css` 에 더한다. 화면을 잡는 원칙(쓰임새부터, 주 단추 하나, 숫자 꺼내기, 색은 뜻, 덜 중요한 것 접기)은 `CLAUDE.md` 의 "화면을 고칠 때"를 따른다. 배치와 문구의 처음 기준은 `docs/mockup/Main.dc.html` 이고, 지금의 모양은 앱의 화면 자체가 기준이다.
+   - **공통 부품**: 화면을 따로 꾸미지 말고 `src/renderer/components/ui.tsx` 를 쓴다: 화면 머리 `ScreenHead`(큰 제목, 수 배지, 한 줄 설명, 오른쪽 동작), 바탕이 미끄러지는 고르기 `Seg`, 켜고 끄는 설정 `Switch`(`role="switch"` 체크박스), 색 띠 안내 `Callout`, 아이콘 타일 `Tile`, 빈 화면 `EmptyState`, 설정의 한 줄(이름·설명은 왼쪽, 조절 칸은 오른쪽) `SetRow`, 메뉴의 수 배지 `NavCount`, 판단에 쓰는 큰 숫자 칸 `Stat`(0 은 흐리게). 그 밖에 붙은 단추 묶음 `.grp`, 한 판 목록 `.list`/`.li`, 둘 중 하나 `.choice`, 진행 막대 `.prog` 는 `theme.css` 의 "shared parts" 클래스다.
+   - **색**: 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 상태는 뜻 색으로 말한다: `--ok`/`--ok-bg`(끝남·승인·통과), `--info`/`--info-bg`(새로 생김·Claude 가 함·아직 사람이 안 봄), `--warn`/`--warn-bg`(사람이 봐야 함), `--err`/`--err-bg`(막힘). `--accent` 는 주 단추와 지금 고른 것에만 쓴다. 단추 그림자와 올린 판 색은 `--shadow`, `--raise`. 게임 제목은 `--gfont`(일본어·한자 글꼴이 먼저. 장식 글꼴을 쓰지 않는다), 화면 제목은 `--tfont` 에 `--tscale` 로 크기를 맞춘다.
+   - **테마**: `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음(뜻 색 넷 포함), `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 대비와 강조색과의 색상 거리는 `tests/shared/themeColors.test.ts` 가 확인한다.
+   - **움직임**: `theme.css` 끝의 "motion" 묶음에 CSS 로만 두고, 코드는 클래스를 붙이는 순간만 정한다(`src/renderer/motion.ts` 의 `replay`, 표의 줄은 `state.ts` 의 `rowMotion`). keyframes 는 시작 모습에서 원래 모습으로 가게 써서 `data-motion="off"`(설정의 움직임 끄기)나 `prefers-reduced-motion` 으로 애니메이션을 통째로 끄면 그냥 원래 모습이 보이게 한다.
+   - **아이콘**: `lucide-react` 에서 이름으로 하나씩 가져오고 `src/renderer/icons.ts` 의 `ICON`(16px, `aria-hidden`)을 붙인다.
+   - **좁은 창**: 가운데 판의 폭은 오른쪽 패널을 접었는지에 따라 달라지므로 창 폭(`@media`)이 아니라 가운데 판의 폭(`@container`)으로 맞춘다(텍스트 머리의 `textview`, 설정의 `settings`).
    - 도우미 캐릭터 먹물이는 `src/renderer/components/Inkdrop.tsx` 의 SVG 컴포넌트(상태 `idle`/`work`/`done`, `useInkState(busy)`)다. 채팅 머리줄·답 옆·처음 연 모습과 몇몇 빈 화면이 같이 쓴다. 모양은 `theme.css` 의 "the helper".
 6. 시험은 `tests/renderer/` 에 두고, 가짜 `window.api` 인 `tests/renderer/fakeApi.tsx` 를 쓴다.
 
 ### IPC 채널 더하기
 
 1. `src/shared/api.ts`: `InvokeChannels` 에 채널을, `Api` 에 메서드를 더한다(메인이 먼저 보내는 알림이면 `PushEvents`). 렌더러가 볼 타입이 Node 를 쓰는 core 모듈에 있으면 여기에 사본을 두고 `src/main/ipc.ts` 의 `sharedTypesMatch` 에 같은지 확인하는 줄을 더한다.
-2. `src/main/ipc.ts`: `handle('채널', …)` 을 더한다. 인자는 믿지 말고 `String(…)` 처럼 다듬는다. 프로젝트 데이터는 `svc()` 로 `ProjectService` 에 맡긴다.
+2. `src/main/ipc.ts`: `handle('채널', …)` 을 더한다. 인자는 믿지 말고 `String(…)` 처럼 다듬는다. 프로젝트 데이터는 `svc()` 로 `ProjectService` 에 맡긴다. 보낸 창을 알아야 하는 채널(창 단추 `window:*`)은 `src/main/windowControls.ts` 에 둔다.
 3. `src/preload/index.ts`: `api` 객체에 `call('채널', …)` 을 더한다.
 4. `tests/renderer/fakeApi.tsx` 에 가짜를 더한다.
 
