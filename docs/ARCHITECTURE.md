@@ -20,6 +20,7 @@
 |---|---|---|
 | 렌더러 → 메인 (부탁과 답) | `ipcRenderer.invoke(채널)`. 채널 목록은 `InvokeChannels` | `src/shared/api.ts`, `src/preload/index.ts`, `src/main/ipc.ts` |
 | 메인 → 모든 창 (알림) | `webContents.send(채널)`. 목록은 `PushEvents`, 렌더러는 `api.on()` 으로 받는다 | `src/main/index.ts` 의 `broadcast`, `src/renderer/state.ts` 의 `start()` |
+| 렌더러 → 자기 창 (창 단추) | 주 창은 틀이 없다(`frame: false`). 타이틀바(`TopBar`, `ProjectPicker` 의 띠)의 `WindowControls` 가 `window:*` 채널로 부탁하면 보낸 창에만 한다. 최대화가 바뀌면 그 창에만 `window:maximized` 를 보낸다. 닫기는 시스템 닫기와 같은 `close()` 라 끝낼 때의 정리(`before-quit`)를 그대로 거친다 | `src/main/windowControls.ts`(`index.ts` 가 등록. 보낸 창을 알아야 해서 `ipc.ts` 밖에 있다) |
 | 메인 ↔ 렌더 작업 창 | IPC 메시지 `RenderRequest`/`RenderReply`. 한 번에 하나, 죽거나 30초 넘게 답이 없으면 창을 새로 만들어 한 번 더 | `src/shared/renderProtocol.ts`, `src/main/render/renderService.ts`, `renderWindow.ts` |
 | 메인 → Claude CLI (채팅) | 자식 프로세스의 표준 입출력(stream-json) | `src/main/claude/chat.ts`, `args.ts`, `stream.ts` |
 | 메인 → Claude CLI (작업) | 묶음 내용은 표준 입력, 답은 `structured_output` | `src/main/claude/json.ts` |
@@ -84,7 +85,7 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 2. `src/renderer/state.ts` 의 `AppState.view` 유니온에 화면 이름을 더하고, `src/renderer/App.tsx` 의 `SCREENS` 표에 이름 → 컴포넌트를 더한다(빠뜨리면 타입 검사가 잡는다).
 3. `src/renderer/components/Sidebar.tsx` 에 메뉴 버튼을 둔다.
 4. 화면이 쓸 상태와 액션을 `state.ts` 에 더한다. 메인의 새 데이터가 필요하면 아래 "IPC 채널 더하기"를 한다.
-5. 모양은 `src/renderer/theme.css` 에 더한다. 배치와 문구의 기준은 `docs/mockup/Main.dc.html`.
+5. 모양은 `src/renderer/theme.css` 에 더한다. 색은 테마 토큰(`--bg`, `--panel`, `--line`, `--hair`, `--accent` …)만 쓴다. 테마는 `[data-theme="…"]` 묶음마다 같은 토큰을 정하고, 장식(`--art`)은 틀(타이틀바, 왼쪽 메뉴, 오른쪽 패널)에만 깔린다. 테마를 더하려면 `src/shared/api.ts` 의 `THEME_NAMES`, `theme.css` 의 토큰 묶음, `SettingsView.tsx` 의 `THEME_CARDS` 에 한 줄씩. 배치와 문구의 기준은 `docs/mockup/Main.dc.html` 과 `docs/mockup/2026-11-17-새단장-시안.html`.
 6. 시험은 `tests/renderer/` 에 두고, 가짜 `window.api` 인 `tests/renderer/fakeApi.tsx` 를 쓴다.
 
 ### IPC 채널 더하기
