@@ -396,3 +396,43 @@ test('틀 없는 창: 창 단추, 최대화해도 화면 안, 기본 단축키',
   expect(await name.inputValue()).toBe('');
   await app.close();
 });
+
+test('움직임: 승인한 줄이 한 번 밝아지고, 설정에서 끄면 애니메이션이 멈춘다', async () => {
+  const app = await launch({ MVMZ_PICK_DIR: game });
+  try {
+  const w = await app.firstWindow();
+  await w.getByRole('button', { name: '게임 폴더 고르기' }).click(); await w.getByLabel('프로젝트 이름').fill('움직임'); await w.getByRole('button', { name: '만들기' }).click();
+  const approve = async (source: string, target: string) => {
+    await w.getByText(source, { exact: true }).click();
+    await w.getByLabel('번역').fill(target); await w.getByLabel('번역').press('Control+Enter');
+    await expect(w.getByRole('row', { name: new RegExp(`${source}.*${target}.*번역 완료`) })).toBeVisible();
+    await w.getByRole('button', { name: '승인', exact: true }).click();
+    await expect(w.getByRole('row', { name: new RegExp(`${source}.*승인됨`) })).toBeVisible();
+  };
+  // What the row's flash and its pill's pop compute to right after approving.
+  const motionOf = (source: string) => w.getByRole('row', { name: new RegExp(source) }).evaluate((row) => ({
+    flash: row.classList.contains('rowflash'), rowAnim: getComputedStyle(row).animationName,
+    pop: row.querySelector('.st')!.classList.contains('pop'), pillAnim: getComputedStyle(row.querySelector('.st')!).animationName,
+  }));
+  const reduced = await w.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  await approve('月光草', '월광초');
+  const on = await motionOf('月光草');
+  expect(on).toMatchObject({ flash: true, pop: true });
+  // Windows set to show no animations turns them off whatever the setting says.
+  if (!reduced) expect(on).toMatchObject({ rowAnim: 'rowflash', pillAnim: 'pop' });
+
+  await w.getByRole('button', { name: '설정', exact: true }).click();
+  // A controlled box: it shows the new state once the saved settings come back.
+  await w.getByRole('checkbox', { name: '움직임 켜기' }).click();
+  await w.waitForFunction(() => document.documentElement.dataset.motion === 'off');
+  expect(await w.getByRole('checkbox', { name: '움직임 켜기' }).isChecked()).toBe(false);
+  await w.getByRole('button', { name: /텍스트/ }).first().click();
+  await approve('薬草園の見習い', '약초원의 견습생');
+  expect(await motionOf('薬草園の見習い')).toMatchObject({ flash: true, rowAnim: 'none', pop: true, pillAnim: 'none' });
+  const settings = JSON.parse(await readFile(path.join(userData, 'settings.json'), 'utf8'));
+  expect(settings.motion).toBe(false);
+  } finally {
+    await app.close();
+  }
+});
