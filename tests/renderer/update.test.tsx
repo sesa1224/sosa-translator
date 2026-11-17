@@ -71,21 +71,44 @@ async function openResult() {
   return user;
 }
 
-test('결과 화면의 카드가 요약의 숫자를 보인다', async () => {
-  await openResult();
+test('숫자는 맨 위 숫자 칸이 맡고, 아래에는 목록·설명·동작이 있는 것만 남는다', async () => {
+  const user = await openResult();
+  const nums = screen.getByRole('group', { name: '업데이트 요약' });
+  const stat = (label: string) => within(nums).getByText(label).closest('.stat') as HTMLElement;
+  // What used to be a card holding only numbers is said by the tiles.
+  expect(stat('이어받은 번역')).toHaveTextContent('그대로인 문장 40개 중');
+  expect(stat('사라진 문장')).toHaveTextContent('번역 1개는 보관했어요');
+  expect(within(stat('새 문장')).getByRole('button', { name: '새 문장 보기' })).toBeVisible();
+  expect(within(stat('바뀐 문장')).getByRole('button', { name: '바뀐 문장 보기' })).toBeVisible();
+  for (const gone of ['그대로인 문장', '새 문장', '바뀐 문장', '사라진 문장']) expect(screen.queryByRole('region', { name: gone })).toBeNull();
+  for (const gone of ['새 문장 5개', '바뀐 문장 3개 · 이전 번역을 참고로 붙였어요']) expect(screen.queryByText(gone)).toBeNull();
+  expect(within(screen.getByRole('region', { name: '다음 할 일' })).getByText('그중 1개는 문장부호만 달라서 이전 번역을 미리 넣었어요(검토 필요)')).toBeVisible();
   const card = (name: string) => within(screen.getByRole('region', { name }));
-  expect(card('그대로인 문장').getByText('그대로인 문장 40개 · 번역 30개를 이어받았어요')).toBeVisible();
-  expect(card('새 문장').getByText('새 문장 5개')).toBeVisible();
-  expect(card('바뀐 문장').getByText('바뀐 문장 3개 · 이전 번역을 참고로 붙였어요')).toBeVisible();
-  expect(card('바뀐 문장').getByText('그중 1개는 문장부호만 달라서 이전 번역을 미리 넣었어요(검토 필요)')).toBeVisible();
-  expect(card('사라진 문장').getByText('사라진 문장 2개 · 번역 1개는 보관했어요')).toBeVisible();
-  expect(card('수정').getByText('수정: 그대로 1 · 자리를 옮김 1 · 충돌 1')).toBeVisible();
   expect(card('수정').getByText('문 열기')).toBeVisible();
   expect(card('수정').getByText('수정이 가리키던 줄이 새 버전에 없어요(6번: 대사 やった！)')).toBeVisible();
+  expect(card('수정').getByRole('button', { name: 'Claude에게 맡기기' })).toBeVisible();
   expect(card('그림').getByText('원본이 바뀐 그림 1장')).toBeVisible();
-  expect(card('그림').getByText('새 그림 4장')).toBeVisible();
+  expect(card('그림').getByRole('button', { name: '바뀐 그림 보기' })).toBeVisible();
   expect(card('판단 필요').getByText('판단 필요: 새 묶음 2개')).toBeVisible();
-  expect(within(screen.getByRole('region', { name: '경고' })).getByText('따옴표가 닫히지 않은 문자열이 있습니다')).toBeVisible();
+  // Less needed lists are folded, like the older builds.
+  const warn = screen.getByRole('region', { name: '경고' });
+  expect(within(warn).getByText('따옴표가 닫히지 않은 문자열이 있습니다')).not.toBeVisible();
+  await user.click(within(warn).getByText('경고 1개'));
+  expect(within(warn).getByText('따옴표가 닫히지 않은 문자열이 있습니다')).toBeVisible();
+  const more = screen.getByRole('region', { name: '그 밖의 수' });
+  expect(within(more).getByText('수정: 그대로 1 · 자리를 옮김 1 · 충돌 1')).not.toBeVisible();
+  await user.click(within(more).getByText('그 밖의 수'));
+  expect(within(more).getByText('수정: 그대로 1 · 자리를 옮김 1 · 충돌 1')).toBeVisible();
+  expect(within(more).getByText('새 그림 4장')).toBeVisible();
+});
+
+test('충돌도, 바뀐 그림도, 새 묶음도 없으면 그 줄은 없다', async () => {
+  updateFake(api).summary = { ...sampleSummary(), patches: [], images: { changed: [], added: 0, removed: 0 }, decisions: { newGroups: 0 }, warnings: [] };
+  const user = await openFakeWith(api);
+  await user.click(await within(screen.getByRole('navigation', { name: '작업 메뉴' })).findByRole('button', { name: '업데이트 결과' }));
+  await screen.findByRole('heading', { name: 'v1 → 1.1' });
+  for (const gone of ['수정', '그림', '판단 필요', '경고']) expect(screen.queryByRole('region', { name: gone })).toBeNull();
+  expect(screen.getByRole('button', { name: '이 업데이트 되돌리기' })).toBeVisible();
 });
 
 test('바뀐 문장 보기는 텍스트 화면의 바뀐 문장 필터로', async () => {
@@ -174,6 +197,6 @@ test('결과 화면 맨 위: 빌드 기록처럼 숫자 칸(이어받은 번역 
   const next = screen.getByRole('region', { name: '다음 할 일' });
   expect(within(next).getByRole('button', { name: '새·바뀐 문장 번역 맡기기' })).toHaveClass('primary');
   expect(screen.getAllByRole('button').filter((b) => b.classList.contains('primary') && b.closest('.update-view'))).toHaveLength(1);
-  // The step comes before the detail cards.
-  expect(next.compareDocumentPosition(screen.getByRole('region', { name: '그대로인 문장' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // The step comes before the detail rows.
+  expect(next.compareDocumentPosition(screen.getByRole('region', { name: '수정' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

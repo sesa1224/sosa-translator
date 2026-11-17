@@ -328,9 +328,13 @@ test('게임 업데이트: 번역과 수정 → 빌드 → 새 버전 가져오�
   expect(await dialog.getByLabel('버전 이름').inputValue()).toBe('1.1');
   await dialog.getByRole('button', { name: '가져오기' }).click();
   await expect(w.getByRole('heading', { name: 'v1 → 1.1' })).toBeVisible();
-  await expect(w.getByText('바뀐 문장 3개 · 이전 번역을 참고로 붙였어요')).toBeVisible();
-  await expect(w.getByText('새 문장 2개')).toBeVisible();
-  await expect(w.getByText('사라진 문장 1개 · 번역 0개는 보관했어요')).toBeVisible();
+  // The numbers are in the tiles; the patch breakdown is folded away.
+  const stats = w.getByRole('group', { name: '업데이트 요약' });
+  await expect(stats.locator('.stat', { hasText: '바뀐 문장' }).locator('b')).toHaveText('3');
+  await expect(stats.locator('.stat', { hasText: '새 문장' }).locator('b')).toHaveText('2');
+  await expect(stats.locator('.stat', { hasText: '사라진 문장' })).toContainText('1');
+  await expect(stats.locator('.stat', { hasText: '사라진 문장' })).toContainText('번역 0개는 보관했어요');
+  await w.getByRole('region', { name: '그 밖의 수' }).getByText('그 밖의 수').click();
   await expect(w.getByText('수정: 그대로 0 · 자리를 옮김 1 · 충돌 0')).toBeVisible();
 
   await w.getByRole('button', { name: '바뀐 문장 보기' }).click();

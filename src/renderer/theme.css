@@ -984,6 +984,21 @@ select.input { padding: 0 12px; }
 .next-text { flex: 1 1 280px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .update-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--bg); box-shadow: var(--shadow); }
 .update-body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+/* The parts that need a look, one row each: what on the left, the action on the right (like the settings rows). */
+.update-rows { flex: none; display: flex; flex-direction: column; padding: 4px 16px; background: var(--bg); box-shadow: var(--shadow); }
+.update-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; }
+.update-row + .update-row { border-top: 1px solid var(--hair); }
+.update-row > .update-body { flex: 1 1 auto; padding-top: 5px; }
+.update-act { flex: none; display: flex; gap: 8px; align-items: center; }
+.update-fold { flex: none; }
+.update-fold summary { cursor: pointer; color: var(--sub); display: inline-flex; align-items: center; gap: 6px; padding: 4px 4px; }
+.update-fold details[open] > summary { margin-bottom: 6px; }
+.update-list.plain { list-style: none; padding-left: 4px; color: var(--sub); }
+/* A tile's own button sits in its corner, so the number keeps the same place as in the tiles without one. */
+.stat.has-action { position: relative; }
+.stat-action { position: absolute; top: 8px; right: 8px; }
+.stat-action .btn { height: 26px; padding: 0 10px; font-size: 12px; }
+.stat .stat-note { font-size: 11.5px; color: var(--mute); }
 .update-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .update-list li { display: flex; flex-direction: column; }
 .update-warn { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); }

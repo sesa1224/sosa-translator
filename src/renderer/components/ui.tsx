@@ -104,11 +104,19 @@ export function NavCount({ n, tone, title }: { n: number; tone: 'mute' | 'warn' 
 }
 
 /** A number the screen is judged by; a zero is drawn quiet, a count with a meaning colour only when it is not zero. */
-export function Stat({ label, value, tone }: { label: ReactNode; value: number; tone?: 'warn' | 'ok' | 'info' | 'err' }) {
+export function Stat({ label, value, tone, note, action }: {
+  label: ReactNode; value: number; tone?: 'warn' | 'ok' | 'info' | 'err';
+  /** A short line on what the number stands for, so a card that only repeated it is not needed. */
+  note?: ReactNode;
+  /** The one thing to do with these lines (a quiet button), kept with their number. */
+  action?: ReactNode;
+}) {
   return (
-    <div className={`stat${value === 0 ? ' zero' : tone ? ` ${tone}` : ''}`}>
+    <div className={`stat${value === 0 ? ' zero' : tone ? ` ${tone}` : ''}${action ? ' has-action' : ''}`}>
       <b className="mono">{num(value)}</b>
       <span>{label}</span>
+      {note && <span className="stat-note">{note}</span>}
+      {action && <span className="stat-action">{action}</span>}
     </div>
   );
 }
