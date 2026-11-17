@@ -37,8 +37,14 @@ async function open(rows: Row[] = [...baseRows, titleRow], select?: string) {
 test('게임 제목: Enter 로 저장, Esc 는 취소', async () => {
   await open();
   expect(screen.getByText('제목 번역 없음')).toBeVisible();
-  expect(screen.getByText('작업표시줄과 타이틀 화면에 이 이름이 보여요')).toBeVisible();
+  // The note would crowd the title bar: it rides on the pencil's tooltip and is read out by screen readers.
+  const NOTE = '작업표시줄과 타이틀 화면에 이 이름이 보여요';
+  const pencil = screen.getByRole('button', { name: '게임 제목 고치기' });
+  expect(pencil).toHaveAccessibleDescription(NOTE);
+  expect(pencil.title).toContain(NOTE);
+  expect(screen.getByText(NOTE)).toHaveClass('sr-only');
   await user.click(screen.getByRole('button', { name: '게임 제목 고치기' }));
+  expect(screen.getByLabelText('번역 제목')).toHaveAccessibleDescription(NOTE);
   await user.type(screen.getByLabelText('번역 제목'), '다른 제목{Escape}');
   expect(api.calls.some((c) => c[0] === 'project.setGameTitle')).toBe(false);
   expect(screen.queryByLabelText('번역 제목')).toBeNull();

@@ -1,6 +1,10 @@
 import { useState, type KeyboardEvent } from 'react';
 import { useApp } from '../state';
 
+// Kept off the title bar, where it would sit beside every other label; the pencil's tooltip and screen readers say it.
+const NOTE = '작업표시줄과 타이틀 화면에 이 이름이 보여요';
+const NOTE_ID = 'title-field-note';
+
 /** The translated game title under the original one; the pencil turns it into an input (Enter saves, Esc cancels). */
 export function TitleField() {
   const app = useApp();
@@ -34,10 +38,12 @@ export function TitleField() {
   return (
     <span className="title-field">
       {editing
-        ? <input className="input title-input" aria-label="번역 제목" autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => void onKey(e)} />
+        ? <input className="input title-input" aria-label="번역 제목" aria-describedby={NOTE_ID} autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => void onKey(e)} />
         : <span className={row.target ? 'title-target' : 'mute small'}>{row.target ?? '제목 번역 없음'}</span>}
-      {!editing && <button type="button" className="icon-btn" aria-label="게임 제목 고치기" title="게임 제목 고치기" onClick={start}>✎</button>}
-      <span className="mute tiny">작업표시줄과 타이틀 화면에 이 이름이 보여요</span>
+      {!editing && <button type="button" className="icon-btn" aria-label="게임 제목 고치기" aria-describedby={NOTE_ID}
+        title={`게임 제목 고치기
+${NOTE}`} onClick={start}>✎</button>}
+      <span id={NOTE_ID} className="sr-only">{NOTE}</span>
       {error && <span className="err-text small" role="alert">{error}</span>}
     </span>
   );
