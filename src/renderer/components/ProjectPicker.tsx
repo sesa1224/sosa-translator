@@ -3,7 +3,9 @@ import { useState, type DragEvent } from 'react';
 import type { GameDirCheck, PackedGameInfo } from '../../shared/api';
 import { ICON } from '../icons';
 import { useApp } from '../state';
+import { AppUpdateRow } from './AppUpdate';
 import { Inkdrop } from './Inkdrop';
+import { Toasts } from './Toasts';
 import { WindowControls } from './WindowControls';
 
 function hasFiles(e: DragEvent): boolean {
@@ -177,7 +179,14 @@ export function ProjectPicker() {
         {busy && <span className="sub" role="status">{unpacking ? '게임을 푸는 중… 큰 게임은 몇 분 걸려요' : '확인하는 중…'}</span>}
         {error && <span className="err-text" role="alert">{error}</span>}
       </section>
+
+      {/* Reachable with no project open, so a friend who only got the installer can still update. Kept last and
+          quiet: people come here to open a game, not to update. */}
+      <section className="picker-app set-list" aria-label="앱 업데이트">
+        <AppUpdateRow primaryInstall={false} />
+      </section>
       </div>
+      <Toasts />
     </div>
   );
 }

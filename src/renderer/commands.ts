@@ -1,7 +1,7 @@
 // What the command search (Ctrl+K) offers. Everything is one table so a new screen or action is one more line here.
 // Commands only call actions state.ts already has; they never add behaviour of their own.
 import {
-  BookOpenIcon, CircleHelpIcon, DiffIcon, GitBranchIcon, HistoryIcon, ImageIcon, ListFilterIcon, LogOutIcon, PackageIcon, PenLineIcon, PlayIcon,
+  BookOpenIcon, CircleArrowDownIcon, CircleHelpIcon, DiffIcon, GitBranchIcon, HistoryIcon, ImageIcon, ListFilterIcon, LogOutIcon, PackageIcon, PenLineIcon, PlayIcon,
   RefreshCwIcon, ScanSearchIcon, SlidersHorizontalIcon, SparklesIcon, TextIcon, TriangleAlertIcon, type LucideIcon,
 } from 'lucide-react';
 import type { StatusFilter } from '../shared/api';
@@ -75,6 +75,12 @@ export const COMMANDS: Command[] = [
   },
   { id: 'update', label: '새 버전 가져오기', icon: RefreshCwIcon, keywords: '게임 업데이트', run: () => updateActions.open() },
   { id: 'close', label: '프로젝트 닫기', icon: LogOutIcon, run: () => useApp.closeProject() },
+  // The app's own update, not the game's: it goes to the settings row that shows how the check goes.
+  {
+    id: 'appUpdate', label: '앱 업데이트 확인', icon: CircleArrowDownIcon, keywords: '프로그램 새 버전 앱 버전 설치',
+    blocked: (s) => (s.appUpdate?.state.kind === 'unsupported' ? '설치한 앱에서만 확인할 수 있어요' : null),
+    run: () => { useApp.setView('settings'); return useApp.checkAppUpdate(); },
+  },
 
   // Table filters.
   filter('untranslated', '미번역 줄만 보기', ListFilterIcon, '번역 전'),

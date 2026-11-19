@@ -13,6 +13,7 @@ import type { BuildRecord, ImageEntry, ImageRecipe, Region, RegionOverflow } fro
 import type { EventDetail, EventFileInfo, EventListInfo, EventRef, NewPatch, Patch, PatchChange, PatchStatus, UsageTarget } from '../../src/shared/api';
 import type { LineDraft, SimilarTranslation } from '../../src/shared/api';
 import type { ClaudeStatus, FontEmbedInfo, UpdateInspect, UpdateSummary, VersionInfo } from '../../src/shared/api';
+import type { AppUpdateInfo } from '../../src/shared/api';
 
 export const settings: AppSettings = { theme: 'dark', models: DEFAULT_MODELS, chatModel: 'claude-fable-5-2', claudePath: null, projectsDir: 'C:/projects', stageModels: { ...DEFAULT_STAGE_MODELS }, reviewSkipPassed: true, motion: true };
 
@@ -63,6 +64,8 @@ export type FakeApi = Api & {
   similarValue: Record<string, SimilarTranslation[]>;
   /** What unit.claudeDraft answers (a function so a test can hold the answer back or throw). */
   claudeDraft: (id: string) => LineDraft | Promise<LineDraft>;
+  /** What appUpdate.get answers; appUpdate.check moves it to checking and answers that, like the main process. */
+  appUpdateInfo: AppUpdateInfo;
 };
 
 export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<AppSettings>; glossary?: Partial<Glossary> } = {}): FakeApi {
@@ -98,6 +101,7 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
     historyLines: {},
     similarValue: {},
     claudeDraft: () => ({ text: 'Claude가 옮긴 줄', usage: { input: 1200, output: 80, cacheRead: 300, cacheCreate: 0 } }),
+    appUpdateInfo: { version: '1.12.0', state: { kind: 'idle' } },
     inspect: (dir: string): GameDirCheck => ({ ok: true, dir, engine: 'MZ', title: '霧の薬草園', suggestedName: '霧の薬草園' }),
     emit(channel, payload) {
       act(() => { for (const cb of listeners.get(channel) ?? []) cb(payload); });
@@ -173,6 +177,17 @@ export function fakeApi(o: { opened?: boolean; rows?: Row[]; settings?: Partial<
       toggleMaximize: rec('windowControls.toggleMaximize', () => undefined),
       close: rec('windowControls.close', () => undefined),
       isMaximized: rec('windowControls.isMaximized', () => false),
+    },
+    appUpdate: {
+      get: rec('appUpdate.get', () => fake.appUpdateInfo),
+      check: rec('appUpdate.check', () => {
+        const s = fake.appUpdateInfo.state;
+        if (s.kind === 'idle' || s.kind === 'upToDate' || s.kind === 'error') {
+          fake.appUpdateInfo = { ...fake.appUpdateInfo, state: { kind: 'checking' } };
+        }
+        return fake.appUpdateInfo.state;
+      }),
+      install: rec('appUpdate.install', () => undefined),
     },
     decisions: {
       groups: rec('decisions.groups', () => fake.groupsValue),

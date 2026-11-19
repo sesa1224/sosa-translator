@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { DEFAULT_DECIDE_MODEL, type AppSettings, type StageModels, type ThemeName } from '../../shared/api';
 import { usePreviewState } from '../preview/usePreview';
 import { useApp } from '../state';
+import { AppUpdateRow } from './AppUpdate';
 import { FontPicker } from './FontPicker';
 import { ImageFolderSettings } from './ImageView';
 import { FontEmbedSection } from './PatchView';
@@ -14,6 +15,7 @@ const STAGES: [Exclude<keyof StageModels, 'glossaryRead'>, string][] = [['glossa
 const TOC: [string, string][] = [
   ['set-theme', '테마'], ['set-motion', '움직임'], ['set-stages', '단계별 모델'], ['set-models', '모델'], ['set-cli', 'Claude CLI'], ['set-dir', '프로젝트 폴더 위치'],
   ['set-game-font', '게임 폰트'], ['set-text-windows', '창 크기와 줄바꿈'], ['set-embed', '폰트를 게임에 넣기'], ['set-images', '이미지'],
+  ['set-app', '앱 업데이트'],
 ];
 const TOC_IDS = TOC.map(([id]) => id);
 
@@ -189,6 +191,10 @@ export function SettingsView() {
           <TextWindowSettings />
           <FontEmbedSection />
           <ImageFolderSettings />
+          <section className="card settings-card" aria-labelledby="set-app">
+            <span id="set-app" className="card-title">앱 업데이트</span>
+            <div className="set-list"><AppUpdateRow /></div>
+          </section>
           {error && <span className="err-text" role="alert">{error}</span>}
         </div>
       </div>

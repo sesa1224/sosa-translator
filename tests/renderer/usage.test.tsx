@@ -235,7 +235,7 @@ test('설정: 왼쪽 차례로 그 묶음에 가고, 묶음 안은 이름·설�
   await screen.findByRole('heading', { name: '설정' });
   const toc = screen.getByRole('navigation', { name: '설정 차례' });
   const names = within(toc).getAllByRole('button').map((b) => b.textContent);
-  expect(names).toEqual(['테마', '움직임', '단계별 모델', '모델', 'Claude CLI', '프로젝트 폴더 위치', '게임 폰트', '창 크기와 줄바꿈', '폰트를 게임에 넣기', '이미지']);
+  expect(names).toEqual(['테마', '움직임', '단계별 모델', '모델', 'Claude CLI', '프로젝트 폴더 위치', '게임 폰트', '창 크기와 줄바꿈', '폰트를 게임에 넣기', '이미지', '앱 업데이트']);
   const go = vi.fn();
   const target = document.getElementById('set-stages')!.closest('section') as HTMLElement;
   target.scrollIntoView = go;

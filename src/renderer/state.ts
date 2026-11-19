@@ -7,7 +7,7 @@ import type {
   JobProgress, LineDraft, ProjectListItem, ProjectMeta, ProjectRules, PromptKind, ReviewPlan, ReviewScopeArg, Row, RowQuery, Scope, Snapshot, SpeakerDetection, Stats, Term, TranslationStatus, UnitDetail,
 } from '../shared/api';
 import type {
-  ActionDetail, ActionSummary, BuildRecord, CancelResult, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
+  ActionDetail, ActionSummary, AppUpdateInfo, AppUpdateState, BuildRecord, CancelResult, ClaudeStatus, DecisionGroup, DecisionInput, EventRef, FontEmbedInfo, GameState, ImageEntry, ImageRecipe, ImageStatus, ImportPlan,
   NewPatch, Patch, PatchChange, PatchList, PathSeg, Rect, Region, StatusFilter, UpdateInspect, UpdateSummary, VersionInfo, UsageTarget,
 } from '../shared/api';
 
@@ -112,13 +112,18 @@ export interface AppState {
   paletteOpen: boolean;
   /** The "번역 전체 검수" dialog is open (from the button above the table or the command search). */
   reviewOpen: boolean;
+  /** This app's version and where updating it stands (null when the main process could not say). */
+  appUpdate: AppUpdateInfo | null;
 }
 
-/** One note; out is set shortly before it leaves so it can slide away. */
-export interface Toast { id: number; text: string; out: boolean }
+/** One note; out is set shortly before it leaves so it can slide away. action: one button on the note. */
+export interface Toast { id: number; text: string; out: boolean; action?: ToastAction; ms: number }
+export interface ToastAction { label: string; run: () => void | Promise<unknown> }
 
 /** How long a note stays, and the part at its end in which it slides away (the mockup's .toast). */
 export const TOAST_MS = 3000;
+/** A note with a button stays longer, so there is time to read it and reach the button. */
+export const ACTION_TOAST_MS = 12000;
 const TOAST_OUT_MS = 250;
 
 /** An event the chat message will carry. */
@@ -142,7 +147,7 @@ function initial(): AppState {
     textMode: 'table',
     decisionGroups: [], decisionFocus: null,
     images: null, imageFile: null, attachedImage: null, builds: null,
-    toasts: [], paletteOpen: false, reviewOpen: false,
+    toasts: [], paletteOpen: false, reviewOpen: false, appUpdate: null,
   };
 }
 
@@ -312,13 +317,27 @@ export function reduceChat(c: ChatState, ev: ChatEvent): ChatState {
 }
 
 /** Shows a short note. Errors are not shown this way: they stay where they happened until dealt with. */
-function notify(text: string): void {
+function notify(text: string, action?: ToastAction): void {
   const id = ++toastSeq;
-  set((s) => ({ toasts: [...s.toasts, { id, text, out: false }] }));
+  const ms = action ? ACTION_TOAST_MS : TOAST_MS;
+  set((s) => ({ toasts: [...s.toasts, { id, text, out: false, action, ms }] }));
   toastTimers.push(
-    setTimeout(() => set((s) => ({ toasts: s.toasts.map((t) => (t.id === id ? { ...t, out: true } : t)) })), TOAST_MS - TOAST_OUT_MS),
-    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), TOAST_MS),
+    setTimeout(() => set((s) => ({ toasts: s.toasts.map((t) => (t.id === id ? { ...t, out: true } : t)) })), ms - TOAST_OUT_MS),
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), ms),
   );
+}
+
+/**
+ * Folds in a new app update state. Only a finished download is announced: the quiet check on startup must not
+ * speak up for "checking" or a failure, and a check the user asked for shows those in its own row.
+ */
+function onAppUpdate(next: AppUpdateState): void {
+  const before = state.appUpdate;
+  set({ appUpdate: before ? { ...before, state: next } : { version: '', state: next } });
+  const was = before?.state;
+  if (next.kind === 'downloaded' && !(was?.kind === 'downloaded' && was.version === next.version)) {
+    notify(`새 버전 ${next.version} 을 받았어요 — 다시 시작하면 설치돼요`, { label: '다시 시작', run: () => actions.installAppUpdate() });
+  }
 }
 
 /** What a job's end says, for the jobs whose end the user waits on (null = no note). */
@@ -373,18 +392,19 @@ async function start(a: Api): Promise<void> {
     a.on('project:reloaded', onReloaded),
     a.on('history:changed', (list) => set({ history: list })),
     a.on('window:maximized', (m) => set({ windowMaximized: m })),
+    a.on('appUpdate:state', onAppUpdate),
   ];
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', onResize);
     unsubscribe.push(() => window.removeEventListener('resize', onResize));
   }
-  const [settings, projects, snap, claudePath, windowMaximized] = await Promise.all([
+  const [settings, projects, snap, claudePath, windowMaximized, appUpdate] = await Promise.all([
     a.settings.get(), a.project.list().catch(() => []), a.project.snapshot().catch(() => null), a.app.claudePath().catch(() => null),
-    a.windowControls.isMaximized().catch(() => false),
+    a.windowControls.isMaximized().catch(() => false), a.appUpdate.get().catch(() => null),
   ]);
   applyTheme(settings);
   const narrowWindow = windowIsNarrow();
-  set({ settings, projects, claudePath, windowMaximized, narrowWindow, rightCollapsed: collapsedByDefault(settings, narrowWindow) });
+  set({ settings, projects, claudePath, windowMaximized, narrowWindow, rightCollapsed: collapsedByDefault(settings, narrowWindow), appUpdate });
   adoptSnapshot(snap);
   if (snap) await loadGlossary();
   const job = snap ? await a.job.current().catch(() => null) : null;
@@ -596,6 +616,14 @@ const actions = {
   async setChatModel(id: string): Promise<void> {
     await need().chat.setModel(id);
   },
+  /** Asks for an app update check; progress then comes as appUpdate:state pushes. */
+  async checkAppUpdate(): Promise<void> {
+    const next = await need().appUpdate.check();
+    // A push may already have moved past the answer (the download started); the answer only fills the gap before it.
+    set((s) => (s.appUpdate && ['idle', 'upToDate', 'error'].includes(s.appUpdate.state.kind) ? { appUpdate: { ...s.appUpdate, state: next } } : {}));
+  },
+  installAppUpdate: (): Promise<void> => need().appUpdate.install(),
+
   async updateSettings(patch: Partial<AppSettings>): Promise<void> {
     const s = await need().settings.set(patch);
     applyTheme(s);

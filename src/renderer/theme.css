@@ -231,6 +231,9 @@ select.input { padding: 0 12px; }
 .picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .picker-path { overflow-wrap: anywhere; font-size: 12px; }
 .picker-packed { display: flex; flex-direction: column; gap: 6px; }
+/* The app's version and update at the foot of the project list: a plain line, set off only by a hairline. */
+.picker-app { border-top: 1px solid var(--hair); padding: 0 4px; }
+.picker-app .set-name { color: var(--sub); }
 .picker-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .picker-list > li .picker-item { flex: 1 1 auto; }
 /* A long project path must wrap inside its own column instead of squeezing the button. */
@@ -555,6 +558,10 @@ select.input { padding: 0 12px; }
 .set-c select.input { width: 240px; max-width: 100%; }
 /* A row whose control is a box or a few fields: the words keep a column and the control takes the rest. On a
    narrow screen the control drops under the words instead of squeezing them. */
+/* App update: the download's progress sits under the words; the bar is the "new" colour, not the accent. */
+.appup-progress { display: flex; flex-direction: column; gap: 6px; }
+.prog.appup-bar { flex: none; width: 220px; max-width: 100%; min-width: 0; }
+.prog.appup-bar > i { background: var(--info); }
 .set-row.wide { flex-wrap: wrap; }
 .set-row.wide .set-l { flex: 0 1 240px; min-width: 180px; }
 .set-row.wide .set-c { flex: 1 1 320px; min-width: 0; }
@@ -1073,6 +1080,9 @@ select.input { padding: 0 12px; }
 .toast { padding: 9px 12px; border-radius: 10px; background: var(--card); color: var(--text); border: 1px solid var(--line); box-shadow: 0 14px 30px -14px #000; display: flex; gap: 9px; align-items: center; position: relative; overflow: hidden; font-size: 13px; max-width: 420px; }
 .toast svg { color: var(--accent); flex: none; }
 .toast::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--accent); transform-origin: left; }
+/* A note with a button takes clicks (the list itself lets them through to the screen). */
+.toast.has-action { pointer-events: auto; }
+.toast .btn { flex: none; height: 28px; }
 
 /* Command search (Ctrl+K): the button in the middle of the title bar and the list over a dimmed window. */
 .top-search-slot { flex: 1 1 0; min-width: 34px; display: flex; justify-content: center; container-type: inline-size; }
@@ -1179,7 +1189,7 @@ select.input { padding: 0 12px; }
    The command search fades the window and its list rises a little. */
 .toast { animation: tin .4s cubic-bezier(.34, 1.56, .64, 1); }
 .toast.out { animation: tout .25s ease-in forwards; }
-.toast::after { animation: shrink 3s linear forwards; }
+.toast::after { animation: shrink var(--toast-s, 3s) linear forwards; }
 @keyframes tin { from { transform: translateY(18px) scale(.95); opacity: 0; } }
 @keyframes tout { to { transform: translateX(26px); opacity: 0; } }
 @keyframes shrink { to { transform: scaleX(0); } }
