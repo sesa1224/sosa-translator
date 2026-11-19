@@ -15,6 +15,7 @@ RPG Maker MV/MZ 게임을 일본어에서 한국어로 번역하는 윈도우용
 | `docs/2026-11-17-화면-새단장-설계.md` | 1.10~1.12 의 화면 새단장 설계(끝남). 화면을 왜 지금처럼 잡았는지 찾아볼 때 본다 |
 | `docs/mockup/Main.dc.html` | 처음의 화면 시안(시안 도구 형식이라 그대로 실행되지는 않는다). 지금 모양의 기준은 앱 화면 자체다 |
 | `README.md` | 사용자용 안내: 준비물, 실행, 화면 둘러보기, 처음부터 끝까지 쓰는 법, 프로젝트 폴더의 파일, 채팅 도구, 명령줄 도구, 문제 해결 |
+| `README.md` "앱 업데이트" | 새 버전 내보내기(만드는 사람)와 앱 업데이트 받기(쓰는 사람) |
 | `CHANGELOG.md` | 버전별 바뀐 점. 사용자에게 보이는 변화가 생기면 여기에 한 줄을 더한다 |
 
 ## 구조
@@ -40,6 +41,7 @@ src/main/              Electron 메인 프로세스
   images.ts render/    그림 서비스와 보이지 않는 렌더 작업 창
   preview.ts fonts/    미리보기, 폰트 목록, 폰트 넣기(fontEmbed.ts)
   windowControls.ts    틀 없는 주 창의 창 단추 채널(window:*). windowState.ts 는 창 크기·자리 기억(window.json)
+  appUpdate.ts         앱 자체 업데이트(electron-updater, GitHub 릴리스). 채널 appUpdate:* 를 ipc.ts 밖에서 등록. 화면은 components/AppUpdate.tsx
   buildNotes.ts gameRun.ts bridge.ts settings.ts story.ts
 src/mcp/               Claude CLI 가 띄우는 stdio MCP 서버. 도구 호출을 로컬 브리지로 메인에 넘긴다
 src/preload/           렌더러에 window.api 를(index.ts), 렌더 작업 창에 그 통로를(render.ts) 내준다
@@ -49,6 +51,7 @@ src/renderer/          React 화면. 상태와 액션은 state.ts, 화면 전환
   theme.css            테마 여덟 가지의 토큰과 뜻 색, 공통 부품 모양, 움직임
   filterGroups.ts guideBlocks.ts  텍스트 거르기 묶음, 번역 지침을 ## 제목에서 나누기
 src/shared/            메인과 렌더러가 같이 쓰는 것. api.ts(채널 목록과 window.api 모양), rows.ts(행·필터·통계)
+scripts/release.mjs    새 버전을 빌드해 GitHub 릴리스에 올림(npm run release)
 tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄운다. 가짜 window.api 는 tests/renderer/fakeApi.tsx
 ```
 
@@ -97,7 +100,25 @@ tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄
 
 - Windows 11, Node 22(64비트, `C:\Program Files\nodejs`), git, Claude CLI(winget 설치). Python 3.12 가 있다(`py` 런처로 부른다. `python` 은 윈도우 스토어 안내용 빈 파일이 먼저 잡힌다). 앱은 Python 을 쓰지 않는다.
 - 셸에 따라 `node` 나 `claude` 가 PATH 에 안 잡힐 수 있다. 그럴 때는 위 경로를 PATH 앞에 붙인다.
-- 배포용 묶기: `npm run dist` → `release/` 에 설치 파일과 `latest.yml`(zip 은 스스로 업데이트할 수 없어 뺐다). 새 버전 내보내기는 사용자가 "새 버전 내자"라고 하면 Claude 가 한다: 확인 명령을 모두 통과시킨 뒤 `package.json` 버전을 올리고 CHANGELOG "준비 중"에 번호와 날짜를 붙여 커밋·push 하고, `npm.cmd run release` 를 돌린다(`scripts/release.mjs` 가 `~/.sosa-translator/release-token` 파일이나 `GH_TOKEN` 에서 토큰을 읽는다. Claude 는 그 파일을 열거나 토큰 값을 보거나 적지 않는다). GitHub(sesa1224/sosa-translator) 릴리스는 바로 공개되어 친구 앱이 받는다. 설정은 `electron-builder.yml`. 서명 인증서가 없어 서명은 하지 않는다.
+- 배포용 묶기: `npm run dist` → `release/` 에 설치 파일과 `latest.yml`(아무 데도 올리지 않음. zip 은 스스로 업데이트할 수 없어 뺐다). 설정은 `electron-builder.yml`. 서명 인증서가 없어 서명은 하지 않는다.
+- PowerShell 에서 `npm` 이 실행 정책에 막히면 `npm.cmd` 로 부른다(정책은 바꾸지 않는다).
+- git 원격 `origin` = https://github.com/sesa1224/sosa-translator (공개, 기본 가지 `master`). 커밋은 push 해도 된다(사용자 허락).
+
+## 새 버전 내보내기 (앱 업데이트)
+
+사용자가 친구에게 앱을 나눠 쓴다. 친구 앱은 GitHub 릴리스에서 새 버전을 받아 스스로 업데이트한다(1.13.0 부터). 사용자가 "새 버전 내자"라고 하면 Claude 가 끝까지 한다:
+
+1. 확인 명령(위 "일하는 방식")을 모두 통과시킨다. 릴리스는 올리는 즉시 공개되어 친구 앱이 받으므로, 실패하면 내보내지 않는다.
+2. `package.json` 의 version 을 올리고(`npm install --package-lock-only` 로 lock 도 맞춤, 앞에 v 없음), CHANGELOG 의 "준비 중" 제목을 `## x.y.z — 날짜` 로 바꾼다. 커밋하고 push 한다.
+3. `npm.cmd run release`(몇 분 걸려 백그라운드로). `scripts/release.mjs` 가 `~/.sosa-translator/release-token` 파일이나 `GH_TOKEN` 에서 토큰을 읽어 electron-builder 에 넘긴다. **Claude 는 토큰 파일을 열거나 값을 출력하지 않는다.** 토큰이 필요한 GitHub API 호출은 그 파일을 읽는 node 스크립트로 하고 값은 찍지 않는다.
+4. 공개됐는지 토큰 없이 확인한다: `curl -s https://api.github.com/repos/sesa1224/sosa-translator/releases/latest` 의 `tag_name` 이 새 버전이고 자산에 `latest.yml`, `SoSa-Translator-Setup-x.y.z.exe`, `.blockmap` 이 있어야 한다.
+5. 사용자에게 릴리스 링크(`https://github.com/sesa1224/sosa-translator/releases/tag/vx.y.z`)를 준다.
+
+알아 둘 것:
+- `electron-builder.yml` 의 `releaseType: release` 라 새 태그는 바로 공개된다. 그런데 **같은 태그의 초안(draft)이 이미 있으면 그 초안에 올리고 초안으로 남는다**(1.13.0 때 실제로 겪음: 초안이 둘 생겼다). 4번에서 안 보이면 API 로 릴리스 목록을 보고, `release/latest.yml` 의 sha512 와 맞는 쪽을 공개(`PATCH draft:false`)하고 남은 초안은 지운다.
+- 업로드되는 파일 이름은 빈칸이 `-` 로 바뀐다. 손으로 올리지 않는다.
+- 같은 번호로 다시 올리면 친구 앱은 새 버전으로 알아보지 못한다. 고칠 것이 있으면 번호를 올린다.
+- 토큰은 fine-grained, `sosa-translator` 저장소의 Contents 읽기/쓰기만. 만료되면 사용자가 새로 만들어 같은 파일에 넣는다(Claude 는 대신 만들거나 입력하지 않는다).
 
 ## 아직 없는 것
 
@@ -105,4 +126,7 @@ tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄
 - `.ttc`(폰트 모음 파일): 폰트 목록에 수만 보이고 쓸 수 없다.
 - 코드 서명: 인증서가 없어 배포 파일에 서명하지 않는다.
 - 계획 1~7(3b 포함)은 모두 끝났다. 실제 게임 두 버전으로 업데이트 가져오기를 해 보는 확인은 사람이 할 일로 남아 있다(계획 6 끝의 "사람이 확인할 것").
+- 앱 업데이트를 GitHub 에서 실제로 받아 설치하고 다시 켜지는지는 아직 아무도 해 보지 못했다. 1.13.0 이 이 기능이 든 첫 판이라, 다음 판(1.13.1 이상)을 냈을 때 친구 앱에서 처음 확인된다. 결과를 사용자에게 물어본다.
+- e2e 의 "앱 업데이트: 설치한 앱이 아니면…" 시험이 처음 만들 때 한 번 실패했고 그 뒤 다섯 번은 통과했다. 원인은 못 찾았다. 다시 실패하면 오류를 남겨 둔다.
+- 앱 아이콘이 없어 기본 Electron 아이콘을 쓴다.
 - 바뀐 점은 `CHANGELOG.md` 를 본다.

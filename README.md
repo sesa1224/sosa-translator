@@ -315,10 +315,12 @@ npm run dist
 
 ### 새 버전 내보내기 (만드는 사람)
 
-처음 한 번만:
+보통은 Claude 에게 "새 버전 내자"라고 하면 아래를 모두 합니다(순서는 `CLAUDE.md` 의 "새 버전 내보내기"). 직접 할 때의 순서입니다.
 
-1. GitHub 에 공개 저장소 `sesa1224/sosa-translator` 를 만듭니다(코드를 올리지 않아도 릴리스는 만들 수 있습니다).
-2. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens 에서 토큰을 만듭니다. Repository access 는 "Only select repositories" 로 `sosa-translator` 만, Permissions 는 Contents 를 "Read and write" 로 둡니다.
+처음 한 번만(2026-11-19 에 해 두었습니다):
+
+1. GitHub 에 공개 저장소 `sesa1224/sosa-translator` 를 만들고 코드를 올립니다. 빈 저장소에는 릴리스를 만들 수 없습니다.
+2. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens 에서 토큰을 만듭니다. Repository access 는 "Only select repositories" 로 `sosa-translator` 만, Permissions 는 Contents 를 "Read and write" 로 둡니다. 만료되면 새로 만들어 아래 파일에 다시 넣습니다.
 
 버전마다:
 
@@ -328,7 +330,8 @@ npm run dist
    npm.cmd run release
    ```
    설치 파일, `.blockmap`, `latest.yml` 이 `v1.13.0` 이라는 이름의 릴리스에 올라갑니다. 파일 이름의 빈칸은 `-` 로 바뀌어 올라가며 `latest.yml` 도 그 이름을 가리키므로, 파일을 손으로 올리지 말고 이 명령으로 올립니다.
-3. 릴리스는 초안이 아니라 바로 공개됩니다(`electron-builder.yml` 의 `releaseType: release`). 올라가는 순간부터 친구 앱이 새 버전을 찾으므로, 시험을 모두 통과한 뒤에만 내보냅니다.
+3. 릴리스는 초안이 아니라 바로 공개됩니다(`electron-builder.yml` 의 `releaseType: release`). 올라가는 순간부터 친구 앱이 새 버전을 찾으므로, 시험을 모두 통과한 뒤에만 내보냅니다. 단, 같은 번호의 **초안**이 GitHub 에 이미 있으면 그 초안에 올라가 초안으로 남습니다. 이때는 Releases 에서 그 초안을 열어 **Publish release** 를 누르고, 남는 초안은 지웁니다.
+4. 친구에게 줄 주소: `https://github.com/sesa1224/sosa-translator/releases/latest`
 
 ### 앱 업데이트 받기 (쓰는 사람)
 
