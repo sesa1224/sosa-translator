@@ -12,7 +12,8 @@
     "dev": "electron-vite dev",
     "build:app": "electron-vite build",
     "test:e2e": "vitest run -c vitest.e2e.config.ts",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder --win --publish never",
+    "release": "electron-vite build && electron-builder --win --publish always"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

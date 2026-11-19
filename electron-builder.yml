@@ -21,10 +21,17 @@ electronLanguages:
   - ko
   - en-US
   - ja
+# App updates (src/main/appUpdate.ts) come from this repository's GitHub Releases. With this set the build also
+# writes latest.yml next to the installer and app-update.yml into the app; both must be uploaded with the
+# release (npm run release does it). Releases are created as drafts and must be published on GitHub.
+publish:
+  provider: github
+  owner: sesa1224
+  repo: sosa-translator
 win:
+  # Only the installer: a copy unpacked from a zip cannot replace itself, so it would never update.
   target:
     - nsis
-    - zip
   # No code-signing certificate; skip the signing/resource-editing step.
   signAndEditExecutable: false
 nsis:
