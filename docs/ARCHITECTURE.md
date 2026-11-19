@@ -21,6 +21,7 @@
 | 렌더러 → 메인 (부탁과 답) | `ipcRenderer.invoke(채널)`. 채널 목록은 `InvokeChannels` | `src/shared/api.ts`, `src/preload/index.ts`, `src/main/ipc.ts` |
 | 메인 → 모든 창 (알림) | `webContents.send(채널)`. 목록은 `PushEvents`, 렌더러는 `api.on()` 으로 받는다 | `src/main/index.ts` 의 `broadcast`, `src/renderer/state.ts` 의 `start()` |
 | 렌더러 → 자기 창 (창 단추) | 주 창은 틀이 없다(`frame: false`). 타이틀바(`TopBar`, `ProjectPicker` 의 띠)의 `WindowControls` 가 `window:*` 채널로 부탁하면 보낸 창에만 한다. 최대화가 바뀌면 그 창에만 `window:maximized` 를 보낸다. 닫기는 시스템 닫기와 같은 `close()` 라 끝낼 때의 정리(`before-quit`)를 그대로 거친다 | `src/main/windowControls.ts`(`index.ts` 가 등록. 보낸 창을 알아야 해서 `ipc.ts` 밖에 있다) |
+| 렌더러 ↔ 메인 (앱 업데이트) | `appUpdate:get`/`check`/`install` 과 알림 `appUpdate:state`. 열린 프로젝트와 상관없어 `ipc.ts` 밖에서 등록한다. 설치한 앱(`app.isPackaged`)에서만 electron-updater 의 `autoUpdater` 를 쓰고, 그 밖에서는 상태가 `unsupported` 다. 창이 뜨고 5초 뒤 한 번 조용히 확인한다(실패는 알리지 않고 `idle` 로) | `src/main/appUpdate.ts`(`AppUpdate`, `registerAppUpdate`. updater 를 넘겨받아 시험은 가짜를 쓴다), `index.ts`, 화면은 `src/renderer/components/AppUpdate.tsx` 의 `AppUpdateRow`(설정과 프로젝트 고르기), 받으면 `state.ts` 의 `onAppUpdate` 가 단추 달린 알림 |
 | 메인 ↔ 렌더 작업 창 | IPC 메시지 `RenderRequest`/`RenderReply`. 한 번에 하나, 죽거나 30초 넘게 답이 없으면 창을 새로 만들어 한 번 더 | `src/shared/renderProtocol.ts`, `src/main/render/renderService.ts`, `renderWindow.ts` |
 | 메인 → Claude CLI (채팅) | 자식 프로세스의 표준 입출력(stream-json) | `src/main/claude/chat.ts`, `args.ts`, `stream.ts` |
 | 메인 → Claude CLI (작업) | 묶음 내용은 표준 입력, 답은 `structured_output` | `src/main/claude/json.ts` |
@@ -113,7 +114,7 @@ MCP 서버(`src/mcp/server.ts`)는 브리지에서 도구 목록을 받아 오�
 ### IPC 채널 더하기
 
 1. `src/shared/api.ts`: `InvokeChannels` 에 채널을, `Api` 에 메서드를 더한다(메인이 먼저 보내는 알림이면 `PushEvents`). 렌더러가 볼 타입이 Node 를 쓰는 core 모듈에 있으면 여기에 사본을 두고 `src/main/ipc.ts` 의 `sharedTypesMatch` 에 같은지 확인하는 줄을 더한다.
-2. `src/main/ipc.ts`: `handle('채널', …)` 을 더한다. 인자는 믿지 말고 `String(…)` 처럼 다듬는다. 프로젝트 데이터는 `svc()` 로 `ProjectService` 에 맡긴다. 보낸 창을 알아야 하는 채널(창 단추 `window:*`)은 `src/main/windowControls.ts` 에 둔다.
+2. `src/main/ipc.ts`: `handle('채널', …)` 을 더한다. 인자는 믿지 말고 `String(…)` 처럼 다듬는다. 프로젝트 데이터는 `svc()` 로 `ProjectService` 에 맡긴다. 보낸 창을 알아야 하는 채널(창 단추 `window:*`)은 `src/main/windowControls.ts` 에, 앱 자체의 업데이트(`appUpdate:*`)는 `src/main/appUpdate.ts` 에 둔다.
 3. `src/preload/index.ts`: `api` 객체에 `call('채널', …)` 을 더한다.
 4. `tests/renderer/fakeApi.tsx` 에 가짜를 더한다.
 
