@@ -4,6 +4,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain, screen, shell, type WebContents } from 'electron';
+import { AppUpdate, registerAppUpdate, type UpdaterLike } from './appUpdate.js';
 import { startBridge, writeMcpConfig, type Bridge } from './bridge.js';
 import { ClaudeChat, findClaude } from './claude/chat.js';
 import { registerIpc } from './ipc.js';
@@ -52,6 +53,24 @@ function jsonClaude(configured: string | null): { command: string; prefixArgs: s
   }
   const command = findClaude(configured);
   return command ? { command, prefixArgs: [] } : null;
+}
+
+/** How long after the window loads the quiet update check waits, so it does not compete with opening a project. */
+const UPDATE_CHECK_DELAY_MS = 5000;
+
+/**
+ * electron-updater's autoUpdater, only in an installed app: a dev or test run has no app-update.yml and nothing
+ * to replace. Loaded on demand so dev runs never touch it. The package is CommonJS, hence the default import.
+ */
+async function loadUpdater(): Promise<UpdaterLike | null> {
+  if (!app.isPackaged) return null;
+  try {
+    const { default: pkg } = await import('electron-updater');
+    return pkg.autoUpdater;
+  } catch (e) {
+    console.warn('[appUpdate] electron-updater could not be loaded', e);
+    return null;
+  }
 }
 
 function broadcast<C extends PushChannel>(channel: C, payload: PushEvents[C]): void {
@@ -179,7 +198,13 @@ app.whenReady().then(async () => {
   });
 
   registerWindowControls(ipcMain, (sender) => BrowserWindow.fromWebContents(sender as WebContents));
-  await createWindow();
+  const appUpdate = new AppUpdate({ updater: await loadUpdater(), version: app.getVersion(), onState: (s) => broadcast('appUpdate:state', s) });
+  registerAppUpdate(ipcMain, appUpdate);
+  const win = await createWindow();
+  // One quiet check per start: the screen only speaks up when a new version has been downloaded.
+  const checkLater = () => { setTimeout(() => { void appUpdate.check({ quiet: true }); }, UPDATE_CHECK_DELAY_MS); };
+  if (win.webContents.isLoading()) win.webContents.once('did-finish-load', checkLater);
+  else checkLater();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
 });
 

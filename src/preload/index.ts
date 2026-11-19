@@ -91,6 +91,11 @@ const api: Api = {
     close: () => call('window:close'),
     isMaximized: () => call('window:isMaximized'),
   },
+  appUpdate: {
+    get: () => call('appUpdate:get'),
+    check: () => call('appUpdate:check'),
+    install: () => call('appUpdate:install'),
+  },
   decisions: {
     groups: () => call('decisions:groups'),
     set: (key, d) => call('decisions:set', key, d),

@@ -25,6 +25,7 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@tanstack/react-virtual": "^3.14.26",
     "commander": "^15.1.0",
+    "electron-updater": "^6.8.11",
     "fflate": "^0.8.3",
     "lucide-react": "^1.74.0",
     "opentype.js": "^2.0.0",

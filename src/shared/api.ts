@@ -125,6 +125,24 @@ export type ChatEvent =
 /** Whether the Claude CLI can be used: found on this computer, and logged in (null = could not tell). */
 export interface ClaudeStatus { found: boolean; path: string | null; loggedIn: boolean | null }
 
+// ---- App updates (a new version of this app from GitHub Releases; not the game updates below) ----
+
+/**
+ * Where updating the app itself stands. unsupported: not an installed build (dev, tests), where there is nothing
+ * to replace. available: a newer version was found and is being downloaded (percent 0-100).
+ */
+export type AppUpdateState =
+  | { kind: 'unsupported' }
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'available'; version: string; percent: number }
+  | { kind: 'downloaded'; version: string }
+  | { kind: 'upToDate' }
+  | { kind: 'error'; message: string };
+
+/** The running app's version and its update state. */
+export interface AppUpdateInfo { version: string; state: AppUpdateState }
+
 // ---- Settings and models ----
 
 export interface ModelOption { id: string; label: string }
@@ -305,6 +323,8 @@ export interface PushEvents {
   'history:changed': ActionSummary[];
   /** Sent only to the window whose maximized state changed (the title bar's maximize button follows it). */
   'window:maximized': boolean;
+  /** The app update moved on (checking, download progress, ready to install, failed). */
+  'appUpdate:state': AppUpdateState;
 }
 export type PushChannel = keyof PushEvents;
 
@@ -386,6 +406,13 @@ export interface InvokeChannels {
   'window:toggleMaximize': () => void;
   'window:close': () => void;
   'window:isMaximized': () => boolean;
+
+  // Updating the app itself (src/main/appUpdate.ts registers these; they do not touch the open project).
+  'appUpdate:get': () => AppUpdateInfo;
+  /** Starts a check (and the download when there is a newer version); answers the state right after starting. */
+  'appUpdate:check': () => AppUpdateState;
+  /** Quits and runs the downloaded installer, which starts the app again. Does nothing until one is downloaded. */
+  'appUpdate:install': () => void;
 
   'decisions:groups': () => DecisionGroup[];
   'decisions:set': (key: string, d: DecisionInput) => void;
@@ -520,6 +547,7 @@ export interface Api {
     minimize: Call<'window:minimize'>; toggleMaximize: Call<'window:toggleMaximize'>;
     close: Call<'window:close'>; isMaximized: Call<'window:isMaximized'>;
   };
+  appUpdate: { get: Call<'appUpdate:get'>; check: Call<'appUpdate:check'>; install: Call<'appUpdate:install'> };
   on<C extends PushChannel>(channel: C, cb: (payload: PushEvents[C]) => void): () => void;
   decisions: {
     groups: Call<'decisions:groups'>; set: Call<'decisions:set'>;
