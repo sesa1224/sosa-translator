@@ -97,7 +97,7 @@ tests/                 src 와 같은 구조. tests/e2e 는 앱을 실제로 띄
 
 - Windows 11, Node 22(64비트, `C:\Program Files\nodejs`), git, Claude CLI(winget 설치). Python 3.12 가 있다(`py` 런처로 부른다. `python` 은 윈도우 스토어 안내용 빈 파일이 먼저 잡힌다). 앱은 Python 을 쓰지 않는다.
 - 셸에 따라 `node` 나 `claude` 가 PATH 에 안 잡힐 수 있다. 그럴 때는 위 경로를 PATH 앞에 붙인다.
-- 배포용 묶기: `npm run dist` → `release/` 에 설치 파일과 `latest.yml`(zip 은 스스로 업데이트할 수 없어 뺐다). 새 버전 내보내기는 사용자가 "새 버전 내자"라고 하면 Claude 가 한다: 확인 명령을 모두 통과시킨 뒤 `package.json` 버전을 올리고 CHANGELOG "준비 중"에 번호와 날짜를 붙여 커밋·push 하고, `npm.cmd run release` 를 돌린다(`scripts/release.mjs` 가 `~/.sosa-translator/github-token` 파일이나 `GH_TOKEN` 에서 토큰을 읽는다. Claude 는 그 파일을 열거나 토큰 값을 보거나 적지 않는다). GitHub(sesa1224/sosa-translator) 릴리스는 바로 공개되어 친구 앱이 받는다. 설정은 `electron-builder.yml`. 서명 인증서가 없어 서명은 하지 않는다.
+- 배포용 묶기: `npm run dist` → `release/` 에 설치 파일과 `latest.yml`(zip 은 스스로 업데이트할 수 없어 뺐다). 새 버전 내보내기는 사용자가 "새 버전 내자"라고 하면 Claude 가 한다: 확인 명령을 모두 통과시킨 뒤 `package.json` 버전을 올리고 CHANGELOG "준비 중"에 번호와 날짜를 붙여 커밋·push 하고, `npm.cmd run release` 를 돌린다(`scripts/release.mjs` 가 `~/.sosa-translator/release-token` 파일이나 `GH_TOKEN` 에서 토큰을 읽는다. Claude 는 그 파일을 열거나 토큰 값을 보거나 적지 않는다). GitHub(sesa1224/sosa-translator) 릴리스는 바로 공개되어 친구 앱이 받는다. 설정은 `electron-builder.yml`. 서명 인증서가 없어 서명은 하지 않는다.
 
 ## 아직 없는 것
 
