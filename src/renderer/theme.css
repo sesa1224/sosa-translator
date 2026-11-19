@@ -233,7 +233,7 @@ select.input { padding: 0 12px; }
 .picker-packed { display: flex; flex-direction: column; gap: 6px; }
 /* The app's version and update at the foot of the project list: a plain line, set off only by a hairline. */
 .picker-app { border-top: 1px solid var(--hair); padding: 0 4px; }
-.picker-app .set-name { color: var(--sub); }
+.picker-app .set-l > .set-name { color: var(--sub); }
 .picker-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .picker-list > li .picker-item { flex: 1 1 auto; }
 /* A long project path must wrap inside its own column instead of squeezing the button. */
