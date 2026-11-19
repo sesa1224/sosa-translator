@@ -39,6 +39,22 @@ test('앱이 뜨고 프로젝트 고르기 화면이 보인다', async () => {
   await app.close();
 });
 
+test('앱 업데이트: 설치한 앱이 아니면 확인할 수 없다고 말하고, 조용한 확인 뒤에도 그대로 뜬다', async () => {
+  const app = await launch();
+  const win = await app.firstWindow();
+  const row = win.getByRole('region', { name: '앱 업데이트' });
+  const version = await app.evaluate(({ app: a }) => a.getVersion());
+  await expect(row.getByText(`앱 버전 ${version}`)).toBeVisible();
+  await expect(row.getByText('설치한 앱에서만 확인할 수 있어요')).toBeVisible();
+  expect(await row.getByRole('button', { name: '업데이트 확인' }).isDisabled()).toBe(true);
+  expect(await win.evaluate(() => (window as unknown as { api: { appUpdate: { check(): Promise<unknown> } } }).api.appUpdate.check())).toEqual({ kind: 'unsupported' });
+  // The quiet check runs a few seconds after loading; nothing changes and nothing breaks.
+  await win.waitForTimeout(6000);
+  await expect(row.getByText('설치한 앱에서만 확인할 수 있어요')).toBeVisible();
+  await expect(win.getByRole('heading', { name: '프로젝트' })).toBeVisible();
+  await app.close();
+});
+
 test('가져오기 → 손으로 번역 → 채팅 → 빌드', async () => {
   const app = await launch({ MVMZ_PICK_DIR: game, MVMZ_CLAUDE_COMMAND: process.execPath, MVMZ_CLAUDE_PREFIX_ARGS: JSON.stringify([fakeClaude]) });
   const w = await app.firstWindow();
