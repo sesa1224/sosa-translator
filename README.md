@@ -323,7 +323,7 @@ npm run dist
 버전마다:
 
 1. `package.json` 의 `"version"` 을 올립니다(예: `1.12.0` → `1.13.0`). 앞에 `v` 를 붙이지 않습니다. 같은 번호로는 친구 앱이 새 버전으로 알아보지 못합니다. `CHANGELOG.md` 의 "준비 중"에 이 번호와 날짜를 붙입니다.
-2. 토큰을 넣고 내보냅니다. 토큰은 한 번 `setx GH_TOKEN "github_pat_…"` 로 이 PC 의 사용자 환경 변수에 넣어 두면(새 창부터 적용) Claude 도 토큰을 보지 않고 이 명령을 돌릴 수 있습니다. PowerShell 에서 `npm` 이 막히면 `npm.cmd` 로 부릅니다:
+2. 내보냅니다. 토큰은 한 번 `C:\Users\<사용자>\.sosa-translator\github-token` 파일에 한 줄로 넣어 둡니다(저장소 바깥이라 올라가지 않습니다. 환경 변수 `GH_TOKEN` 이 있으면 그것을 먼저 씁니다). 그러면 Claude 도 토큰을 보지 않고 이 명령을 돌릴 수 있습니다. PowerShell 에서 `npm` 이 막히면 `npm.cmd` 로 부릅니다:
    ```powershell
    npm.cmd run release
    ```
